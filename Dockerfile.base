@@ -3,7 +3,7 @@
 # The purpose of this is to keep the container running so that it can be used as a base image or as a placeholder for other services.
 
 # FROM ubuntu:22.04
-FROM containers.mathworks.com/matlab-runtime:r2023b
+FROM containers.mathworks.com/matlab-runtime:r2024b
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive
