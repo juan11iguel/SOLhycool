@@ -1,0 +1,25 @@
+[project]
+name = "solhycool-modeling"
+version = "0.1.0"
+description = "Variety of models of a combined cooling system composed by a wet cooling tower, dry cooler and surface condenser at Plataforma Solar de Almería as part of the SOLhycool research project: Combined cooling solutions for water saving in solar thermal applications."
+readme = "README.md"
+requires-python = ">=3.11, <3.12"
+dependencies = [
+    "kaleido==0.2.1",
+    "numpy>=2.1.3",
+    "pandas>=2.2.3",
+    "plotly>=5.24.1",
+    "pydantic>=2.10.3",
+]
+
+[project.scripts]
+hello = "solhycool_modeling:hello"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyter>=1.1.1",
+]

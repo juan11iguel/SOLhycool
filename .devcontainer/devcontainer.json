@@ -1,0 +1,47 @@
+{
+	"name": "SOLhycool - modeling",
+	"build": {
+		"dockerfile": "../Dockerfile.base"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"html.format.templating": true,
+				"terminal.integrated.defaultProfile.linux": "zsh",
+				"editor.tabSize": 4,
+				"terminal.integrated.profiles.linux": {
+					"bash": {
+						"path": "bash",
+						"icon": "terminal-bash"
+					},
+					"zsh": {
+						"path": "zsh"
+					}
+				}
+			},
+			"extensions": [
+				"tamasfe.even-better-toml",
+				"naumovs.color-highlight",
+				"laktak.hjson",
+				"GitHub.copilot",
+				"charliermarsh.ruff",
+				"njpwerner.autodocstring",
+				"ms-toolsai.jupyter",
+				"yzhang.markdown-all-in-one",
+				"ms-python.python",
+				"ms-python.debugpy",
+				"ms-toolsai.datawrangler",
+				"mechatroner.rainbow-csv"
+			],
+			"containerEnv": {
+				"ENVIRONMENT": "container",
+			}
+		}
+	},
+	"features": {
+		// "ghcr.io/devcontainers/features/github-cli:1": {}
+		// "ghcr.io/mikaello/devcontainer-features/modern-shell-utils:1": {},
+		// "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
+		// "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+	},
+}

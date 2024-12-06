@@ -1,0 +1,71 @@
+# This Dockerfile sets the entrypoint to "tail -f /dev/null".
+# This is a common practice in Dockerfiles for creating a container that runs indefinitely without executing any commands.
+# The purpose of this is to keep the container running so that it can be used as a base image or as a placeholder for other services.
+
+# FROM ubuntu:22.04
+FROM containers.mathworks.com/matlab-runtime:r2023b
+
+# Environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MATLAB_VERSION=R2023b
+ENV WORKDIR=${WORKDIR:-/workspaces/solhycool_modeling}
+ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
+
+WORKDIR ${WORKDIR}
+
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    python3 \
+    python3-venv \
+    xclip \
+    micro \
+    wget \
+    unzip
+
+# Install zsh, oh-my-zsh with customized theme and plugins (git, ssh-agent, zsh-autosuggestions, zsh-syntax-highlighting)
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.2.0/zsh-in-docker.sh)" -- \
+    -t https://github.com/denysdovhan/spaceship-prompt \
+    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
+    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="false"' \
+    -p git \
+    -p ssh-agent \
+    -p https://github.com/zsh-users/zsh-autosuggestions \
+    -p https://github.com/zsh-users/zsh-syntax-highlighting
+
+
+# Install uv
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.cargo/bin/:$PATH"
+
+# Copy the project files
+COPY pyproject.toml README.md uv.lock ${WORKDIR}
+# If combined with the previous copy, it copies te contents of the folders instead of the folders themselves
+COPY src ${WORKDIR}/src
+COPY matlab/python_exported_models ${WORKDIR}/python_exported_models
+
+# Set matlab runtime environment variables
+ENV MR=/opt/matlabruntime/${MATLAB_VERSION}
+
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:\
+$MR/runtime/glnxa64:\
+$MR/bin/glnxa64:\
+$MR/sys/os/glnxa64:\
+$MR/sys/opengl/lib/glnxa64
+
+
+# Install dependencies
+# In a normal docker container, this will provide a working virtual environment
+# In a dev container, the virtual environment won't be available, however if the build of the image succeeds it guarantees that 
+# recreating the environment will work, so at first devcontainer start run `uv sync` to create the virtual environment
+RUN uv sync --frozen
+
+# Copy the rest of the project
+# COPY . .
+
+# Set the default command to run when starting the container
+# Start jupyter notebook
+# CMD [".venv/bin/jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root"]
