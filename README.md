@@ -12,8 +12,8 @@
 - [x] Integrar todo
 - [x] Generar estructura que incluya todas las variables de proceso y sea lo que devuelva la función al ser llamada como variable secundaria: `Tv, Ce, Cw, detailed_outputs = model(inputs)`
 - [x] Buscar un diagrama de nomenclatura, y ahí incluir con colores todas las variables del sistema con colores para salidas y entradas
-- [ ] Exportar modelo a python
-- [ ] Mover código a un repositorio
+- [x] Exportar modelo a python
+- [x] Mover código a un repositorio
 
 ## Description
 
@@ -103,22 +103,34 @@ NOTE: RMSE figures do not represent the actual accuracy (DC, WCT) since they als
 ![Outputs regression validation](./assets/cooling_system_validation_regression.svg)
 
 
+### Python results
+
+![Python model validation](./assets/combined_cooler_model_regression.svg)
+
+![Python hydraulic distribution visualization](./assets/combined_cooler_hydraulic_distribution.svg)
 
 
 ## Usage
 
-```python
-Tv_C, Ce_kWe, Cw_lh, detailed = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, model_type: Literal["physical", "data"], parameters: struct);
-```
+1. Clone project
+2. Open VSCode and reopen the project in devcontainer
+3. If there is no `.venv` folder, create the environment by running `uv sync`
+4. Open the notebook [test_model.ipynb](./notebooks/test_model.ipynb) and run it
 
-See function source code for details.
 
 ## Package structure
+
+- `scripts/`. Contains python scripts for testing and validation
+- `notebooks/`. Contains Jupyter notebooks for testing and validation
+- `src/`. Contains the python package source code
+- `assets/`. Contains data and attachments
+- `matlab`. Contains the MATLAB implementation of the model
+
+### MATLAB
 
 - `combined_cooler_model.m`. Model function.
 - `test_model.m`. Script to test all package functions and validate model with some validation data.
 - `default_parameters.m`. Returns a struct with default parameters that are used if otherwise not provided to the model. It can also be used as base to modify just some of them.
 - `component_models/`. Individual component models
 - `utils/`. Variety of utility code
-- `assets/`. Contains data and attachments
-
+- `exports/`. Folder where the model is exported to Python
