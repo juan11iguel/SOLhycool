@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "modeling"
+		},
+		{
+			"path": "optimization"
+		},
+		{
+			"path": "simulation"
+		}
+	],
+	"settings": {}
+}
