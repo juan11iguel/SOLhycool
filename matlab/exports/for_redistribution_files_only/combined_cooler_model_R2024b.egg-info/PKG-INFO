@@ -1,0 +1,13 @@
+Metadata-Version: 2.2
+Name: combined_cooler_model-R2024b
+Version: 24.2
+Summary: A Python interface to combined_cooler_model
+Home-page: https://www.mathworks.com/
+Author: MathWorks
+Platform: Linux
+Platform: Windows
+Platform: macOS
+Dynamic: author
+Dynamic: home-page
+Dynamic: platform
+Dynamic: summary

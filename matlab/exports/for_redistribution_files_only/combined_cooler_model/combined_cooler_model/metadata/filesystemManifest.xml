@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<fileEntries xmlns="http://schemas.mathworks.com/package/2013/filesystemManifest" createdByEncoding="UTF-8" createdByPlatform="glnxa64" version="2.0">
+  <fileEntry content="/fsroot/.META/combined_cooler_model_UserManifest.mat" date="2025-01-28T15:08:43Z" name="/.META/combined_cooler_model_UserManifest.mat" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/.META/includedSupportPackages.txt" date="2025-01-28T15:08:43Z" name="/.META/includedSupportPackages.txt" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/.META/requiredMCRProducts.txt" date="2025-01-28T15:08:43Z" name="/.META/requiredMCRProducts.txt" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/.META/unresolvedSymbols.txt" date="2025-01-28T15:08:43Z" name="/.META/unresolvedSymbols.txt" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/.matlab/matlab.mlsettings" date="2025-01-28T15:08:43Z" name="/.matlab/matlab.mlsettings" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/.matlab/matlab.prf" date="2025-01-28T15:04:12Z" name="/.matlab/matlab.prf" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/.matlab/parallel.mlsettings" date="2025-01-28T15:08:43Z" name="/.matlab/parallel.mlsettings" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/combined_cooler_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/combined_cooler_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/condenser_heat_transfer_coefficient.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/condenser_heat_transfer_coefficient.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/condenser_heats_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/condenser_heats_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/condenser_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/condenser_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/data/dc_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/data/dc_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/data/dc_model_data.mat" date="2024-12-10T11:24:45Z" name="/combined_coo/component_models/data/dc_model_data.mat" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/data/wct_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/data/wct_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/data/wct_model_data.mat" date="2024-12-10T12:17:32Z" name="/combined_coo/component_models/data/wct_model_data.mat" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/component_models/mixer_model.m" date="2025-01-28T15:08:43Z" name="/combined_coo/component_models/mixer_model.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/default_parameters.m" date="2025-01-28T15:08:43Z" name="/combined_coo/default_parameters.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/compute_condenser_heats.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/compute_condenser_heats.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/distribucion_hidraulica.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/distribucion_hidraulica.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/flows_to_ratios.asv" date="2025-01-25T19:49:36Z" name="/combined_coo/utils/flows_to_ratios.asv" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/flows_to_ratios.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/flows_to_ratios.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/function_handles/function_handle.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/function_handles/function_handle.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/ratios_to_flows.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/ratios_to_flows.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/recirculation_pump_consumption.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/recirculation_pump_consumption.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/validate_struct.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/validate_struct.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/combined_coo/utils/visualization.m" date="2025-01-28T15:08:43Z" name="/combined_coo/utils/visualization.m" permissions="0664" type="File"/>
+  <fileEntry content="" name="/combined_coo_9beaa2cf-9f52-4d57-9ec2-cfe49401e212" type="Folder"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/SEAWATER_LAB/Contents.m" date="2025-01-28T15:08:41Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/SEAWATER_LAB/Contents.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/general/rearrangeTable.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/general/rearrangeTable.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/calculate_uncertainty.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/calculate_uncertainty.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/hatchfill2_r8/hatchfill2.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/hatchfill2_r8/hatchfill2.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/regression_plot.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/regression_plot.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/shadedplot.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/visualizations/shadedplot.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m" date="2025-01-28T15:08:43Z" name="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m" permissions="0644" type="File"/>
+  <fileEntry content="/fsroot/toolbox/compiler/Contents.m" date="2025-01-28T15:08:41Z" name="/toolbox/compiler/Contents.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/toolbox/compiler/ctfroot.m" date="2025-01-28T15:08:43Z" name="/toolbox/compiler/ctfroot.m" permissions="0444" type="File"/>
+  <fileEntry content="/fsroot/toolbox/compiler/get_features_at_compile_time.m" date="2025-01-28T15:08:43Z" name="/toolbox/compiler/get_features_at_compile_time.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/toolbox/local/Contents.m" date="2025-01-28T15:08:41Z" name="/toolbox/local/Contents.m" permissions="0664" type="File"/>
+  <fileEntry content="/fsroot/toolbox/local/matlabrc.m" date="2025-01-28T15:08:43Z" name="/toolbox/local/matlabrc.m" permissions="0444" type="File"/>
+  <fileEntry content="/fsroot/toolbox/local/printopt.m" date="2025-01-28T15:08:43Z" name="/toolbox/local/printopt.m" permissions="0444" type="File"/>
+</fileEntries>

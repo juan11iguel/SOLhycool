@@ -1,0 +1,17 @@
+function [Rp,Rs] = flows_to_ratios(qc, qdc, qwct)
+    %RATIOS_TO_FLOWS Summary of this function goes here
+    %   Detailed explanation goes here
+    arguments
+        qc double {mustBeGreaterThan(qc, 0)}
+        qdc double {mustBeGreaterThanOrEqual(qdc, 0)}
+        qwct double
+    end
+
+    Rp = 1 - qdc./qc;
+    if qdc < 1e-6
+        Rs = nan;
+    else
+        Rs = 1 - (qc-qwct)./qdc;
+    end
+end
+
