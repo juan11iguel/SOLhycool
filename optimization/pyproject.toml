@@ -1,0 +1,22 @@
+[project]
+name = "solhycool-optimization"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "juan11iguel", email = "juan11iguel@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "solhycool-modeling",
+]
+
+[project.scripts]
+solhycool-optimization = "solhycool_optimization:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+solhycool-modeling = { path = "../modeling", editable = true }

@@ -8,7 +8,7 @@ FROM containers.mathworks.com/matlab-runtime:r2024b
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV MATLAB_VERSION=R2024b
-ENV WORKDIR=${WORKDIR:-/workspaces/solhycool_modeling}
+ENV WORKDIR=${WORKDIR:-/workspaces/solhycool}
 ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
 
 WORKDIR ${WORKDIR}
@@ -44,11 +44,11 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.24 /uv /bin/uv
 RUN uv --version
 
 # Copy the project files
-COPY pyproject.toml uv.lock README.md ${WORKDIR}
+# COPY pyproject.toml uv.lock README.md ${WORKDIR}
 # COPY uv.lock ${WORKDIR}
 # If combined with the previous copy, it copies te contents of the folders instead of the folders themselves
-COPY src ${WORKDIR}/src
-COPY matlab/exports/for_redistribution_files_only ${WORKDIR}/matlab/exports/for_redistribution_files_only
+# COPY src ${WORKDIR}/src
+COPY modeling/matlab/exports/for_redistribution_files_only ${WORKDIR}/modeling/matlab/exports/for_redistribution_files_only
 
 # Set matlab runtime environment variables
 ENV MR=/opt/matlabruntime/${MATLAB_VERSION}
@@ -59,12 +59,11 @@ $MR/bin/glnxa64:\
 $MR/sys/os/glnxa64:\
 $MR/sys/opengl/lib/glnxa64
 
-
 # Install dependencies
 # In a normal docker container, this will provide a working virtual environment
 # In a dev container, the virtual environment won't be available, however if the build of the image succeeds it guarantees that 
 # recreating the environment will work, so at first devcontainer start run `uv sync` to create the virtual environment
-RUN uv sync --frozen
+# RUN uv sync --frozen
 
 # Copy the rest of the project
 # COPY . .

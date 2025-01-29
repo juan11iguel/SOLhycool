@@ -3,7 +3,7 @@ name = "solhycool-modeling"
 version = "0.1.0"
 description = "Variety of models of a combined cooling system composed by a wet cooling tower, dry cooler and surface condenser at Plataforma Solar de Almería as part of the SOLhycool research project: Combined cooling solutions for water saving in solar thermal applications."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "kaleido==0.2.1",
     "numpy>=1.0.0",
@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.10.3",
     "combined_cooler_model-r2024b",
     "phd-visualizations",
+    "solhycool-optimization",
 ]
 
 [project.scripts]
@@ -29,3 +30,4 @@ dev-dependencies = [
 [tool.uv.sources]
 combined_cooler_model-r2024b = { path = "matlab/exports/for_redistribution_files_only" }
 phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
+solhycool-optimization = { path = "../optimization", editable = true }
