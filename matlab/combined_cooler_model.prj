@@ -1,0 +1,210 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration build-checksum="825787372" file="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/combined_cooler_model.prj" location="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo" name="combined_cooler_model" preferred-package-location="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>combined_cooler_model</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>1.0</param.version>
+    <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
+    <param.email>lroca@psa.es</param.email>
+    <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
+    <param.summary>Combined cooling system model</param.summary>
+    <param.description>This package contains the model of a cooling system. The system is composed by a condenser and a combined cooler. The condenser, which takes in saturated vapor from the outlet of a turbine (or any other process really), condenses it, and thus returns it as saturated liquid. In order to achieve this, a cooling fluid (water) which absorbs the heat, is circulated. The combined cooler is in charge of cooling down this cooling fluid. It does it by using two cooling technologies: a Dry Cooler (DC) and a Wet Cooler (Tower, WCT). They are connected in a circuit with two three-way valves which allows almost continuous variation in the hydraulic distribution of the cooling fluid in: series operation (DC -&gt; WCT), parallel, or using only one of the systems (only DC, only WCT).</param.description>
+    <param.screenshot />
+    <param.guid />
+    <param.installpath.string>/CIEMAT_-_Plataforma_Solar_de_Almería/combined_cooler_model/</param.installpath.string>
+    <param.installpath.combo>option.installpath.user</param.installpath.combo>
+    <param.logo>${PROJECT_ROOT}/assets/solhycool_logo.png</param.logo>
+    <param.install.notes />
+    <param.target.install.notes>In the following directions, replace MR/R2024b by the directory on the target machine where MATLAB is installed, or MR by the directory where the MATLAB Runtime is installed.
+
+(1) Set the environment variable XAPPLRESDIR to this value:
+
+MR/R2024b/X11/app-defaults
+
+
+(2) If the environment variable LD_LIBRARY_PATH is undefined, set it to the following:
+
+MR/R2024b/runtime/glnxa64:MR/R2024b/bin/glnxa64:MR/R2024b/sys/os/glnxa64:MR/R2024b/sys/opengl/lib/glnxa64
+
+If it is defined, set it to the following:
+
+${LD_LIBRARY_PATH}:MR/R2024b/runtime/glnxa64:MR/R2024b/bin/glnxa64:MR/R2024b/sys/os/glnxa64:MR/R2024b/sys/opengl/lib/glnxa64
+
+You must have Python 3.9, 3.10, 3.11, and/or 3.12 on your machine to install this package. Go to the directory containing your package and the file setup.py and execute:
+
+        python -m pip install . [options]
+
+For details, see GettingStarted.html, distributed with this package, or the official Python documentation at:
+
+        https://docs.python.org/3/installing/index.html</param.target.install.notes>
+    <param.intermediate>${PROJECT_ROOT}/exports/for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}/exports/for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}/exports/for_redistribution</param.output>
+    <param.logdir>${PROJECT_ROOT}/exports</param.logdir>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.target.type>subtarget.python.module</param.target.type>
+    <param.support.packages />
+    <param.namespace />
+    <param.classorg />
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>web-installer</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>false</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.assembly.net.version>option.net.version.four</param.assembly.net.version>
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace />
+    <param.net.tsa.superclass>Class1</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo</param.net.tsa.metadata.assembly>
+    <param.net.saved.interface />
+    <param.cpp.api>option.cpp.all</param.cpp.api>
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.version />
+      <param.screenshot />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.install.notes />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.support.packages />
+      <param.namespace />
+      <param.classorg />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.user.only.registration />
+      <param.assembly.net.version />
+      <param.net.enable.remoting />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.superclass />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.net.saved.interface />
+      <param.cpp.api />
+    </unset>
+    <fileset.exports>
+      <file>${PROJECT_ROOT}/combined_cooler_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/condenser_heat_transfer_coefficient.m</file>
+      <file>${PROJECT_ROOT}/component_models/condenser_heats_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/dc_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/wct_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
+      <file>${PROJECT_ROOT}/default_parameters.m</file>
+      <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
+      <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
+      <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
+      <file>${PROJECT_ROOT}/utils/recirculation_pump_consumption.m</file>
+      <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Class1">
+          <file>${PROJECT_ROOT}/combined_cooler_model.m</file>
+          <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
+          <file>${PROJECT_ROOT}/component_models/condenser_heat_transfer_coefficient.m</file>
+          <file>${PROJECT_ROOT}/component_models/condenser_heats_model.m</file>
+          <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
+          <file>${PROJECT_ROOT}/component_models/data/dc_model.m</file>
+          <file>${PROJECT_ROOT}/default_parameters.m</file>
+          <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
+          <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
+          <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
+          <file>${PROJECT_ROOT}/utils/recirculation_pump_consumption.m</file>
+          <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
+          <file>${PROJECT_ROOT}/component_models/data/wct_model.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}/component_models/condenser_heat_transfer_coefficient.m</file>
+      <file>${PROJECT_ROOT}/component_models/condenser_heats_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/dc_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/dc_model_data.mat</file>
+      <file>${PROJECT_ROOT}/component_models/data/wct_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/wct_model_data.mat</file>
+      <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
+      <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
+      <file>${PROJECT_ROOT}/utils/flows_to_ratios.asv</file>
+      <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
+      <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
+      <file>${PROJECT_ROOT}/utils/recirculation_pump_consumption.m</file>
+      <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
+    </fileset.resources>
+    <fileset.depfun>
+      <file>/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
+    </fileset.depfun>
+    <fileset.package>
+      <file>${PROJECT_ROOT}/README.md</file>
+      <file>${PROJECT_ROOT}/assets</file>
+    </fileset.package>
+    <fileset.examples>
+      <file>${PROJECT_ROOT}/combined_cooler_modelSample1.m</file>
+      <file>${PROJECT_ROOT}/combined_cooler_modelSample2.m</file>
+    </fileset.examples>
+    <fileset.documentation />
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}/exports/for_testing" name="combined_cooler_model" optional="false">/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_testing/combined_cooler_model</file>
+      <file location="${PROJECT_ROOT}/exports/for_testing" name="setup.py" optional="false">/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_testing/setup.py</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/home/patomareao/MATLAB/R2024b</root>
+      <toolboxes>
+        <toolbox name="matlabcoder" />
+        <toolbox name="neuralnetwork" />
+      </toolboxes>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+      <toolbox>
+        <neuralnetwork>
+          <enabled>true</enabled>
+        </neuralnetwork>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>false</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>true</linux>
+      <solaris>false</solaris>
+      <osver>6.12.7-1.surface.fc41.x86_64</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>glnxa64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
