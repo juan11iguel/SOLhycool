@@ -8,6 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "pandas>=2.2.3",
+    "phd-visualizations",
+    "plotly-resampler>=0.10.0",
     "solhycool-modeling",
     "solhycool-optimization",
 ]
@@ -22,3 +25,9 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 solhycool-optimization = { path = "../optimization", editable = true }
 solhycool-modeling = { path = "../modeling", editable = true }
+phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations" }
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+]
