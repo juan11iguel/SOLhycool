@@ -8,6 +8,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "matplotlib>=3.10.0",
+    "pandas>=2.2.3",
     "solhycool-modeling",
 ]
 
@@ -20,3 +22,8 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 solhycool-modeling = { path = "../modeling", editable = true }
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+]
