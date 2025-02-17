@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+from loguru import logger
 
 def preprocess_meteonorm_txt_data(txt_file_path: Path) -> pd.DataFrame:
     """
@@ -26,9 +27,9 @@ def preprocess_meteonorm_txt_data(txt_file_path: Path) -> pd.DataFrame:
 
     # Rename the columns
     new_columns = {
-        " Ta": "Tamb",
-        " RH": "HR",
-        "RR": "precip"
+        " Ta": "Tamb_C",
+        " RH": "HR_pct",
+        "RR": "precip_mm"
     }
 
     env_df = env_df.rename(columns=new_columns)
@@ -36,5 +37,8 @@ def preprocess_meteonorm_txt_data(txt_file_path: Path) -> pd.DataFrame:
 
     # Save the pre-processed data
     env_df.to_csv(txt_file_path.with_suffix(".csv"), index=True)
+    env_df.to_hdf(txt_file_path.with_suffix(".h5"), key="data")
+    
+    logger.info(f"Pre-processed data saved to {txt_file_path.with_suffix('.csv')} and {txt_file_path.with_suffix('.h5').name}")
     
     return pd.read_csv(txt_file_path.with_suffix(".csv"), index_col=0)

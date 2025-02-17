@@ -1,5 +1,5 @@
 {
-	"name": "SOLhycool - modeling",
+	"name": "SOLhycool",
 	"build": {
 		"dockerfile": "../Dockerfile.base"
 	},
