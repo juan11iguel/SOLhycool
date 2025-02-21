@@ -26,8 +26,13 @@ Create and install dependencies using the `environment.yml` file:
 conda env create -f environment.yml
 ```
 
-And then activate it using the name specified in the `environment.yml` file:
+And then activate it using the name specified in the `environment.yml` file (this is done automatically for new sessions):
 
 ```bash
 conda activate conda-env
+```
+
+To update the environment after changing the `environment.yml`:
+```bash
+conda env update -f environment.yml
 ```

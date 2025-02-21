@@ -16,7 +16,9 @@ dependencies:
   - h5py=3.12.1
   - pip
   - pip:
+      # - pydantic==2.9.2
+      # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
+      - /workspaces/SOLhycool/modeling/matlab/exports/for_redistribution_files_only
       - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations@main
-      - pydantic==2.9.2
       - -e /workspaces/SOLhycool/modeling
-      - -e /workspaces/SOLhycool/simulation
+      # - -e /workspaces/SOLhycool/simulation
