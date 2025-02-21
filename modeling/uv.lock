@@ -1604,7 +1604,6 @@ dependencies = [
     { name = "phd-visualizations" },
     { name = "plotly" },
     { name = "pydantic" },
-    { name = "solhycool-optimization" },
 ]
 
 [package.dev-dependencies]
@@ -1621,22 +1620,10 @@ requires-dist = [
     { name = "phd-visualizations", git = "https://github.com/juan11iguel/phd_visualizations?branch=main" },
     { name = "plotly", specifier = ">=5.24.1" },
     { name = "pydantic", specifier = ">=2.10.3" },
-    { name = "solhycool-optimization", editable = "../optimization" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "jupyter", specifier = ">=1.1.1" }]
-
-[[package]]
-name = "solhycool-optimization"
-version = "0.1.0"
-source = { editable = "../optimization" }
-dependencies = [
-    { name = "solhycool-modeling" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "solhycool-modeling", editable = "." }]
 
 [[package]]
 name = "soupsieve"

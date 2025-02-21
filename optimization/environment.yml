@@ -1,0 +1,24 @@
+name: conda-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - ipyparallel==9.0.0
+  - loguru=0.7.2
+  - lxml=5.3.0
+  - matplotlib=3.9.3
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - pyarrow=18.0.0
+  - pygmo=2.19.7
+  - jupyter>=1.1.1
+  - pytables=3.10.2
+  - h5py=3.12.1
+  - pip
+  - pip:
+      # - pydantic==2.9.2
+      # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
+      - /workspaces/SOLhycool/modeling/matlab/exports/for_redistribution_files_only
+      - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations@main
+      - -e /workspaces/SOLhycool/modeling
+      # - -e /workspaces/SOLhycool/simulation
