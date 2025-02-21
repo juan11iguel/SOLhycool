@@ -18,6 +18,7 @@ function [Tout, Ce] = dc_model(Tamb, Tin, q, w_fan, options)
         w_fan (1,1) double
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "dc_model_data.mat")
+        options.silence_warnings logical = false
     end
 
     arguments (Output)
@@ -42,6 +43,9 @@ function [Tout, Ce] = dc_model(Tamb, Tin, q, w_fan, options)
             if options.raise_error_on_invalid_inputs
                 raise_error(var, value, min_values(idx), max_values(idx))
             else
+                if ~options.silence_warnings
+                    warning("%s outside limits (%.2f <! %s <! %.2f)", var, min_values(idx), value, max_values(idx))
+                end
                 valid_inputs = false;
             end
         end

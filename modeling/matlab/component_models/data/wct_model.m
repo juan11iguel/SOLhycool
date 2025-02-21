@@ -24,6 +24,7 @@ function [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan, options)
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
         options.lb (1,5) double = 0.9*[9.0600   10.3300   31.1700    5.7049         0];
         options.ub (1,5) double = 1.1*[38.7500   89.2500   40.9400   24.8400   93.4161];
+        options.silence_warnings logical = false
     end
 
     arguments (Output)
@@ -49,7 +50,9 @@ function [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan, options)
             if options.raise_error_on_invalid_inputs
                 raise_error(var, value, min_values(idx), max_values(idx))
             else
-                warning("%s outside limits (%.2f <! %s <! %.2f)", var, min_values(idx), value, max_values(idx))
+                if ~options.silence_warnings
+                    warning("%s outside limits (%.2f <! %s <! %.2f)", var, min_values(idx), value, max_values(idx))
+                end
                 valid_inputs = false;
             end
         end

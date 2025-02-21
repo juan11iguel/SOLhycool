@@ -33,7 +33,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
 
         % Using keyword arguments does not work when exporting the model to
         % python
-        options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'parameters', default_parameters()); % Default values
+        options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'silence_warnings', true, 'parameters', default_parameters()); % Default values
         % options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})}
         % options.parameters struct = default_parameters() % Default optional input
         % options.x0 = nan
@@ -50,6 +50,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % Unpack options
     parameters = options.parameters;
     model_type = options.model_type;
+    silence_warnings = options.silence_warnings;
 
     % Add utilities path
     addpath(genpath('utils\'));
@@ -105,16 +106,16 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
     % DC
     Tdc_in = Tcc_in;
-    [Tdc_out, Ce_dc] = dc_model_fun(Tamb_C, Tdc_in, qdc, wdc, model_data_path=parameters.dc_model_data_path);
+    [Tdc_out, Ce_dc] = dc_model_fun(Tamb_C, Tdc_in, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
     % Solve WCT input mixer
     [~, Twct_in] = mixer_model_fun(qwct_p, qwct_s, Tcc_in, Tdc_out);
     % WCT
     [Twct_out, Ce_wct, Cw_wct] = wct_model_fun(Tamb_C, HR_pp, Twct_in, qwct, wwct, ...
-        model_data_path=parameters.wct_model_data_path, lb=parameters.wct_lb, ub=parameters.wct_ub);
+        model_data_path=parameters.wct_model_data_path, lb=parameters.wct_lb, ub=parameters.wct_ub, silence_warnings=silence_warnings);
     % Solve CC output mixer
     [~, Tcc_out] = mixer_model_fun(qdc, qwct, Tdc_out, Twct_out);
     % Validation
-    if abs(Tcc_out - Tc_in) > 1
+    if abs(Tcc_out - Tc_in) > 1 && ~silence_warnings
         msg = sprintf("cooling system, no valid solution found, Tc_in: %.3f - %3.f", Tc_in, Tcc_out);
         warning(msg)
         % throw(MException("combined_cooler_model:invalid_solution", msg))
@@ -139,11 +140,11 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         % Condenser
         [Tc_in, Tc_out] = condenser_model_fun(ms_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, Tmin=Twct_min);
         % DC
-        Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=parameters.dc_model_data_path);
+        Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
         % WCT
         [~, Twct_in] = mixer_model_fun(qwct_p, qwct_s, Tc_out, Tdc_out);
         Twct_out = wct_model_fun(Tamb_C, HR_pp, Twct_in, qwct, wwct, model_data_path=parameters.wct_model_data_path, ...
-            lb=parameters.wct_lb, ub=parameters.wct_ub);
+            lb=parameters.wct_lb, ub=parameters.wct_ub, silence_warnings=silence_warnings);
         [~, Tcc_out] = mixer_model_fun(qdc, qwct, Tdc_out, Twct_out);
         
         % fprintf("cc model residual Tcc_out - Tc_in: %.2f for Tv=%.2f\n", abs(Tcc_out - Tc_in), Tv)

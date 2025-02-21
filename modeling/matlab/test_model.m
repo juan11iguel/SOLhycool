@@ -5,7 +5,7 @@ clc
 addpath(genpath("utils/"))
 addpath(genpath("component_models/"))
 
-data = readtable("assets/data.csv");
+data = readtable("../assets/data.csv");
 % To update/modify data, load the new data, modify it, and finally export it
 % writetable(data, "assets/data.csv")
 
@@ -102,7 +102,7 @@ for i=1:N
     [Ce_data(i), Cw_data(i), detailed] = combined_cooler_model( ...
         data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), ...
         data.wdc(i), data.wwct(i), data.Tv(i), ...
-        struct("model_type",'data', "parameters",parameters ,"lb", data.Tv(i), "ub", data.Tv(i)));
+        struct("model_type",'data', "silence_warnings", true, "parameters", parameters ,"lb", data.Tv(i), "ub", data.Tv(i)));
 
     detailed_data = [detailed_data detailed];
 
