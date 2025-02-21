@@ -12,7 +12,6 @@ dependencies = [
     "pydantic>=2.10.3",
     "combined_cooler_model-r2024b",
     "phd-visualizations",
-    "solhycool-optimization",
 ]
 
 [project.scripts]
@@ -28,6 +27,5 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-combined_cooler_model-r2024b = { path = "matlab/exports/for_redistribution_files_only" }
+combined_cooler_model-r2024b = { path = "./matlab/exports/for_redistribution_files_only" }
 phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
-solhycool-optimization = { path = "../optimization", editable = true }
