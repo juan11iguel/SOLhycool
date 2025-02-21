@@ -11,7 +11,7 @@ ENV WORKDIR=${WORKDIR:-/workspaces/SOLhycool}
 # ENV DEBIAN_FRONTEND=noninteractive
 ENV MATLAB_VERSION=R2024b
 ENV MR=/opt/matlabruntime/${MATLAB_VERSION}
-# ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
+ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
 # https://es.mathworks.com/help/compiler/mcr-path-settings-for-run-time-deployment.html
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:\
 $MR/runtime/glnxa64:\
@@ -51,13 +51,13 @@ RUN uv --version
 
 # Install conda
 # Create the directory for Miniconda
-# RUN mkdir -p /miniconda3
-# # Download the Miniconda installer
-# RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /miniconda3/miniconda.sh
-# # Install Miniconda
-# RUN bash /miniconda3/miniconda.sh -b -u -p /miniconda3
-# # Remove the Miniconda installer
-# RUN rm /miniconda3/miniconda.sh
-# # Add Miniconda to the PATH
-# ENV PATH="/miniconda3/bin:$PATH"
+RUN mkdir -p /miniconda3
+# Download the Miniconda installer
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /miniconda3/miniconda.sh
+# Install Miniconda
+RUN bash /miniconda3/miniconda.sh -b -u -p /miniconda3
+# Remove the Miniconda installer
+RUN rm /miniconda3/miniconda.sh
+# Add Miniconda to the PATH
+ENV PATH="/miniconda3/bin:$PATH"
 
