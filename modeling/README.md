@@ -24,7 +24,6 @@ This package contains the model of a cooling system. The system is composed by a
 ## Nomenclature
 
 TODO: @Lidia revisar todas las unidades!!
-
 TODO: Modificar $\dot{m}_s$ por $\dot{m}_v$
 
 Description of all system variables. They are included in the model output `detailed_outputs` structure.
@@ -44,7 +43,7 @@ _Syntax: Variable name. Description (units)_
 ##### Combined cooler operation
 - $q_c$. Cooling flow rate (m³/h)
 - $R_p$. Parallel distribution ratio (-)
-- $R_s$. DC outlet -> WCT series distribution ratio (-)
+- $R_s$. DC -> WCT series distribution ratio (-)
 - $\omega_{dc}$. DC fan percentage (%)
 - $\omega_{wct}$. WCT fan percentage (%)
 
