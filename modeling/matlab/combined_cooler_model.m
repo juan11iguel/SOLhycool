@@ -75,13 +75,15 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % Calculations
     % Unit conversion
     mc_kgs = qc_m3h / 3.6;
-    ms_kgs = mv_kgh / 3600;
+    mv_kgs = mv_kgh / 3600;
     % Get flows from ratios
     % [qdc, qwct] = ratios_to_flows(qc_m3h, Rp, Rs);
     qdc = qc_m3h*(1-Rp);
     qwct_p = qc_m3h*Rp;
     qwct_s = qdc*Rs;
     qwct = qwct_p + qwct_s;
+    mwct = qwct / 3.6;
+    mdc = qdc / 3.6;
     % Other
     Twct_min = parameters.wct_lb(3);
 
@@ -101,9 +103,9 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % Get outputs 
     qcc = qc_m3h;
     % Condenser
-    [Tc_in, Tc_out] = condenser_model_fun(ms_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
+    [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
     Tcc_in = Tc_out;
-    Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
+    % Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
     % DC
     Tdc_in = Tcc_in;
     [Tdc_out, Ce_dc] = dc_model_fun(Tamb_C, Tdc_in, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
@@ -132,13 +134,25 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % Tv_C = Tv;
     Ce_kWe = Ce;
     Cw_lh = Cw;
+
+    % Condenser heat
+    Q = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A);
+    Qc_released = Q(1);
+    Qc_absorbed = Q(2);
+    Qc_transfered = Q(3);
+
+    % Components cooling power
+    Qdc  = mdc*XSteam('Cp_pT',2,(Tdc_in+Tdc_out)/2)*(Tdc_in-Tdc_out);
+    Qwct = mwct*XSteam('Cp_pT',2,(Twct_in+Twct_out)/2)*(Twct_in-Twct_out);
+    Qcc = mc_kgs*XSteam('Cp_pT',2,(Tcc_in+Tcc_out)/2)*(Tcc_in-Tcc_out);
+
     detailed = build_detailed_struct();
 
     function residual = inner_model(Tv)
         % Should do the bare minimum and return a residual
 
         % Condenser
-        [Tc_in, Tc_out] = condenser_model_fun(ms_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, Tmin=Twct_min);
+        [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, Tmin=Twct_min);
         % DC
         Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
         % WCT
@@ -198,7 +212,9 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         d.Cw = Cw;
         d.Tv = Tv;
         % Condenser
-        d.Qc = Qc;
+        d.Qc_released = Qc_released;
+        d.Qc_absorbed = Qc_absorbed;
+        d.Qc_transfered = Qc_transfered;
         d.Tc_in = Tc_in;
         d.Tc_out = Tc_out;
         d.Tcond = Tcond;
@@ -211,17 +227,20 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         d.Cw_cc = Cw_cc;
         d.qwct_p = qwct_p;
         d.qwct_s = qwct_s;
+        d.Qcc = Qcc;
         % Dry cooler
         d.qdc = qdc;
         d.Tdc_in = Tdc_in;
         d.Tdc_out = Tdc_out;
         d.Ce_dc = Ce_dc;
+        d.Qdc = Qdc;
         % Wet cooling tower
         d.qwct = qwct;
         d.Twct_in = Twct_in;
         d.Twct_out = Twct_out;
         d.Ce_wct = Ce_wct;
         d.Cw_wct = Cw_wct;
+        d.Qwct = Qwct;
     end
 
 end
