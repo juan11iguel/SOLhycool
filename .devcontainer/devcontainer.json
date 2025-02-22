@@ -3,6 +3,8 @@
 	"build": {
 		"dockerfile": "../Dockerfile.base"
 	},
+	// "remoteUser": "vscode",
+	// "workspaceMount": "source=${localWorkspaceFolder}/.,target=/workspace,type=bind,consistency=cached",
 	"customizations": {
 		"vscode": {
 			"settings": {

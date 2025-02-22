@@ -8,7 +8,7 @@ FROM containers.mathworks.com/matlab-runtime:r2024b
 # Environment variables
 ENV WORKDIR=${WORKDIR:-/workspaces/SOLhycool}
 # Set matlab runtime environment variables
-# ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV MATLAB_VERSION=R2024b
 ENV MR=/opt/matlabruntime/${MATLAB_VERSION}
 ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
