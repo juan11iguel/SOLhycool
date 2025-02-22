@@ -21,4 +21,4 @@ dependencies:
       - /workspaces/SOLhycool/modeling/matlab/exports/for_redistribution_files_only
       - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations@main
       - -e /workspaces/SOLhycool/modeling
-      # - -e /workspaces/SOLhycool/simulation
+      - -e /workspaces/SOLhycool/optimization
