@@ -112,25 +112,3 @@ class DecisionVariables:
     wdc: float
     wwct: float
     
-@dataclass
-class OperationPoint:
-    Tamb: float # Ambient temperature (ºC)
-    HR: float # Relative humidity (%)
-    mv: float # Vapor mass flow rate (kg/s)
-    qc: float # Cooling recirculation flow rate (m³/h)
-    Rp: float # Parallel distribution ratio (-)
-    Rs: float # DC -> WCT series distribution ratio (-)
-    wdc: float # DC fan percentage (%)
-    wwct: float # WCT fan percentage (%)
-    Ce: float # Electrical consumption (kWe)
-    Cw: float # Water consumption (l/h)
-    Tv: float # Vapour temperature in the condenser (ºC)
-    Qc_released: float # Heat released by steam in the condenser (kWth)
-    Qc_absorbed: float # Heat absorbed by the refrigerant in the condenser (kWth)
-    Qc_transfered: float # Heat transfered in the condenser (kWth)
-    Tc_in: float # Condenser inlet temperature (ºC)
-    Tc_out: float # Condenser outlet temperature (ºC)
-    Tcond: float # Condensate temperature (ºC)
-    Ce_c: float # Electrical consumption by recirculation pump (kWe)
-    qcc: float # Combined cooler flow rate (m³/h)
-        

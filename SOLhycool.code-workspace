@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "simulation"
+		},
+		{
+			"path": "visualization"
 		}
 	],
 	"settings": {}

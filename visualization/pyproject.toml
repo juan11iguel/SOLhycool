@@ -1,9 +1,31 @@
 [project]
-name = "visualization"
+name = "solhycool-visualization"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "juan11iguel", email = "juan11iguel@gmail.com" }
+]
 requires-python = ">=3.11"
 dependencies = [
     "plotly>=6.0.0",
+    "phd-visualizations",
+    "solhycool-modeling",
+    "cairosvg>=2.7.1",
 ]
+
+[project.scripts]
+solhycool-visualization = "solhycool_visualization:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyter>=1.1.1",
+]
+
+[tool.uv.sources]
+phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
+solhycool-modeling = { path = "../modeling", editable = true }
