@@ -113,7 +113,8 @@ class WascopStateVisualizer:
                     ymin = self.min_line_width,
                     ymax = self.max_line_width
                 )
-                change_line_width(line_id, diagram=self.diagram, width=line_width, group=True, not_inplace=False)
+                change_line_width(line_id, diagram=diagram, width=line_width, group=True, not_inplace=False)
+            
             
     def set_icons(self, diagram: etree.ElementTree = None) -> None:
         diagram = self.diagram if diagram is None else diagram
