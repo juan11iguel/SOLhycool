@@ -11,6 +11,7 @@ dependencies = [
     "plotly>=5.24.1",
     "pydantic>=2.10.3",
     "phd-visualizations",
+    "solhycool-visualization",
 ]
 
 [project.scripts]
@@ -28,4 +29,5 @@ dev-dependencies = [
 
 [tool.uv.sources]
 combined_cooler_model-r2024b = { path = "./matlab/exports/for_redistribution_files_only" }
+solhycool-visualization = { path = "../visualization", editable = true }
 phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }

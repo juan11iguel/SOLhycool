@@ -16,9 +16,12 @@ dependencies:
   - h5py=3.12.1
   - pip
   - pip:
+      # WARNING: conda env update does not update git packages, see https://github.com/conda/conda/issues/6863
+      # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
       # - pydantic==2.9.2
       # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
       - /workspaces/SOLhycool/modeling/matlab/exports/for_redistribution_files_only
-      - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations@main
+      - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations
       - -e /workspaces/SOLhycool/modeling
+      - -e /workspaces/SOLhycool/visualization
       - -e /workspaces/SOLhycool/optimization

@@ -161,9 +161,9 @@ class WascopStateVisualizer:
             text = f'{round_to_nonzero_decimal(value)} {unit}'
             change_text(text_id, diagram=diagram, new_text=text, not_inplace=False)
     
-    def create_diagram(self, diagram: etree.ElementTree, output_path: Path = None, filename: str = None) -> etree.ElementTree:
+    def create_diagram(self, diagram: etree._Element | Path, output_path: Path = None, filename: str = None) -> str:
         
-        assert isinstance(diagram, (etree._ElementTree, Path)), 'diagram must be an instance of etree.ElementTree or Path'
+        assert isinstance(diagram, (etree._Element, Path)), 'diagram must be an instance of etree.ElementTree or Path'
         if isinstance(diagram, Path):
             diagram = etree.parse(diagram)
         self.diagram = diagram
@@ -195,4 +195,4 @@ class WascopStateVisualizer:
             
             logger.info(f'Diagram created and saved in {output_path}')
             
-        return self.diagram
+        return etree.tostring(self.diagram)

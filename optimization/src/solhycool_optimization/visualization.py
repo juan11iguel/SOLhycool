@@ -3,7 +3,21 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.colors
 from plotly.colors import hex_to_rgb
+import plotly.express as px
 
+def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str = "kWe", ) -> go.Figure:
+    # Create a histogram of the fitness_list
+    fig = px.violin(fitness_list, box=True, # draw box plot inside the violin
+                    points='all', # can be 'outliers', or False
+                    # side="negative" # <- only available in the go.Violin object
+                )
+    fig.update_layout(
+        yaxis_title = fitness_units,
+        xaxis_title = "Fitness",
+        title = f"<b>Distribution of solutions</b><br>Variance: {np.var(fitness_list):.3f}"
+    )
+    
+    return fig
 
 def plot_obj_scape_comp_1d(fitness_history_list: list[np.ndarray[float]], algo_ids: list[str], **kwargs) -> go.Figure:
     

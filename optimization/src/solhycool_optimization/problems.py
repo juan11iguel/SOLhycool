@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import pygmo as pg
 import combined_cooler_model
 import matlab
+from loguru import logger
 
 from solhycool_optimization import (RealDecVarsBoxBounds, 
                                     EnvironmentVariables, 
@@ -21,7 +22,26 @@ class BaseProblem(ABC):
     fitness_history: list[float] # Fitness record of decision variables sent to the fitness function
     dec_var_ids: list[str] # Decision variables ids
     size_dec_vector: int # Size of the decision vector
-    c_tol: float = 1. # Constraint tolerance (ºC)
+    deltaTcv_min: float = 2 # Minimum temperature difference between cooling fluid outlet and vapor (ºC) 
+    c_tol: list[float] = [0.5, 0.5] # Constraint tolerances (ºC, ºC)
+    Qmax: float = 120 # kWth
+    
+    def __init__(self, 
+                 env_vars: EnvironmentVariables, 
+                 store_x: bool = False,
+                 store_fitness: bool = False,
+                 real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds(),
+                 debug_mode: bool = False,
+                ) -> None:
+        
+        self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
+        self.env_vars = env_vars
+        self.store_x = store_x
+        self.store_fitness = store_fitness
+        self.debug_mode = debug_mode
+        
+        if env_vars.Q > self.Qmax:
+            logger.warning("Asked to cool a load larger than the maximum for the system: {env_vars.Q} > {self.Qmax}")
     
     @abstractmethod
     def get_nic(self) -> int:
@@ -64,6 +84,13 @@ class BaseProblem(ABC):
     @abstractmethod
     def evaluate(self, x: np.ndarray[float]) -> dict:
         pass
+    
+    def store_results(self, fitness: float, x: np.ndarray[float]) -> None:
+        if self.store_x:
+            self.x_evaluated.append(x.tolist())
+        if self.store_fitness:
+            self.fitness_history.append(fitness)
+
 
 class DcProblem(BaseProblem):
     """  
@@ -73,7 +100,6 @@ class DcProblem(BaseProblem):
     """
     dec_var_ids: list[str] = ["qc", "wdc"] # Decision variables ids
     size_dec_vector: int = 2 # Size of the decision vector
-    c_tol: float = 1. # Constraint tolerance (ºC)
     
     def __init__(self, 
                  env_vars: EnvironmentVariables, 
@@ -83,16 +109,21 @@ class DcProblem(BaseProblem):
                  debug_mode: bool = False,
                 ) -> None:
         
-        self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
-        self.env_vars = env_vars
-        self.store_x = store_x
-        self.store_fitness = store_fitness
-        self.debug_mode = debug_mode
+        super().__init__(
+            env_vars = env_vars,
+            store_x = store_x,
+            store_fitness = store_fitness,
+            real_dec_vars_box_bounds = real_dec_vars_box_bounds,
+            debug_mode = debug_mode,
+        )
         
         # self.cc_model.warning('off', 'all', nargout=0)  # Turns off all warnings
     
+    # def get_nec(self) -> int:
+    #     return 1
+    
     def get_nic(self) -> int:
-        return 1
+        return 2
     
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
         
@@ -113,23 +144,22 @@ class DcProblem(BaseProblem):
         ev = self.env_vars.to_matlab()
 
         Ce_kWe, _, detailed = cc_model.combined_cooler_model(ev.Tamb, ev.HR, ev.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev.Tv, nargout=3)
-        
-        # Calculate thermal power using Tc_in and Tc_out, and return difference with the setpoint
-        # Pth = 4.186 * detailed["qc"][0][0]/3600 * (detailed["Tc_in"][0][0] - detailed["Tc_out"][0][0])
-        
-        # Store decision vector and fitness value
-        if self.store_x:
-            self.x_evaluated.append(x.tolist())
-        if self.store_fitness:
-            self.fitness_history.append(Ce_kWe)
    
-        outputs = [Ce_kWe, abs(detailed["Tcc_out"] - detailed["Tc_in"])]
+        ecs = [
+        #     detailed["Tcc_out"] - detailed["Tc_in"],
+        ]
+        ics = [
+            abs( detailed["Tcc_out"] - detailed["Tc_in"] ),
+            detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,
+        ]
+        outputs = [Ce_kWe, *ecs, *ics]
+        
         if self.debug_mode:
             print(outputs)
+        # Store decision vector and fitness value
+        self.store_results(fitness=Ce_kWe, x=x)
             
         return outputs
-        # return [Ce_kWe, abs(detailed["Pth"] - Pth)]
-        # return [Ce_kWe, abs(detailed["Tv"] - ev.Tv[0][0])]
         
     def evaluate(self, x: np.ndarray[float]) -> dict:
         return self.evaluate_static_problem(x)
@@ -155,14 +185,19 @@ class WctSimpleProblem(BaseProblem):
                  debug_mode: bool = False,
                 ) -> None:
         
-        self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
-        self.env_vars = env_vars
-        self.store_x = store_x
-        self.store_fitness = store_fitness
-        self.debug_mode = debug_mode
+        super().__init__(
+            env_vars = env_vars,
+            store_x = store_x,
+            store_fitness = store_fitness,
+            real_dec_vars_box_bounds = real_dec_vars_box_bounds,
+            debug_mode = debug_mode,
+        )
         
+    # def get_nec(self) -> int:
+    #     return 1
+    
     def get_nic(self) -> int:
-        return 1
+        return 2
 
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
         
@@ -186,17 +221,19 @@ class WctSimpleProblem(BaseProblem):
         ev = self.env_vars.to_matlab()
 
         Ce_kWe, Cw_lh, detailed = cc_model.combined_cooler_model(ev.Tamb, ev.HR, ev.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev.Tv, nargout=3)
+   
+        ecs = [
+        #     detailed["Tcc_out"] - detailed["Tc_in"],
+        ]
+        ics = [
+            abs( detailed["Tcc_out"] - detailed["Tc_in"] ),
+            detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,
+        ]
         
         J = Ce_kWe * ev.cost_e[0][0] + Cw_lh * ev.cost_w[0][0]*1e-3 # u.m./m³ -> u.m./l
+        outputs = [J, *ecs, *ics]
         
-        # Store decision vector and fitness value
-        if self.store_x:
-            self.x_evaluated.append(x.tolist())
-        if self.store_fitness:
-            self.fitness_history.append(J)
-   
-        ics = [abs(detailed["Tcc_out"] - detailed["Tc_in"]), ]
-        outputs = [J, *ics]
+        self.store_results(fitness=J, x=x)
         
         if self.debug_mode:
             print(f"{Ce_kWe=:.2f} x {ev.cost_e[0][0]=:.3f} + {Cw_lh=:.2f} x {ev.cost_w[0][0]=:.3f} = {J:.2f} | {ics=}")
@@ -210,4 +247,6 @@ class WctRestrictedProblem(BaseProblem):
     
     Optimization problem type: receeding horizon optimization
     """
-    ...
+
+    dec_var_ids: list[str] = ["qc", "wwct"] # Decision variables ids
+    c_tol: float = 1. # Constraint tolerance (ºC)
