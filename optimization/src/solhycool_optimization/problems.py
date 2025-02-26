@@ -24,7 +24,7 @@ class BaseProblem(ABC):
     size_dec_vector: int # Size of the decision vector
     deltaTcv_min: float = 2 # Minimum temperature difference between cooling fluid outlet and vapor (ºC) 
     c_tol: list[float] = [0.5, 0.5] # Constraint tolerances (ºC, ºC)
-    Qmax: float = 120 # kWth
+    Qmax: float = 150 # kWth
     
     def __init__(self, 
                  env_vars: EnvironmentVariables, 
@@ -41,7 +41,7 @@ class BaseProblem(ABC):
         self.debug_mode = debug_mode
         
         if env_vars.Q > self.Qmax:
-            logger.warning("Asked to cool a load larger than the maximum for the system: {env_vars.Q} > {self.Qmax}")
+            logger.warning(f"Asked to cool a load larger than the maximum for the system: {env_vars.Q:.2f} > {self.Qmax}")
     
     @abstractmethod
     def get_nic(self) -> int:
@@ -175,7 +175,6 @@ class WctSimpleProblem(BaseProblem):
     
     dec_var_ids: list[str] = ["qc", "wwct"] # Decision variables ids
     size_dec_vector: int = 2 # Size of the decision vector
-    c_tol: float = 1 # Constraint tolerance (ºC)
     
     def __init__(self, 
                  env_vars: EnvironmentVariables, 
