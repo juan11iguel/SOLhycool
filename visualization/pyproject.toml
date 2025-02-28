@@ -12,6 +12,7 @@ dependencies = [
     "phd-visualizations",
     "solhycool-modeling",
     "cairosvg>=2.7.1",
+    "hjson>=3.1.0",
 ]
 
 [project.scripts]
