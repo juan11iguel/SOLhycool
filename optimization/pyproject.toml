@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "hjson>=3.1.0",
     "matplotlib>=3.10.0",
     "pandas>=2.2.3",
     # "solhycool-visualization",

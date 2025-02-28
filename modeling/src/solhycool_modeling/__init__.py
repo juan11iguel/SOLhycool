@@ -1,9 +1,106 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from typing import Literal, Optional
+import inspect
+import numpy as np
+import pandas as pd
+from iapws import IAPWS97 as w_props
+import matlab
+
+from solhycool_modeling.utils import dump_in_span
 
 
+@dataclass
+class EnvironmentVariables:
+    """
+    Simple class to make sure that the required environment variables are passed
 
-from dataclasses import dataclass, field
-from typing import Optional
+    All the variables should be 1D arrays with as many elements as the horizon of the optimization problem
+    """
+    # Weather
+    HR: float | np.ndarray[float] | pd.Series  # Relative humidity, %
+    Tamb: float | np.ndarray[float] | pd.Series # Ambient temperature, ºC
+
+    # Thermal load
+    Tv: float | np.ndarray[float] | pd.Series # Vapor temperature, ºC
+    Q: float | np.ndarray[float] | pd.Series # Thermal power, kW
+
+    # Costs
+    Pe: float | np.ndarray[float] | pd.Series # Cost of electricity, €/kWhe
+    Pw: float | np.ndarray[float] | pd.Series = None # Cost of water, €/m³
+    Pw_s1: float | np.ndarray[float] | pd.Series = None # Cost of water from source 1, €/m³
+    Pw_s2: float | np.ndarray[float] | pd.Series = None # Cost of water from source 2, €/m³
+    
+    Vavail: float | np.ndarray[float] | pd.Series = None # Available volume of water, m³
+    deltaV: float | np.ndarray[float] | pd.Series = None # Variation of available volume of water, m³/h
+
+    # Thermal load (optional)
+    mv: float | np.ndarray[float] | pd.Series = None # Vapor mass flow rate, kg/s
+
+    def __post_init__(self) -> None:
+        if isinstance(self.Tv, matlab.double):
+            Tv = np.asarray(self.Tv).flatten()[0]
+            Pth = np.asarray(self.Q).flatten()[0]
+        else:
+            Tv = self.Tv
+            Pth = self.Q
+
+        # Calculate mv
+        mv = Pth / (w_props(T=Tv+273.15, x=1).h - w_props(T=Tv+273.15, x=0).h) * 3600
+
+        if isinstance(self.Tv, matlab.double):
+            self.mv = matlab.double([mv])
+        else:
+            self.mv = mv
+
+    def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["float", "matlab"] = "float") -> "EnvironmentVariables":
+        """
+        Dump instance at a given index.
+
+        Parameters:
+        - idx: Integer index to extract.
+
+        Returns:
+        - A dictionary.
+        """
+        dump =  {name: np.asarray(value)[idx] for name, value in asdict(self).items() if value is not None}
+        if return_format == "matlab":
+            dump = {k: matlab.double([v]) for k, v in dump.items()}
+
+        return dump if return_dict else EnvironmentVariables(**dump)
+
+    def dump_in_span(self, span: tuple[int, int] | tuple[datetime, datetime], return_format: Literal["values", "series"] = "values") -> 'EnvironmentVariables':
+        """ Dump environment variables within a given span """
+
+        vars_dict = dump_in_span(vars_dict=asdict(self), span=span, return_format=return_format)
+        return EnvironmentVariables(**vars_dict)
+
+    def resample(self, *args, **kwargs) -> "EnvironmentVariables":
+        """ Return a new resampled environment variables instance """
+
+        output = {}
+        for name, value in asdict(self).items():
+            if value is None:
+                continue
+            elif not isinstance(value, pd.Series):
+                raise TypeError(f"All attributes must be pd.Series for datetime indexing. Got {type(value)} instead.")
+
+            target_freq = int(float(args[0][:-1]))
+            current_freq = value.index.freq.n
+
+            value = value.resample(*args, **kwargs)
+            if  target_freq > current_freq: # Downsample
+                value = value.mean()
+            else: # Upsample
+                value = value.interpolate()
+            output[name] = value
+
+        return EnvironmentVariables(**output)
+
+    def to_matlab(self) -> "EnvironmentVariables":
+        """ Convert all attributes to matlab.double """
+
+        return EnvironmentVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
 
 @dataclass
 class OperationPoint:
@@ -29,7 +126,6 @@ class OperationPoint:
     Rp: float = field(metadata={"description": "Parallel distribution ratio", "units": "-"})
     Rs: float = field(metadata={"description": "DC -> WCT series distribution ratio", "units": "-"})
 
-
     # DC
     wdc: float = field(metadata={"description": "DC fan percentage", "units": "%"})
     qdc: float = field(metadata={"description": "DC cooling flow rate", "units": "m³/h"})
@@ -49,20 +145,38 @@ class OperationPoint:
     Cw_wct: float = field(metadata={"description": "WCT water consumption", "units": "l/h"})
     Qwct: float = field(metadata={"description": "WCT heat transfer", "units": "kWth"})
 
-    # Combined cooler and totals
-    Ce: float = field(metadata={"description": "Total electrical consumption", "units": "kWe"})
-    Cw: float = field(metadata={"description": "Total water consumption", "units": "l/h"})
-    qcc: float = field(metadata={"description": "Combined cooler flow rate", "units": "m³/h"})
+    # Combined cooler
     Tcc_out: float = field(metadata={"description": "Combined cooler outlet temperature", "units": "ºC"})
 
     # Optional fields
+    Cw_s1: float = field(default=0, metadata={"description": "Water consumption from source 1", "units": "l/h"})
+    Cw_s2: float = field(default=0, metadata={"description": "Water consumption from source 2", "units": "l/h"})
+    Pw: float = field(default=None, metadata={"description": "Price of water", "units": "€/l"})
+    Pw_s1: float = field(default=None, metadata={"description": "Price of water from source 1", "units": "€/l"})
+    Pw_s2: float = field(default=None, metadata={"description": "Price of water from source 2", "units": "€/l"})
+    Pe: float = field(default=None, metadata={"description": "Price of electricity", "units": "€/kWh"})
+    Vavail: float = field(default=None, metadata={"description": "Available volume of water", "units": "l"}) # Seguro que litros?
+    deltaV: float = field(default=None, metadata={"description": "Variation of available volume of water", "units": "l/h"})
+
+    # Computable fields
     qdc_only: Optional[float] = field(default=None, metadata={"description": "DC only cooling flow rate", "units": "m³/h"})
     Tcc_in: Optional[float] = field(default=None, metadata={"description": "Combined cooler inlet temperature", "units": "ºC"})
     Ce_cc: Optional[float] = field(default=None, metadata={"description": "Combined cooler electrical consumption", "units": "kWe"})
     Cw_cc: Optional[float] = field(default=None, metadata={"description": "Combined cooler water consumption", "units": "l/h"})
     Qcc: Optional[float] = field(default=None, metadata={"description": "Combined cooler heat transfer", "units": "kWth"})
-
-    # limits: OperationLimits = field(default=OperationLimits())
+    Ce: Optional[float] = field(default=None, metadata={"description": "Total electrical consumption", "units": "kWe"})
+    Cw: Optional[float] = field(default=None, metadata={"description": "Total water consumption", "units": "l/h"})
+    qcc: Optional[float] = field(default=None, metadata={"description": "Combined cooler flow rate", "units": "m³/h"})
+    Vavail_s1: Optional[float] = field(default=None, metadata={"description": "Available volume of water from source 1", "units": "l"})
+    Je: Optional[float] = field(default=None, metadata={"description": "Total electrical cost", "units": "€/h"})
+    Jw: Optional[float] = field(default=None, metadata={"description": "Total water cost", "units": "€/h"})
+    J: Optional[float] = field(default=None, metadata={"description": "Total cost", "units": "€/h"})
+    Je_c: Optional[float] = field(default=None, metadata={"description": "Recirculation pump electrical cost", "units": "€/h"})
+    Je_dc: Optional[float] = field(default=None, metadata={"description": "DC electrical cost", "units": "€/h"})
+    Je_wct: Optional[float] = field(default=None, metadata={"description": "WCT electrical cost", "units": "€/h"})
+    Jw_wct: Optional[float] = field(default=None, metadata={"description": "WCT water cost", "units": "€/h"})
+    Jw_s1: Optional[float] = field(default=None, metadata={"description": "Water cost from source 1", "units": "€/h"})
+    Jw_s2: Optional[float] = field(default=None, metadata={"description": "Water cost from source 2", "units": "€/h"})
     
     def __post_init__(self) -> None:
         
@@ -81,4 +195,82 @@ class OperationPoint:
             
         if self.qdc_only is None:
             self.qdc_only = self.qdc * (1-self.Rs)
+            
+        if self.Ce is None:
+            self.Ce = self.Ce_cc + self.Ce_c
+            
+        if self.Cw is None:
+            self.Cw = self.Cw_wct
+            
+        if self.qcc is None:
+            self.qcc = self.qc
+            
+        if self.Vavail_s1 is None and self.Vavail is not None:
+            self.Vavail_s1 = self.Vavail
+            
+        if self.Pe is not None:
+            if self.Je is None:
+                self.Je = self.Ce * self.Pe
+                
+            if self.Je_c is None:
+                self.Je_c = self.Ce_c * self.Pe
+            
+            if self.Je_dc is None:
+                self.Je_dc = self.Ce_dc * self.Pe
+                
+            if self.Je_wct is None:
+                self.Je_wct = self.Ce_wct * self.Pe
+                
+        # Only one source of water
+        if self.Pw is None and self.Pw_s1 is not None and self.Pw_s2 is None:
+            self.Pw = self.Pw_s1        
+        if self.Pw is not None:
+            if self.Jw is None:
+                self.Jw = self.Cw * self.Pw
+                
+            if self.Jw_wct is None:
+                self.Jw_wct = self.Cw_wct * self.Pw
         
+        # Multiple sources of water
+        if self.Jw_s1 is None and self.Cw_s1 is not None:
+            self.Jw_s1 = self.Cw_s1 * self.Pw_s1
+        if self.Jw_s2 is None and self.Cw_s2 is not None:
+            self.Jw_s2 = self.Cw_s2 * self.Pw_s2
+        self.Jw_wct = self.Jw_s1 + self.Jw_s2
+        self.Jw = self.Jw_wct
+                
+        # Total cost
+        if self.J is None and self.Je is not None and self.Jw is not None:
+            self.J = self.Je + self.Jw
+            
+        # Set the available volume of water
+        if self.Vavail_s1 is not None:
+            if self.Vavail is None:
+                self.Vavail = self.Vavail_s1
+        else:
+            if self.Vavail is not None:
+                self.Vavail_s1 = self.Vavail
+        
+            
+                
+        
+    @classmethod
+    def from_multiple_sources(cls, dict_src: dict, env_vars: EnvironmentVariables) -> "OperationPoint":
+        """
+        Create an OperationPoint instance from multiple sources
+
+        Parameters:
+        - dict_src: Dictionary with the source data
+        - env_vars: EnvironmentVariables instance
+
+        Returns:
+        - An OperationPoint instance
+        """
+        # Extract the data
+        data = {k: v for k, v in dict_src.items() if k in cls.__dataclass_fields__.keys()}
+        data.update(
+            {k: v for k,v in asdict(env_vars).items() if k in inspect.signature(cls).parameters}
+        )
+
+        return cls(**data)
+            

@@ -1,13 +1,14 @@
 from collections.abc import Iterable
 import numpy as np
 from abc import ABC, abstractmethod
+
+from solhycool_modeling import EnvironmentVariables
 import pygmo as pg
 import combined_cooler_model
 import matlab
 from loguru import logger
 
 from solhycool_optimization import (RealDecVarsBoxBounds, 
-                                    EnvironmentVariables, 
                                     DecisionVariables)
 """ Global variables """
 cc_model = combined_cooler_model.initialize() # Could we get away initiating this only once at the beginning?
@@ -229,13 +230,13 @@ class WctSimpleProblem(BaseProblem):
             detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,
         ]
         
-        J = Ce_kWe * ev.cost_e[0][0] + Cw_lh * ev.cost_w[0][0]*1e-3 # u.m./m³ -> u.m./l
+        J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0]*1e-3 # u.m./m³ -> u.m./l
         outputs = [J, *ecs, *ics]
         
         self.store_results(fitness=J, x=x)
         
         if self.debug_mode:
-            print(f"{Ce_kWe=:.2f} x {ev.cost_e[0][0]=:.3f} + {Cw_lh=:.2f} x {ev.cost_w[0][0]=:.3f} = {J:.2f} | {ics=}")
+            print(f"{Ce_kWe=:.2f} x {ev.Pe[0][0]=:.3f} + {Cw_lh=:.2f} x {ev.Pw[0][0]=:.3f} = {J:.2f} | {ics=}")
             
         return outputs
 

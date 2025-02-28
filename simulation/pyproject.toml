@@ -25,9 +25,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
+phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
 solhycool-optimization = { path = "../optimization", editable = true }
 solhycool-modeling = { path = "../modeling", editable = true }
-phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations" }
 
 [dependency-groups]
 dev = [
