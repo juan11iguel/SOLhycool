@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.2.3",
     # "solhycool-visualization",
     # "solhycool-modeling",
+    "tables>=3.10.2",
 ]
 
 [project.scripts]

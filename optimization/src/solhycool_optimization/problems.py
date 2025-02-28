@@ -127,7 +127,7 @@ class DcProblem(BaseProblem):
         return 2
     
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
-        
+        # TODO: Do not always convert to matlab
         return DecisionVariables(
             qc=matlab.double([x[0]]),
             Rp=matlab.double([0.0]),
@@ -230,7 +230,7 @@ class WctSimpleProblem(BaseProblem):
             detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,
         ]
         
-        J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0]*1e-3 # u.m./m³ -> u.m./l
+        J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0] # u.m./l
         outputs = [J, *ecs, *ics]
         
         self.store_results(fitness=J, x=x)
@@ -249,4 +249,55 @@ class WctRestrictedProblem(BaseProblem):
     """
 
     dec_var_ids: list[str] = ["qc", "wwct"] # Decision variables ids
-    c_tol: float = 1. # Constraint tolerance (ºC)
+    sample_time: float = 1 # Sample time, hours
+    Vavail0: float = 0 # Available volume of the cheaper water source
+    
+    n_evals_in_horizon: int = None # Number of evaluations in the prediction horizon
+    size_dec_vector: int = None # Size of the decision vector
+    nic: int = None # Number of inequality constraints
+    
+    def get_nic(self) -> int:
+        return self.nic
+    
+    def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
+        ...
+    
+    def get_bounds(self, ) -> tuple[Iterable, Iterable]:
+        ...
+    
+    def evaluate(self, x: np.ndarray[float]) -> dict:
+        ...
+    
+    def fitness(self, x: np.ndarray[float], ) -> list[float]:
+        
+        dec_vars = self.decision_vector_to_decision_variables(x)
+        
+        # Every field in the objects should be a numpy array with values for each time step
+        # in the prediction horizon
+        
+        J = 0
+        ecs = []
+        ics = []
+        Vavail = self.Vavail0*1e3 # m³ -> l
+        for step_idx in self.n_evals_in_horizon:
+            dv = dec_vars.dump_at_index(step_idx)
+            ev = self.env_vars.dump_at_index(step_idx)
+            dv_m = dv.to_matlab()
+            ev_m = ev.to_matlab()
+            
+            Ce_kWe, Cw_lh, detailed = cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
+            
+            Cw_s1 = min( Cw_lh*self.sample_time, Vavail) / self.sample_time
+            Cw_s2 = Cw_lh - Cw_s1
+            Vavail = Vavail - Cw_s1*self.sample_time
+
+            J += Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
+            # ecs.append(ecs_)
+            ics.extend([
+                abs( detailed["Tcc_out"] - detailed["Tc_in"] ),
+                detailed["Tc_out"] - ev.Tv - self.deltaTcv_min,
+            ])
+            
+        self.store_results(fitness=J, x=x)
+        return [J, *ecs, *ics]
+            

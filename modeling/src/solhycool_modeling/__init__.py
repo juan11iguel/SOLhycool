@@ -52,6 +52,30 @@ class EnvironmentVariables:
             self.mv = matlab.double([mv])
         else:
             self.mv = mv
+            
+    @classmethod
+    def from_dataseries(cls, ds: pd.Series) -> "EnvironmentVariables":
+        """
+        Create an EnvironmentVariables instance from a pandas Series
+
+        Parameters:
+        - ds: Pandas Series with the data
+
+        Returns:
+        - An EnvironmentVariables instance
+        """
+        return cls(
+            HR=ds["HR_pct"],
+            Tamb=ds["Tamb_C"],
+            Q=ds["Q_kW"] / 2,
+            Tv=ds["Tv_C"],
+            Pe=ds["Ce_spot_market_price_eur_kWh"],
+            Pw=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
+            Pw_s1=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
+            Pw_s2=ds["water_price_morocco_alternative_eur_m3"] if "water_price_morocco_alternative_eur_m3" in ds else None,
+            Vavail=ds["Vavail_m3"] if "Vavail_m3" in ds else None,
+            deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
+        )
 
     def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["float", "matlab"] = "float") -> "EnvironmentVariables":
         """
@@ -232,12 +256,13 @@ class OperationPoint:
                 self.Jw_wct = self.Cw_wct * self.Pw
         
         # Multiple sources of water
-        if self.Jw_s1 is None and self.Cw_s1 is not None:
-            self.Jw_s1 = self.Cw_s1 * self.Pw_s1
-        if self.Jw_s2 is None and self.Cw_s2 is not None:
-            self.Jw_s2 = self.Cw_s2 * self.Pw_s2
-        self.Jw_wct = self.Jw_s1 + self.Jw_s2
-        self.Jw = self.Jw_wct
+        if self.Pw_s1 is not None and self.Pw_s2 is not None:
+            if self.Jw_s1 is None and self.Cw_s1 is not None:
+                self.Jw_s1 = self.Cw_s1 * self.Pw_s1
+            if self.Jw_s2 is None and self.Cw_s2 is not None:
+                self.Jw_s2 = self.Cw_s2 * self.Pw_s2
+            self.Jw_wct = self.Jw_s1 + self.Jw_s2
+            self.Jw = self.Jw_wct
                 
         # Total cost
         if self.J is None and self.Je is not None and self.Jw is not None:
@@ -251,9 +276,7 @@ class OperationPoint:
             if self.Vavail is not None:
                 self.Vavail_s1 = self.Vavail
         
-            
-                
-        
+
     @classmethod
     def from_multiple_sources(cls, dict_src: dict, env_vars: EnvironmentVariables) -> "OperationPoint":
         """
