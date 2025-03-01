@@ -72,7 +72,11 @@ class WctRestrictedProblem:
             
         self.Vavail0 = env_vars.Vavail[0]
         self.n_evals: int = len(list(asdict(env_vars).values())[0])
-        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals    
+        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals 
+        
+        # Initialize decision vector history
+        self.x_evaluated = []
+        self.fitness_history = []   
     
     def get_nic(self) -> int:
         return 2 * self.n_evals  # Two inequality constraints per evaluation in the prediction horizon
@@ -157,7 +161,7 @@ class WctRestrictedProblem:
             
             Ce_kWe, Cw_lh, detailed = cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
-            Cw_s1 = min( Cw_lh*self.sample_time, Vavail) / self.sample_time
+            Cw_s1 = min( max(Cw_lh, 0)*self.sample_time, Vavail) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
             Vavail = Vavail - Cw_s1*self.sample_time
 

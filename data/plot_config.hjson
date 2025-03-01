@@ -263,6 +263,17 @@
 
       traces_left: [
         {
+          var_id: "Qc_released",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "bg_gray",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          axis_arrow: true,
+          arrow_yrel_pos: -0.25,
+        },
+        {
           var_id: "Qwct",
           name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
           mode: "lines",
@@ -304,6 +315,17 @@
       legend_position: "top",
 
       traces_left: [
+        {
+          var_id: "Qc_released",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "bg_gray",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          // axis_arrow: true,
+          // arrow_yrel_pos: -0.1,
+        },
         {
           var_id: "Qdc",
           name: "Q<sub>dc</sub> (kW<sub>th</sub>)",

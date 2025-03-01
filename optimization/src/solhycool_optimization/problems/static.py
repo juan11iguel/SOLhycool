@@ -41,6 +41,10 @@ class BaseProblem(ABC):
         self.store_x = store_x
         self.store_fitness = store_fitness
         self.debug_mode = debug_mode
+        
+        # Initialize decision vector history
+        self.x_evaluated = []
+        self.fitness_history = []
 
         if env_vars.Q > self.Qmax:
             logger.warning(f"Asked to cool a load larger than the maximum for the system: {env_vars.Q:.2f} > {self.Qmax}")
