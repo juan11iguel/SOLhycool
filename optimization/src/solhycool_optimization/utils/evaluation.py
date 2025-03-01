@@ -1,7 +1,8 @@
 import numpy as np
 import pygmo as pg
 from loguru import logger
-from solhycool_optimization.problems import BaseProblem
+# TODO: We should be able to use a generic Problem class not specifically the static
+from solhycool_optimization.problems.static import BaseProblem
 
 def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 200, 
              use_mbh: bool = True, algo_id: str = "compass_search", initial_pop_size: int = 20,
@@ -36,26 +37,25 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 
         pop = pg.population(prob, initial_pop_size)
         pop = algo.evolve(pop)
         
-        
-        detailed = problem.evaluate(pop.champion_x)
+        op_pt = problem.evaluate(pop.champion_x)
         # if not extra_outputs:
-        #     return detailed
+        #     return op_pt
         # else:
-        return detailed, algo, pop, pop.champion_f
+        return op_pt, algo, pop, pop.champion_f
         
-        
+    # Outer function
     fitness_list: list[float] = []
     algo_list: list = []
-    detailed_list = []
+    operation_pt_list = []
     pop_list = []
     
     for eval_idx in range(n_trials):
         if log_verbosity > 0:
             logger.info(f"Iteration {eval_idx+1} out of {n_trials}")
         
-        detailed, algo, pop, fitness = optimize_single()
+        op_pt, algo, pop, fitness = optimize_single()
         fitness_list.append(fitness)
-        detailed_list.append(detailed)
+        operation_pt_list.append(op_pt)
         algo_list.append(algo)
         pop_list.append(pop)
         
@@ -64,6 +64,6 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 
     logger.info(f"Variance: {np.var(fitness_list[:, 0]):.3f} | {fitness_list[:, 0]}")
     
     if extra_outputs:
-        return detailed_list, algo_list, pop_list, fitness_list
+        return operation_pt_list, algo_list, pop_list, fitness_list
     else:
-        return detailed_list
+        return operation_pt_list

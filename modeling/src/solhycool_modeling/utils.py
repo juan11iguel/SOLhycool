@@ -1,8 +1,7 @@
-import pandas as pd
-
-
-from datetime import datetime
 from typing import Literal
+from datetime import datetime
+import numpy as np
+import pandas as pd
 
 
 def dump_in_span(vars_dict: dict, span: tuple[int, int] | tuple[datetime, datetime], return_format: Literal["values", "series"] = "values") -> dict:

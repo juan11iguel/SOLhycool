@@ -433,11 +433,10 @@ wheels = [
 [[package]]
 name = "iapws"
 version = "1.5.4"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/jjgomera/iapws?rev=16b4806d00aabd5c031452222387902f2b02d1db#16b4806d00aabd5c031452222387902f2b02d1db" }
 dependencies = [
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/df/3ae2f432b8aefc9e88a684660083cca79b2967c3ec6b59e63c1cf5786322/iapws-1.5.4.tar.gz", hash = "sha256:9f0faa39a967d76fc5e5f95f61d922e135453192e02bf875d07242f13d6eaa55", size = 114629 }
 
 [[package]]
 name = "idna"
@@ -1800,6 +1799,7 @@ name = "solhycool-modeling"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "iapws" },
     { name = "kaleido" },
     { name = "numpy" },
     { name = "pandas" },
@@ -1817,6 +1817,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "iapws", git = "https://github.com/jjgomera/iapws?rev=16b4806d00aabd5c031452222387902f2b02d1db" },
     { name = "kaleido", specifier = "==0.2.1" },
     { name = "numpy", specifier = ">=1.0.0" },
     { name = "pandas", specifier = ">=2.2.3" },

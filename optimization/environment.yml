@@ -2,7 +2,7 @@ name: conda-env
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.12
   - ipyparallel==9.0.0
   - loguru=0.7.2
   - lxml=5.3.0
@@ -20,6 +20,7 @@ dependencies:
       # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
       # - pydantic==2.9.2
       # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
+      - iapws @ git+https://github.com/jjgomera/iapws@16b4806d00aabd5c031452222387902f2b02d1db
       - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations
       - ../modeling/matlab/exports/for_redistribution_files_only
       - -e ../modeling

@@ -1,10 +1,11 @@
 from dataclasses import asdict, dataclass, field
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Literal, Optional
 import inspect
 import numpy as np
 import pandas as pd
-from iapws import IAPWS97 as w_props
+from iapws import IAPWS95 as w_props
 import matlab
 
 from solhycool_modeling.utils import dump_in_span
@@ -18,26 +19,29 @@ class EnvironmentVariables:
     All the variables should be 1D arrays with as many elements as the horizon of the optimization problem
     """
     # Weather
-    HR: float | np.ndarray[float] | pd.Series  # Relative humidity, %
-    Tamb: float | np.ndarray[float] | pd.Series # Ambient temperature, ºC
+    HR: float | np.ndarray[float]  # Relative humidity, %
+    Tamb: float | np.ndarray[float] # Ambient temperature, ºC
 
     # Thermal load
-    Tv: float | np.ndarray[float] | pd.Series # Vapor temperature, ºC
-    Q: float | np.ndarray[float] | pd.Series # Thermal power, kW
+    Tv: float | np.ndarray[float] # Vapor temperature, ºC
+    Q: float | np.ndarray[float] # Thermal power, kW
 
     # Costs
-    Pe: float | np.ndarray[float] | pd.Series # Cost of electricity, €/kWhe
-    Pw: float | np.ndarray[float] | pd.Series = None # Cost of water, €/m³
-    Pw_s1: float | np.ndarray[float] | pd.Series = None # Cost of water from source 1, €/m³
-    Pw_s2: float | np.ndarray[float] | pd.Series = None # Cost of water from source 2, €/m³
+    Pe: float | np.ndarray[float] # Cost of electricity, €/kWhe
+    Pw: float | np.ndarray[float] = None # Cost of water, €/m³
+    Pw_s1: float | np.ndarray[float] = None # Cost of water from source 1, €/m³
+    Pw_s2: float | np.ndarray[float] = None # Cost of water from source 2, €/m³
     
-    Vavail: float | np.ndarray[float] | pd.Series = None # Available volume of water, m³
-    deltaV: float | np.ndarray[float] | pd.Series = None # Variation of available volume of water, m³/h
+    Vavail: float | np.ndarray[float] = None # Available volume of water, m³
+    deltaV: float | np.ndarray[float] = None # Variation of available volume of water, m³/h
 
     # Thermal load (optional)
-    mv: float | np.ndarray[float] | pd.Series = None # Vapor mass flow rate, kg/s
+    mv: float | np.ndarray[float] = None # Vapor mass flow rate, kg/s
 
     def __post_init__(self) -> None:
+        if self.mv is not None:
+            return
+        
         if isinstance(self.Tv, matlab.double):
             Tv = np.asarray(self.Tv).flatten()[0]
             Pth = np.asarray(self.Q).flatten()[0]
@@ -46,7 +50,19 @@ class EnvironmentVariables:
             Pth = self.Q
 
         # Calculate mv
-        mv = Pth / (w_props(T=Tv+273.15, x=1).h - w_props(T=Tv+273.15, x=0).h) * 3600
+        # if isinstance(self.Tv, Iterable):
+        #     hsat_v = w_props.from_list(T=Tv+273.15, x=1).h
+        #     hsat_l = w_props.from_list(T=Tv+273.15, x=0).h
+        # else:
+        if isinstance(self.Tv, Iterable):
+            # Terrible
+            mv = np.array(
+                [pth / (w_props(T=tv+273.15, x=1).h - w_props(T=tv+273.15, x=0).h) * 3600 for pth, tv in zip(Pth, Tv)]
+            )
+        else:
+            hsat_v = w_props(T=Tv+273.15, x=1).h
+            hsat_l = w_props(T=Tv+273.15, x=0).h
+            mv = Pth / (hsat_v - hsat_l) * 3600
 
         if isinstance(self.Tv, matlab.double):
             self.mv = matlab.double([mv])
@@ -54,7 +70,31 @@ class EnvironmentVariables:
             self.mv = mv
             
     @classmethod
-    def from_dataseries(cls, ds: pd.Series) -> "EnvironmentVariables":
+    def from_dataframe(cls, df: pd.DataFrame) -> "EnvironmentVariables":
+        """
+        Create an EnvironmentVariables instance from a pandas dataframe
+
+        Parameters:
+        - df: Pandas dataframe with the data
+
+        Returns:
+        - An EnvironmentVariables instance
+        """
+        return cls(
+            HR=df["HR_pct"].values,
+            Tamb=df["Tamb_C"].values,
+            Q=df["Q_kW"].values,
+            Tv=df["Tv_C"].values,
+            Pe=df["Ce_spot_market_price_eur_kWh"].values,
+            Pw=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
+            Pw_s1=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
+            Pw_s2=df["water_price_morocco_alternative_eur_m3"].values if "water_price_morocco_alternative_eur_m3" in df else None,
+            Vavail=df["Vavail_m3"].values if "Vavail_m3" in df else None,
+            deltaV=df["deltaV_m3_h"].values if "deltaV_m3_h" in df else None 
+        )
+
+    @classmethod
+    def from_series(cls, ds: pd.Series) -> "EnvironmentVariables":
         """
         Create an EnvironmentVariables instance from a pandas Series
 
@@ -67,7 +107,7 @@ class EnvironmentVariables:
         return cls(
             HR=ds["HR_pct"],
             Tamb=ds["Tamb_C"],
-            Q=ds["Q_kW"] / 2,
+            Q=ds["Q_kW"],
             Tv=ds["Tv_C"],
             Pe=ds["Ce_spot_market_price_eur_kWh"],
             Pw=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
@@ -77,7 +117,7 @@ class EnvironmentVariables:
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )
 
-    def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["float", "matlab"] = "float") -> "EnvironmentVariables":
+    def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["number", "matlab"] = "number") -> "EnvironmentVariables":
         """
         Dump instance at a given index.
 
@@ -93,37 +133,16 @@ class EnvironmentVariables:
 
         return dump if return_dict else EnvironmentVariables(**dump)
 
-    def dump_in_span(self, span: tuple[int, int] | tuple[datetime, datetime], return_format: Literal["values", "series"] = "values") -> 'EnvironmentVariables':
+    def dump_in_span(self, span: tuple[int, int]) -> 'EnvironmentVariables':
         """ Dump environment variables within a given span """
 
-        vars_dict = dump_in_span(vars_dict=asdict(self), span=span, return_format=return_format)
+        vars_dict = dump_in_span(vars_dict=asdict(self), span=span, return_format="values")
+        
         return EnvironmentVariables(**vars_dict)
-
-    def resample(self, *args, **kwargs) -> "EnvironmentVariables":
-        """ Return a new resampled environment variables instance """
-
-        output = {}
-        for name, value in asdict(self).items():
-            if value is None:
-                continue
-            elif not isinstance(value, pd.Series):
-                raise TypeError(f"All attributes must be pd.Series for datetime indexing. Got {type(value)} instead.")
-
-            target_freq = int(float(args[0][:-1]))
-            current_freq = value.index.freq.n
-
-            value = value.resample(*args, **kwargs)
-            if  target_freq > current_freq: # Downsample
-                value = value.mean()
-            else: # Upsample
-                value = value.interpolate()
-            output[name] = value
-
-        return EnvironmentVariables(**output)
 
     def to_matlab(self) -> "EnvironmentVariables":
         """ Convert all attributes to matlab.double """
-
+        
         return EnvironmentVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
 
 @dataclass
