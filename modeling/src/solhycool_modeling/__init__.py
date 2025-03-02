@@ -5,7 +5,7 @@ from typing import Literal, Optional
 import inspect
 import numpy as np
 import pandas as pd
-from iapws import IAPWS95 as w_props
+from iapws import IAPWS97 as w_props
 import matlab
 
 from solhycool_modeling.utils import dump_in_span
