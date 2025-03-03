@@ -26,5 +26,6 @@ dependencies:
       - -e ../modeling
       - -e ../visualization
       - -e ../optimization
+      - -e ../simulation # We are also using this environment in the simulation sub-package
 # variables:
 #   LD_LIBRARY_PATH: "/home/patomareao/MATLAB/R2024b/runtime/glnxa64:/home/patomareao/MATLAB/R2024b/bin/glnxa64:/home/patomareao/MATLAB/R2024b/sys/os/glnxa64:/home/patomareao/MATLAB/R2024b/extern/bin/glnxa64:/lib/x86_64-linux-gnu:"

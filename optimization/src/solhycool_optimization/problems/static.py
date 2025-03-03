@@ -171,7 +171,7 @@ class DcProblem(BaseProblem):
         return self.evaluate_static_problem(x)
 
 
-class WctSimpleProblem(BaseProblem):
+class WctProblem(BaseProblem):
     """
     Wet cooling tower problem with no water consumption restriction
     and only one source of water

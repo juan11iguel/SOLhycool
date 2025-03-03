@@ -13,6 +13,15 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": ["2022", "2024"]
+        },
+        {
+            "name": "Run yearly simulation (static)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python"
         }
     ]
 }
