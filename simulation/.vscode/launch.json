@@ -22,6 +22,15 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "python": "/miniconda3/envs/conda-env/bin/python"
+        },
+        {
+            "name": "Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/test.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python"
         }
     ]
 }

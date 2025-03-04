@@ -1,19 +1,28 @@
 from typing import Literal
-from dataclasses import dataclass, asdict
+from inspect import signature
+from dataclasses import dataclass, asdict, field
 import numpy as np
 
+# Always import combined_cooler_model before importing matlab
+import combined_cooler_model
 import matlab
 
+from solhycool_modeling import ModelInputsRange
 from solhycool_modeling.utils import dump_in_span
 
 @dataclass
 class RealDecVarsBoxBounds:
     """ Real decision variables box bounds, as in: (lower bound, upper bound)"""
-    qc: tuple[float, float] = (5.2211, 24.1543)
-    Rp: tuple[float, float] = (0., 1.)
-    Rs: tuple[float, float] = (0., 1.)
-    wdc: tuple[float, float] = (11.0, 99.1800)
-    wwct: tuple[float, float] = (0., 93.4161)
+    qc: tuple[float, float]
+    Rp: tuple[float, float]
+    Rs: tuple[float, float]
+    wdc: tuple[float, float]
+    wwct: tuple[float, float]
+    
+    @classmethod
+    def from_model_inputs_range(cls, model_inputs_range: ModelInputsRange = ModelInputsRange()) -> "RealDecVarsBoxBounds":
+        """ Create instance from ModelInputsRange instance """
+        return cls(**{name: value for name, value in asdict(model_inputs_range).items() if name in signature(cls).parameters})
     
 @dataclass
 class DecisionVariables:

@@ -35,7 +35,7 @@ def plot_hydraulic_distribution(qc: np.ndarray, Rp: np.ndarray, Rs: np.ndarray, 
     
     # Determine a reasonable x offset for bar width
     if len(x) > 1:
-        dx = np.min(np.diff(x)) / 2  # Use half the minimum spacing between x-values
+        dx = 0.8* np.min(np.diff(x)) / 2  # Use half the minimum spacing between x-values
     else:
         dx = 0.4  # Default offset if only one x value exists
 

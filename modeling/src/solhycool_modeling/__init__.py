@@ -6,11 +6,26 @@ import inspect
 import numpy as np
 import pandas as pd
 from iapws import IAPWS97 as w_props
+
+import combined_cooler_model # Always import combined_cooler_model before importing matlab
 import matlab
 
 from solhycool_modeling.utils import dump_in_span
 
-
+@dataclass
+class ModelInputsRange:
+    """ Real decision variables box bounds, as in: (lower bound, upper bound)"""
+    qc: tuple[float, float] = (5.2211, 24.1543)
+    Rp: tuple[float, float] = (0., 1.)
+    Rs: tuple[float, float] = (0., 1.)
+    wdc: tuple[float, float] = (11.0, 99.1800)
+    wwct: tuple[float, float] = (0., 93.4161)
+    Tamb: tuple[float, float] = (9.06, 38.75)
+    HR: tuple[float, float] = (10.33, 89.25)
+    Tdc_in: tuple[float, float] = (33.16, 41.92)
+    Twct_in: tuple[float, float] = (31.17, 40.94)
+    
+    
 @dataclass
 class EnvironmentVariables:
     """
@@ -36,7 +51,7 @@ class EnvironmentVariables:
     deltaV: float | np.ndarray[float] = None # Variation of available volume of water, m³/h
 
     # Thermal load (optional)
-    mv: float | np.ndarray[float] = None # Vapor mass flow rate, kg/s
+    mv: float | np.ndarray[float] = None # Vapor mass flow rate, kg/h!!
 
     def __post_init__(self) -> None:
         if self.mv is not None:
@@ -62,7 +77,7 @@ class EnvironmentVariables:
         else:
             hsat_v = w_props(T=Tv+273.15, x=1).h
             hsat_l = w_props(T=Tv+273.15, x=0).h
-            mv = Pth / (hsat_v - hsat_l) * 3600
+            mv = Pth / (hsat_v - hsat_l) * 3600 # kg/h
 
         if isinstance(self.Tv, matlab.double):
             self.mv = matlab.double([mv])
@@ -85,6 +100,7 @@ class EnvironmentVariables:
             Tamb=df["Tamb_C"].values,
             Q=df["Q_kW"].values,
             Tv=df["Tv_C"].values,
+            mv=df["mv_kgh"] if "mv_kgh" in df else None, 
             Pe=df["Ce_spot_market_price_eur_kWh"].values,
             Pw=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
             Pw_s1=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
@@ -109,6 +125,7 @@ class EnvironmentVariables:
             Tamb=ds["Tamb_C"],
             Q=ds["Q_kW"],
             Tv=ds["Tv_C"],
+            mv=ds["mv_kgh"] if "mv_kgh" in ds else None, 
             Pe=ds["Ce_spot_market_price_eur_kWh"],
             Pw=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
             Pw_s1=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
@@ -116,6 +133,12 @@ class EnvironmentVariables:
             Vavail=ds["Vavail_m3"] if "Vavail_m3" in ds else None,
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )
+        
+    def reduce_load(self, reduction_factor: float = 0.5) -> None:
+        
+        self.Q = self.Q * reduction_factor
+        self.mv = self.mv * reduction_factor
+        
 
     def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["number", "matlab"] = "number") -> "EnvironmentVariables":
         """
@@ -152,7 +175,7 @@ class OperationPoint:
     HR: float = field(metadata={"description": "Relative humidity", "units": "%"})
 
     # Load conditions
-    mv: float = field(metadata={"description": "Vapor mass flow rate", "units": "kg/s"})
+    mv: float = field(metadata={"description": "Vapor mass flow rate", "units": "kg/h"})
     Tv: float = field(metadata={"description": "Vapour temperature in the condenser", "units": "ºC"})
 
     # Condenser

@@ -1,0 +1,395 @@
+{
+  // TODO: 
+
+  // INFO:
+  // Available dash types: ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot', 'solid (default)'] 
+
+  # General plot attributes
+  title: "SOLhycool operation optimization",
+  subtitle: "Evaluation results",
+  height: 1200,
+  width: 1000,
+  margin: {
+    l:20,
+    r:100,
+    t:150,
+    b:20,
+    pad:5
+  },
+  vertical_spacing: 0.05,
+  xdomain: [0, 0.85],
+  arrow_xrel_pos: 60, # seconds
+  // show_night_day_cycle: true, // TODO: Implement this feature 
+
+  # Individual plot attributes
+  # First specify the plot attributes
+  # In traces, specify the variables to be plotted, the definition order controls the order of the traces in the plot
+  plots: {
+    environment: {
+      title: "<b>Environment</b>",
+      row_height: 0.5,
+      bg_color: "steelblue",
+      ylabels_left: ["<b>Weather conditions</b><br>ºC"],
+      ylabels_right: ["Relative humidity (%)"], # As many as n_yaxis-1
+      ylims_left: 'manual',
+      showlegend: true,
+      legend_position: "top", // "top" (horizontal) or "side" (vertical)
+
+      traces_left: [
+        {
+          var_id: "Tamb",
+          name: "T<sub>amb</sub> (ºC)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "plotly_green",
+          showlegend: true,
+          width: 3,
+          // legend_id: 'global_legend',
+        },
+      ],
+
+      traces_right: [
+        {
+          var_id: "HR",
+          name: "HR (%)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "plotly_blue",
+          width: 3,
+          showlegend: true,
+          // legend_id: 'global_legend',
+          axis_arrow: true,
+          arrow_yrel_pos: -0.1,
+        },
+      ]
+    },
+
+    load_conditions: {
+      // title: "<b>Environment</b>",
+      row_height: 1,
+      bg_color: "steelblue",
+      ylabels_right: ["ºC"],
+      ylabels_left: ["<b>Load conditions</b><br>kW<sub>th</sub>"],
+      ylims_right: 'manual',
+      ylims_left: [0, 250],
+      showlegend: true,
+      legend_position: "top",
+
+      traces_left: [
+        {
+          var_id: "Qc_released",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "bg_gray",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          // legend_id: 'global_legend',
+          axis_arrow: true,
+          arrow_yrel_pos: -0.1,
+        },
+      ],
+      traces_right: [
+        {
+          var_id: "Tv",
+          name: "T<sub>v</sub> (ºC)",
+          mode: "markers+lines",
+          color: "bg_gray",
+          width: 3,
+          showlegend: true,
+        },
+        {
+          var_id: "Tc_in",
+          name: "T<sub>c,in</sub> (ºC)",
+          mode: "markers+lines",
+          color: "plotly_blue",
+          dash: "dash",
+          width: 3,
+          showlegend: true,
+        },
+        {
+          var_id: "Tc_out",
+          name: "T<sub>c,out</sub> (ºC)",
+          mode: "markers+lines",
+          color: "plotly_red",
+          dash: "dot",
+          width: 3,
+          showlegend: true,
+        },
+      ],
+    },
+
+    costs_context: {
+      // title: "<b>Environment</b>",
+      row_height: 1,
+      bg_color: "steelblue",
+      ylabels_left: ["<b>Resources context</b><br>m<sup>3</sup>"],
+      ylabels_right: ["€/kW<sub>e</sub>", "€/l"],
+      // ylims_left: [0, 5000],
+      ylims_left: 'manual_from_zero',
+      ylims_right: 'manual',
+      showlegend: true,
+      legend_position: "top",
+
+      traces_left: [
+        {
+          var_id: "Vavail",
+          name: "V<sub>available</sub> (m³)",
+          mode: "lines",
+          color: "plotly_cyan",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+        },
+      ],
+      traces_right: [
+        [
+          {
+            var_id: "Pe",
+            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
+            mode: "lines",
+            color: "plotly_yellow",
+            width: 3,
+            axis_arrow: true,
+            arrow_yrel_pos: -0.05,
+            showlegend: true,
+          },
+        ],
+        [
+          {
+            var_id: "Pw_s1",
+            name: "Water price - source 1 (€/l)",
+            mode: "lines",
+            color: "turquesa",
+            dash: "solid",
+            width: 3,
+            axis_arrow: true,
+            arrow_yrel_pos: -0.12,
+            showlegend: true,
+          },
+          {
+            var_id: "Pw_s2",
+            name: "Water price - source 2 (€/l)",
+            mode: "lines",
+            color: "turquesa",
+            dash: "dash",
+            width: 3,
+            showlegend: true,
+          },
+        ]
+      ],
+    },
+
+    operational_costs: {
+      title: "<b>Results</b>",
+      row_height: 1,
+      bg_color: "bg_gray",
+      ylabels_left: ["<b>Operational costs</b><br>€/h"],
+      ylims_left: 'manual',
+      showlegend: true,
+
+      traces_left: [
+          // {
+          //   var_id: "J",
+          //   name: "J<sub>total</sub> (€/h)",
+          //   mode: "lines",
+          //   color: "plotly_orange",
+          //   width: 5,
+          //   showlegend: true,
+          // },
+          // {
+          //   var_id: "Je",
+          //   name: "J<sub>e,total</sub> (€/h)",
+          //   mode: "lines",
+          //   color: "plotly_yellow",
+          //   width: 5,
+          //   showlegend: true,
+          // },
+          {
+            var_id: "Je_wct",
+            name: "J<sub>e,wct</sub> (€/h)",
+            mode: "lines",
+            color: "plotly_yellow",
+            fill: "tonexty",
+            stackgroup: "op_costs",
+            showlegend: true,
+          },
+          {
+            var_id: "Je_dc",
+            name: "J<sub>e,dc</sub> (€/h)",
+            mode: "lines",
+            color: "plotly_yellow",
+            fill: "tonexty",
+            stackgroup: "op_costs",
+            showlegend: true
+          },
+          {
+            var_id: "Je_c",
+            name: "J<sub>e,c</sub> (€/h)",
+            mode: "lines",
+            color: "plotly_yellow",
+            fill: "tonexty",
+            stackgroup: "op_costs",
+            showlegend: true
+          },
+          {
+            var_id: "Jw_s2",
+            name: "J<sub>w,s2</sub> (€/h)",
+            mode: "lines",
+            color: "turquesa",
+            fill: "tonexty",
+            stackgroup: "op_costs",
+            showlegend: true
+          },
+          {
+            var_id: "Jw_s1",
+            name: "J<sub>w,s1</sub> (€/h)",
+            mode: "lines",
+            color: "turquesa",
+            fill: "tonexty",
+            stackgroup: "op_costs",
+            showlegend: true
+          },
+        ],
+    },
+
+    wct: {
+      title: "<b>Components</b>",
+      row_height: 1,
+      bg_color: "bg_gray",
+      ylabels_left: ["<b>Wet Cooler (WCT)</b><br>kW<sub>th</sub>"],
+      ylabels_right: ["ºC", "%"],
+      ylims_left: 'manual_from_zero',
+      showlegend: true,
+      legend_position: "top",
+
+      traces_left: [
+        {
+          var_id: "Qc_released",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "bg_gray",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          axis_arrow: true,
+          arrow_yrel_pos: -0.25,
+        },
+        {
+          var_id: "Qwct",
+          name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
+          mode: "lines",
+          color: "wct_purple",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          axis_arrow: true,
+          arrow_yrel_pos: -0.1,
+        },
+      ],
+      traces_right: [
+        [
+          {
+            var_id: "Twct_in",
+            name: "T<sub>wct,in</sub> (ºC)",
+            mode: "markers+lines",
+            color: "plotly_red",
+            width: 3,
+            showlegend: true,
+          },
+          {
+            var_id: "Twct_out",
+            name: "T<sub>wct,out</sub> (ºC)",
+            mode: "markers+lines",
+            color: "plotly_blue",
+            width: 3,
+            showlegend: true,
+          },
+        ],
+        [
+          {
+            var_id: "wwct",
+            name: "w<sub>wct</sub> (%)",
+            mode: "markers+lines",
+            color: "cool_red",
+            width: 0.5,
+            showlegend: true,
+          },
+        ]
+      ],
+    },
+    
+    dc: {
+      row_height: 1,
+      bg_color: "bg_gray",
+      ylabels_left: ["<b>Dry Cooler (DC)</b><br>kW<sub>th</sub>"],
+      ylabels_right: ["ºC", "%"],
+      ylims_left: 'manual_from_zero',
+      showlegend: true,
+      legend_position: "top",
+
+      traces_left: [
+        {
+          var_id: "Qc_released",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          mode: "lines",
+          color: "bg_gray",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          // axis_arrow: true,
+          // arrow_yrel_pos: -0.1,
+        },
+        {
+          var_id: "Qdc",
+          name: "Q<sub>dc</sub> (kW<sub>th</sub>)",
+          mode: "lines",
+          color: "dc_green",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+          axis_arrow: true,
+          arrow_yrel_pos: 1.05,
+        },
+      ],
+      traces_right: [
+        [
+          {
+            var_id: "Tdc_in",
+            name: "T<sub>dc,in</sub> (ºC)",
+            mode: "markers+lines",
+            color: "plotly_red",
+            width: 3,
+            showlegend: true,
+          },
+          {
+            var_id: "Tdc_out",
+            name: "T<sub>dc,out</sub> (ºC)",
+            mode: "markers+lines",
+            color: "plotly_blue",
+            width: 3,
+            showlegend: true,
+          },
+        ],
+        [
+          {
+            var_id: "wdc",
+            name: "w<sub>dc</sub> (%)",
+            mode: "markers+lines",
+            color: "cool_red",
+            width: 0.5,
+            showlegend: true,
+          },
+        ]
+      ],
+    },
+
+    hydraulic_distribution: {
+      row_height: 1,
+      bg_color: "bg_gray",
+      ylabels_left: ["<b>Hydraulic distribution</b><br>m<sup>3</sup>/h"],
+      showlegend: true,
+      legend_position: "top",
+      traces_left: [],
+    },
+
+  }
+}
