@@ -6,7 +6,7 @@ from solhycool_optimization.problems.static import BaseProblem
 
 def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 200, 
              use_mbh: bool = True, algo_id: str = "compass_search", initial_pop_size: int = 20,
-             n_trials: int = 5, log_verbosity: int = 1) -> list[dict] | tuple[list[dict], list[pg.algorithm], list[pg.population], np.ndarray]:
+             n_trials: int = 5, log_verbosity: int = 1, mbh_stop: int = 3) -> list[dict] | tuple[list[dict], list[pg.algorithm], list[pg.population], np.ndarray]:
     
     def optimize_single():
     
@@ -15,7 +15,9 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 
         
         if algo_id == "ipopt":
             internal_algo = pg.ipopt()
-            internal_algo.set_numeric_option("tol", 1E-1) # Change the relative convergence tolerance
+            internal_algo.set_numeric_options({"bound_relax_factor": 0.0, "tol": 1E-1}, )
+            # internal_algo.set_numeric_options({"constr_viol_tol":0})
+            # internal_algo.set_numeric_option("tol", 1E-1) # Change the relative convergence tolerance
             internal_algo.set_integer_option("max_iter", max_iter) # Change the maximum number of iterations
             # ip.set_numeric_options({}) #})
             
@@ -27,7 +29,7 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False, max_iter: int = 
 
         if use_mbh:
             algo = pg.algorithm(
-                pg.mbh(internal_algo)
+                pg.mbh(algo=internal_algo, stop=mbh_stop)
             )
         else:
             algo = pg.algorithm(internal_algo)

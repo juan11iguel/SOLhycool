@@ -25,11 +25,12 @@ logger.disable("phd_visualizations")
 
 # Paths
 # Assuming the working directory is the package root (project_fld/simulation/)
-data_path: Path = Path("../data")
+base_path = Path("/workspaces/SOLhycool")
+
+data_path: Path = base_path / "data"
 env_path: Path = data_path / "datasets/environment_data_20220101_20241231.h5"
-base_output_path: Path = Path("./results")
-diagram_path: Path = Path("/workspaces/SOLhycool/data/assets/base_diagram.svg")
-date_span: tuple[str, str] = ("20220101", "20220107")#"20221233")
+base_output_path: Path = base_path / "simulation/results"
+date_span: tuple[str, str] = ("20220117", "20221231")#"20221233")
 date_span_str: str = f"{date_span[0]}_{date_span[1]}"
 
 # Parameters
@@ -41,6 +42,7 @@ algo_params: dict = {
     "max_fevals": 300,
 }
 problem_id: Literal["dc", "wct"] = "dc"
+save_algo_logs: bool = False
 
 # Import problem definition based on problem_id
 if problem_id == "dc":
@@ -157,7 +159,7 @@ def main() -> None:
         
         # 2. Setup problems for the day
         problems = []
-        pop0 = []
+        # pop0 = []
         archi = pg.archipelago()
         for idx, (dt, ds) in enumerate(df_env.loc[date_str].iterrows()):
             
@@ -180,7 +182,7 @@ def main() -> None:
             # "fitness0": [pop.champion_f for pop in pop0],
         }
         
-        # archi.evolve()
+        archi.evolve()
         print(archi)
         
         start_time = time.time()
@@ -229,7 +231,7 @@ def main() -> None:
             metadata=metadata,
             df_opt=df_opt,
             df_sim=df_sim,
-            algo_logs=algo_logs,
+            algo_logs=algo_logs if save_algo_logs else None,
             algo_table_ids=[f"{date_str}T{hour:02d}" for hour in range(24)],
             output_path=output_path,
             file_id = file_id,

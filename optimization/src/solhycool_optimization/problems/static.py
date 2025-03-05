@@ -153,7 +153,8 @@ class DryCoolerProblem(BaseProblem):
     """
     dec_var_ids: list[str] = ["qc", "wdc"] # Decision variables ids
     size_dec_vector: int = 2 # Size of the decision vector
-
+    c_tol: list[float] = [0.5, 0.5, 10]
+    
     def __init__(self,
                  env_vars: EnvironmentVariables,
                  store_x: bool = False,
@@ -179,12 +180,16 @@ class DryCoolerProblem(BaseProblem):
         return 3
 
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
-        # TODO: Do not always convert to matlab
+        """ Parse decision vector to decision variables and enforce bounds
+            (Needed for IPOPT, even when setting bound_relax_factor=0.0)"""
+            
+        b = self.real_dec_vars_box_bounds
+        
         return DecisionVariables(
-            qc=matlab.double([x[0]]),
+            qc=matlab.double([ max(min(x[0], b.qc[1]),b.qc[0]) ]),
             Rp=matlab.double([0.0]),
             Rs=matlab.double([0.0]),
-            wdc=matlab.double([x[1]]),
+            wdc=matlab.double([ max(min(x[1], b.wdc[1]),b.wdc[0]) ]),
             wwct=matlab.double([0])
         )
 
@@ -232,7 +237,8 @@ class WetCoolerProblem(BaseProblem):
 
     dec_var_ids: list[str] = ["qc", "wwct"] # Decision variables ids
     size_dec_vector: int = 2 # Size of the decision vector
-
+    c_tol: list[float] = [0.5, 1e-3, 10]
+    
     def __init__(self,
                  env_vars: EnvironmentVariables,
                  store_x: bool = False,
@@ -253,16 +259,20 @@ class WetCoolerProblem(BaseProblem):
     #     return 1
 
     def get_nic(self) -> int:
-        return 5
+        return 3
 
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
+        """ Parse decision vector to decision variables and enforce bounds
+            (Needed for IPOPT, even when setting bound_relax_factor=0.0)"""
+            
+        b = self.real_dec_vars_box_bounds
 
         return DecisionVariables(
-            qc=matlab.double([x[0]]),
+            qc=matlab.double([ max(min(x[0], b.qc[1]),b.qc[0]) ]),
             Rp=matlab.double([1.0]),
             Rs=matlab.double([0.0]),
             wdc=matlab.double([0.0]),
-            wwct=matlab.double([x[1]])
+            wwct=matlab.double([ max(min(x[1], b.wwct[1]),b.wwct[0]) ])
         )
 
     def get_bounds(self, ) -> tuple[Iterable, Iterable]:
@@ -284,9 +294,11 @@ class WetCoolerProblem(BaseProblem):
         ics = [
             abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
             detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,    # Tc,out < Tv-ΔTc-v,min 
-            detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
-            self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
-            detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1
+            abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
+            
+            # detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
+            # self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
+            # detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1
         ]
 
         J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0] # u.m./l
@@ -309,7 +321,7 @@ class CombinedCoolerProblem(BaseProblem):
 
     dec_var_ids: list[str] = ["qc", "Rp", "Rs", "wdc", "wwct"] # Decision variables ids
     size_dec_vector: int = 5 # Size of the decision vector
-    c_tol: list[float] = [0.5, 0.5, 10]
+    c_tol: list[float] = [0.5, 1e-3, 10]
     Qmax: float = 230 # kWth
 
     def __init__(self,
@@ -335,13 +347,17 @@ class CombinedCoolerProblem(BaseProblem):
         return 3
 
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
-
+        """ Parse decision vector to decision variables and enforce bounds
+            (Needed for IPOPT, even when setting bound_relax_factor=0.0)"""
+            
+        b = self.real_dec_vars_box_bounds
+        
         return DecisionVariables(
-            qc=matlab.double([x[0]]),
-            Rp=matlab.double([x[1]]),
-            Rs=matlab.double([x[2]]),
-            wdc=matlab.double([x[3]]),
-            wwct=matlab.double([x[4]])
+            qc=matlab.double([ max(min(x[0], b.qc[1]),b.qc[0]) ]),
+            Rp=matlab.double([ max(min(x[1], b.Rp[1]),b.Rp[0]) ]),
+            Rs=matlab.double([ max(min(x[2], b.Rs[1]),b.Rs[0]) ]),
+            wdc=matlab.double([ max(min(x[3], b.wdc[1]),b.wdc[0]) ]),
+            wwct=matlab.double([ max(min(x[4], b.wwct[1]),b.wwct[0]) ])
         )
 
     def get_bounds(self, ) -> tuple[Iterable, Iterable]:
@@ -365,8 +381,6 @@ class CombinedCoolerProblem(BaseProblem):
             detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,    # Tc,out < Tv-ΔTc-v,min 
             abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
             
-            # TODO: Update these
-            # Maybe the only check is that Qdc+Qwct ~ Qc in order to limit the number of constraints
             # detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
             # self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
             # detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1

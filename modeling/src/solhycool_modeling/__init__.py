@@ -43,9 +43,9 @@ class EnvironmentVariables:
 
     # Costs
     Pe: float | np.ndarray[float] # Cost of electricity, €/kWhe
-    Pw: float | np.ndarray[float] = None # Cost of water, €/m³
-    Pw_s1: float | np.ndarray[float] = None # Cost of water from source 1, €/m³
-    Pw_s2: float | np.ndarray[float] = None # Cost of water from source 2, €/m³
+    Pw: float | np.ndarray[float] = None # Cost of water, €/l
+    Pw_s1: float | np.ndarray[float] = None # Cost of water from source 1, €/l
+    Pw_s2: float | np.ndarray[float] = None # Cost of water from source 2, €/l
     
     Vavail: float | np.ndarray[float] = None # Available volume of water, m³
     deltaV: float | np.ndarray[float] = None # Variation of available volume of water, m³/h
@@ -102,9 +102,9 @@ class EnvironmentVariables:
             Tv=df["Tv_C"].values,
             mv=df["mv_kgh"] if "mv_kgh" in df else None, 
             Pe=df["Ce_spot_market_price_eur_kWh"].values,
-            Pw=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
-            Pw_s1=df["water_price_morocco_eur_m3"].values if "water_price_morocco_eur_m3" in df else None,
-            Pw_s2=df["water_price_morocco_alternative_eur_m3"].values if "water_price_morocco_alternative_eur_m3" in df else None,
+            Pw=df["water_price_morocco_eur_l"].values if "water_price_morocco_eur_l" in df else None,
+            Pw_s1=df["water_price_morocco_eur_l"].values if "water_price_morocco_eur_l" in df else None,
+            Pw_s2=df["water_price_morocco_alternative_eur_l"].values if "water_price_morocco_alternative_eur_l" in df else None,
             Vavail=df["Vavail_m3"].values if "Vavail_m3" in df else None,
             deltaV=df["deltaV_m3_h"].values if "deltaV_m3_h" in df else None 
         )
@@ -127,9 +127,9 @@ class EnvironmentVariables:
             Tv=ds["Tv_C"],
             mv=ds["mv_kgh"] if "mv_kgh" in ds else None, 
             Pe=ds["Ce_spot_market_price_eur_kWh"],
-            Pw=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
-            Pw_s1=ds["water_price_morocco_eur_m3"] if "water_price_morocco_eur_m3" in ds else None,
-            Pw_s2=ds["water_price_morocco_alternative_eur_m3"] if "water_price_morocco_alternative_eur_m3" in ds else None,
+            Pw=ds["water_price_morocco_eur_l"] if "water_price_morocco_eur_l" in ds else None,
+            Pw_s1=ds["water_price_morocco_eur_l"] if "water_price_morocco_eur_l" in ds else None,
+            Pw_s2=ds["water_price_morocco_alternative_eur_l"] if "water_price_morocco_alternative_eur_l" in ds else None,
             Vavail=ds["Vavail_m3"] if "Vavail_m3" in ds else None,
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )
@@ -215,7 +215,7 @@ class OperationPoint:
     Tcc_out: float = field(metadata={"description": "Combined cooler outlet temperature", "units": "ºC"})
 
     # Optional fields
-    Cw_s1: float = field(default=0, metadata={"description": "Water consumption from source 1", "units": "l/h"})
+    Cw_s1: float = field(default=None, metadata={"description": "Water consumption from source 1", "units": "l/h"})
     Cw_s2: float = field(default=0, metadata={"description": "Water consumption from source 2", "units": "l/h"})
     Pw: float = field(default=None, metadata={"description": "Price of water", "units": "€/l"})
     Pw_s1: float = field(default=None, metadata={"description": "Price of water from source 1", "units": "€/l"})
@@ -255,6 +255,9 @@ class OperationPoint:
             
         if self.Cw_cc is None:
             self.Cw_cc = self.Cw_wct
+        
+        if self.Cw_s1 is None:
+            self.Cw_s1 = self.Cw_cc
             
         if self.Qcc is None:
             self.Qcc = self.Qdc + self.Qwct
@@ -266,7 +269,7 @@ class OperationPoint:
             self.Ce = self.Ce_cc + self.Ce_c
             
         if self.Cw is None:
-            self.Cw = self.Cw_wct
+            self.Cw = self.Cw_cc    
             
         if self.qcc is None:
             self.qcc = self.qc
@@ -296,6 +299,10 @@ class OperationPoint:
                 
             if self.Jw_wct is None:
                 self.Jw_wct = self.Cw_wct * self.Pw
+                
+            if self.Pw_s1 is None:
+                self.Pw_s1 = self.Pw
+                self.Jw_s1 = self.Cw_s1 * self.Pw_s1
         
         # Multiple sources of water
         if self.Pw_s1 is not None and self.Pw_s2 is not None:

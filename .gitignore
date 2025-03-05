@@ -4,3 +4,4 @@ optimization/.venv/
 simulation/.venv/
 visualization/.venv/
 modeling/src/solhycool_modeling/__pycache__/__init__.cpython-312.pyc
+simulation/src/solhycool_evaluation/__pycache__/__init__.cpython-312.pyc
