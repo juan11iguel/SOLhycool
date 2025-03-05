@@ -4,18 +4,19 @@ import pygmo as pg
 import numpy as np
 from loguru import logger
 import pandas as pd
-import matlab
 
 import combined_cooler_model
+import matlab
 
-from solhycool_modeling import EnvironmentVariables, OperationPoint
-from solhycool_optimization import (RealDecVarsBoxBounds,
-                                    DecisionVariables)
+from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
+from solhycool_optimization import RealDecVarsBoxBounds, DecisionVariables
 """ Global variables """
 cc_model = combined_cooler_model.initialize()  # Could we get away initiating this only once at the beginning?
 
+# TODO: Refactor use of cc_model to use it the same way as in static
+# TODO: Include new constraints
 
-class WctRestrictedProblem:
+class WetCoolerProblem:
     """ Wet cooling tower problem with two sources of water: a cheaper and a
     more expensive one, with volume restriction on the cheaper one 
     
@@ -44,10 +45,9 @@ class WctRestrictedProblem:
     size_dec_vector: int  # Size of the decision vector
     
     deltaTcv_min: float = 2 # Minimum temperature difference between cooling fluid outlet and vapor (ºC) 
-    # c_tol: list[float] = [0.5, 0.5] # Constraint tolerances (ºC, ºC)
     c_tol: float = 0.5  # Constraint tolerances (ºC)
-    
     Qmax: float = 150 # kWth
+    model_inputs_range: ModelInputsRange = ModelInputsRange()
     
     def __init__(self, 
                  env_vars: EnvironmentVariables, 
@@ -72,11 +72,47 @@ class WctRestrictedProblem:
             
         self.Vavail0 = env_vars.Vavail[0]
         self.n_evals: int = len(list(asdict(env_vars).values())[0])
-        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals 
+        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals
+        
+        # Validate range of inputs
+        var_ids = ["Tamb", "HR"]
+        for var_id in var_ids:
+            value = getattr(env_vars, var_id)
+            bounds = getattr(self.model_inputs_range, var_id)
+            if value > bounds[1] or value < bounds[0]:
+                new_value = max(min(bounds[1], value), bounds[0])
+                logger.warning(f"{var_id}={value} outside range: {bounds}, setting to: {new_value}")
+                setattr(env_vars, var_id, new_value)
         
         # Initialize decision vector history
         self.x_evaluated = []
         self.fitness_history = []   
+        
+    @property
+    def cc_model(self):
+        # Lazy loading of cc_model so it's only initialized when used for the first time
+        # print("I was called!")
+        if not hasattr(self, "_cc_model"):
+            self._cc_model = combined_cooler_model.initialize()
+            # print("I was initialized!")
+        return self._cc_model
+    
+    def __deepcopy__(self, memo):
+        """Custom deepcopy to ensure `_cc_model` is reinitialized."""
+        copied_obj = self.__class__.__new__(self.__class__)
+        memo[id(self)] = copied_obj  # Prevent infinite recursion
+        
+        keys_to_not_copy = ["_cc_model"]
+        [setattr(copied_obj, key, copy.deepcopy(value, memo)) for key, value in self.__dict__.items() if key not in keys_to_not_copy]
+
+        return copied_obj
+    
+    def __getstate__(self):
+        """Remove non-picklable attributes before pickling"""
+        state = self.__dict__.copy()
+        if "_cc_model" in state:
+            del state["_cc_model"]  # Remove the MATLAB object before pickling
+        return state
     
     def get_nic(self) -> int:
         return 2 * self.n_evals  # Two inequality constraints per evaluation in the prediction horizon
@@ -125,7 +161,7 @@ class WctRestrictedProblem:
             dv_m = dv.to_matlab()
             ev_m = ev.to_matlab()
             
-            _, Cw_lh, detailed = cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
+            _, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
             Cw_s1 = min( Cw_lh*self.sample_time, Vavail) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
@@ -159,7 +195,7 @@ class WctRestrictedProblem:
             dv_m = dv.to_matlab()
             ev_m = ev.to_matlab()
             
-            Ce_kWe, Cw_lh, detailed = cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
+            Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
             Cw_s1 = min( max(Cw_lh, 0)*self.sample_time, Vavail) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
@@ -168,8 +204,11 @@ class WctRestrictedProblem:
             J += Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
             # ecs.append(ecs_)
             ics.extend([
-                abs( detailed["Tcc_out"] - detailed["Tc_in"] ),
-                detailed["Tc_out"] - ev.Tv - self.deltaTcv_min,
+                abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
+                detailed["Tc_out"] - ev.Tv - self.deltaTcv_min,          # Tc,out < Tv-ΔTc-v,min 
+                detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
+                self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
+                detailed["Twct_out"]+1 - detailed["Twct_in"]             # Twct,in > Twct,out+1
             ])
         # print(J)
             

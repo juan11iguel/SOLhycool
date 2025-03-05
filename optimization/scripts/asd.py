@@ -11,7 +11,7 @@ import combined_cooler_model
 from solhycool_modeling import OperationPoint
 
 from solhycool_modeling import EnvironmentVariables
-from solhycool_optimization.problems.horizon import WctRestrictedProblem as Problem
+from solhycool_optimization.problems.horizon import WetCoolerProblem as Problem
 from solhycool_optimization.utils.evaluation import optimize
 
 # Visualization packages
