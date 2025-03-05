@@ -97,7 +97,7 @@ Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
 detailed_data = [];
 parameters = default_parameters();
-parameters.condenser_option = 3;
+% parameters.condenser_option = 3;
 for i=1:N
     [Ce_data(i), Cw_data(i), detailed] = combined_cooler_model( ...
         data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), ...

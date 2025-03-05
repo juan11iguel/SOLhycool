@@ -49,7 +49,7 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
     function error = inner_model(x)
         Tc_in = x(1);
         Tc_out = x(2);
-        U=condenser_heat_transfer_coefficient(mc_kgs, Tc_in, Tv_C, options.option);
+        U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv_C, options.option); % qc/mc: kg/s -> m3/h
         
         % ms_u=ms/3600; % kg/h -> kg/s
         % mc_u=qc*1000/3600; % m³/h -> kg/s

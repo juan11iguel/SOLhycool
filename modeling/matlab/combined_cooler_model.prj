@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="825787372" file="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/combined_cooler_model.prj" location="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo" name="combined_cooler_model" preferred-package-location="/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
+  <configuration build-checksum="2447773735" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
     <param.appname>combined_cooler_model</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.0</param.version>
+    <param.version>1.1</param.version>
     <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
     <param.email>lroca@psa.es</param.email>
     <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
@@ -13,7 +13,7 @@
     <param.guid />
     <param.installpath.string>/CIEMAT_-_Plataforma_Solar_de_Almería/combined_cooler_model/</param.installpath.string>
     <param.installpath.combo>option.installpath.user</param.installpath.combo>
-    <param.logo>${PROJECT_ROOT}/assets/solhycool_logo.png</param.logo>
+    <param.logo />
     <param.install.notes />
     <param.target.install.notes>In the following directions, replace MR/R2024b by the directory on the target machine where MATLAB is installed, or MR by the directory where the MATLAB Runtime is installed.
 
@@ -67,17 +67,17 @@ For details, see GettingStarted.html, distributed with this package, or the offi
     <param.net.tsa.namespace />
     <param.net.tsa.superclass>Class1</param.net.tsa.superclass>
     <param.net.tsa.metadata />
-    <param.net.tsa.metadata.assembly>/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo</param.net.tsa.metadata.assembly>
+    <param.net.tsa.metadata.assembly>/home/patomareao/development/SOLhycool/modeling/matlab</param.net.tsa.metadata.assembly>
     <param.net.saved.interface />
     <param.cpp.api>option.cpp.all</param.cpp.api>
     <unset>
       <param.icon />
       <param.icons />
-      <param.version />
       <param.screenshot />
       <param.guid />
       <param.installpath.string />
       <param.installpath.combo />
+      <param.logo />
       <param.install.notes />
       <param.enable.clean.build />
       <param.user.defined.mcr.options />
@@ -170,8 +170,8 @@ For details, see GettingStarted.html, distributed with this package, or the offi
     </fileset.examples>
     <fileset.documentation />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}/exports/for_testing" name="combined_cooler_model" optional="false">/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_testing/combined_cooler_model</file>
-      <file location="${PROJECT_ROOT}/exports/for_testing" name="setup.py" optional="false">/home/patomareao/Nextcloud/E47/E47_TECHNICAL/DESAL PROJECTS/1K235_SOLHYCOOL/Ejecución/T2.2 - Optimización de la operación/Modelo Completo/exports/for_testing/setup.py</file>
+      <file location="${PROJECT_ROOT}/exports/for_testing" name="setup.py" optional="false">/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_testing/setup.py</file>
+      <file location="${PROJECT_ROOT}/exports/for_testing" name="combined_cooler_model" optional="false">/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_testing/combined_cooler_model</file>
     </build-deliverables>
     <workflow />
     <matlab>

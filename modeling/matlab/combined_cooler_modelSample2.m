@@ -11,6 +11,6 @@ Tv = 43.324458513828800;
 Tv_in = [];
 
 options = struct('model_type', 'data', 'lb', Tv, 'ub', Tv, 'x0', nan, 'silence_warnings', true, 'parameters', default_parameters()); % Default values
-options.parameters.condenser_option = 5;
+options.parameters.condenser_option = 7;
 
 [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_in, options);

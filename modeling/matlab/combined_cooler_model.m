@@ -124,6 +124,21 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     end
     % Additional outputs
     Ce_c = recirculation_pump_consumption(qc_m3h);
+
+    % Validate consumptions
+    Ce_c = max(0, Ce_c);
+    Ce_dc = max(0, Ce_dc); 
+    Ce_wct = max(0, Ce_wct);
+    Cw_wct = max(0, Cw_wct);
+
+    % Validate fan frequencies
+    if Ce_dc < 1e-6
+        wdc = 0; % DC not operating
+    end
+    if Ce_wct < 1e-6
+        wwct = 0; % WCT not operating
+    end
+
     Ce_cc = Ce_dc + Ce_wct;
     Ce = Ce_cc + Ce_c;
     Cw = Cw_wct;
