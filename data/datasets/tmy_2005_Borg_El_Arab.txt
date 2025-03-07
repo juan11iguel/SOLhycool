@@ -1,5 +1,5 @@
 Borg El Arab
- 30,915        29,5456       10            2            Azimut = 0    Elevación = 31
+ 30,915        29,5456       10            2            Azimut = 0    ElevaciÃ³n = 31
 
  y	 m	 dm	 h	G_Gh	G_Dh	G_Gk	G_Bn	 Ta	 RH	 hs	 Az	RR	 Td
  2005	 1	 1	 1	0	0	0	0	13.3	84	 0.0	-142.6	0.5	10.7
