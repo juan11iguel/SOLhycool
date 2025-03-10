@@ -68,6 +68,9 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
            p11 =   6.084e-05 ;
            p02 =  -8.933e-07 ;
            U = (p00 + p10*Tc_in_C + p01*mc2_tubo + p20*Tc_in_C^2 + p11*Tc_in_C*mc2_tubo + p02*mc2_tubo^2)*1000;
+
+        case 8 %Uc de El-Dessouky
+           U=(1.7194+(3.2063e-3*Tv_C)+(1.5971e-5*Tv_C^2)-(1.9918e-7*Tv_C^3))*1000; % W/m2   
     
     end
     U=U/1000; % kW/m2ºC 
