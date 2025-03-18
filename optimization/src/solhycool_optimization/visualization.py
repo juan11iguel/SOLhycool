@@ -1,20 +1,23 @@
 from collections.abc import Iterable
 import numpy as np
-import plotly.graph_objects as go
-import plotly.colors
-from plotly.colors import hex_to_rgb
+import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from phd_visualizations.constants import plt_colors, dash_types
 
-def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str = "kWe", ) -> go.Figure:
+def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str = "kWe", **kwargs) -> go.Figure:
     # Create a histogram of the fitness_list
     fig = px.violin(fitness_list, box=True, # draw box plot inside the violin
                     points='all', # can be 'outliers', or False
                     # side="negative" # <- only available in the go.Violin object
                 )
+    
+    kwargs.setdefault("title", f"<b>Distribution of solutions</b><br>Variance: {np.var(fitness_list):.3f}")
+    kwargs.setdefault("xaxis_title", "Fitness",)
     fig.update_layout(
         yaxis_title = fitness_units,
-        xaxis_title = "Fitness",
-        title = f"<b>Distribution of solutions</b><br>Variance: {np.var(fitness_list):.3f}"
+        **kwargs,
     )
     
     return fig
@@ -36,6 +39,99 @@ def plot_obj_scape_comp_1d(fitness_history_list: list[np.ndarray[float]], algo_i
     fig.update_layout(**kwargs)
     
     return fig
+
+
+def plot_algo_comparison(results: list[dict], **kwargs) -> go.Figure:
+
+    rows, cols = len(results), 2
+
+    # Create the subplot layout
+    combined_fig = make_subplots(rows=rows, cols=cols, 
+                                row_titles=np.arange(len(results)).tolist(),#[f"{dt:%h}" for dt in df_.index],
+                                column_titles=["Fitness evolution", "Solutions distribution"],)
+
+    algo_ids = list(set([values["algo_id"] for values in results[0].values()]))
+    avg_fitness_per_algo = {algo_id: [] for algo_id in algo_ids}
+    avg_fitness_per_alt = {cs_id: [] for cs_id in results[0].keys()}
+
+    # Loop through and add traces
+    for idx in range(len(results)): # len(results)
+        result = results[idx]
+        r = idx+1
+        
+        df_aux = pd.DataFrame.from_dict(result, orient='index')
+        df_aux.reset_index(inplace=True)
+        df_aux.rename(columns={'index': 'cs_id'}, inplace=True)
+        
+        # algo_ids = list(df["algo_id"].unique())
+        for algo_id in algo_ids:
+            avg_fitness_per_algo[algo_id].append(df_aux[df_aux["algo_id"]==algo_id]["avg_fitness"].values)
+        for _, row in df_aux.iterrows():
+            avg_fitness_per_alt[row["cs_id"]].append(row["avg_fitness"])
+            
+        # Solutions distribution
+        fig = px.violin(df_aux, y="avg_fitness", x="algo_id", color="algo_id", box=True, points="all", hover_data=["cs_id"])
+        for data in fig.data:
+            data.update(xaxis=f"x2", yaxis=f"y{r}", showlegend=False if r > 1 else True)
+            combined_fig.add_trace(data, row=r, col=2)
+            # combined_fig.update_yaxes(range=fig.layout.yaxis.range, row=r, col=1)
+                
+        # Fitness evolution
+        cnt=0
+        selector_idx0=0
+        for idx, row in df_aux.iterrows():
+            selector_idx = algo_ids.index(row["algo_id"])
+            if selector_idx0 != selector_idx:
+                cnt=0
+                selector_idx0 = selector_idx
+            combined_fig.add_trace(
+                go.Scatter(
+                    x=np.arange(len(row["fitness_history"])),
+                    y=row["fitness_history"],
+                    mode="lines",
+                    name=row["cs_id"],
+                    line=dict(color=plt_colors[selector_idx], dash=dash_types[cnt]),
+                    showlegend=False if r > 1 else True
+                ),
+                row=r, col=1
+            )
+            cnt+=1
+
+    # Update the overall layout
+    # fitness_text = ", ".join([f"{algo_id}: {np.mean(avg_fitness_per_algo[algo_id]):.3f}" for algo_id in avg_fitness_per_algo.keys()])
+    # fitness_alt_text = ", ".join([f"{cs_id}: {np.mean(avg_fitness_per_alt[cs_id]):.3f}" for cs_id in avg_fitness_per_alt.keys()])
+    # Find best algo (highest mean fitness)
+    best_algo_id = min(avg_fitness_per_algo, key=lambda k: np.mean(avg_fitness_per_algo[k]))
+    fitness_text = ", ".join([
+        f"<b>{algo_id}: {np.mean(avg_fitness_per_algo[algo_id]):.3f}</b>" if algo_id == best_algo_id
+        else f"{algo_id}: {np.mean(avg_fitness_per_algo[algo_id]):.3f}"
+        for algo_id in avg_fitness_per_algo
+    ])
+
+    # Same for alt
+    best_cs_id = min(avg_fitness_per_alt, key=lambda k: np.mean(avg_fitness_per_alt[k]))
+    fitness_alt_text = ", ".join([
+        f"<b>{cs_id}: {np.mean(avg_fitness_per_alt[cs_id]):.3f}</b>" if cs_id == best_cs_id
+        else f"{cs_id}: {np.mean(avg_fitness_per_alt[cs_id]):.3f}"
+        for cs_id in avg_fitness_per_alt
+    ])
+    
+    combined_fig.update_layout(
+        height=2000, 
+        width=1000, 
+        margin=dict(l=5, r=5, t=150, b=20),
+        title=dict(
+          text="<b>Algorithm comparison </b>for a full day of operation",
+          x=0,
+          subtitle=dict(
+            text=f"Average fitness per algo | {fitness_text}<br>Average fitness per alternative | {fitness_alt_text}",
+            font=dict(size=10, color="gray")
+          )
+        ),
+        **kwargs
+    )
+    
+    return combined_fig
         
 """
 From here is basically copied from EvoX: https://github.com/EMI-Group/evox/blob/main/src/evox/vis_tools/plot.py#L4
