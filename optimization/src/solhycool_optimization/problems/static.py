@@ -31,6 +31,8 @@ class BaseProblem(ABC):
     c_tol: list[float] = 0.5 # [0.5, 0.5] # Constraint tolerances (ºC, ºC)
     Qmax: float = 150 # kWth
     model_inputs_range: ModelInputsRange = ModelInputsRange()
+    use_multiple_sources: bool = None # Use multiple sources of water
+    sample_time: float = None # Sample time (h)
     
     @property
     def cc_model(self):
@@ -64,6 +66,8 @@ class BaseProblem(ABC):
                  store_fitness: bool = False,
                  real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds.from_model_inputs_range(),
                  debug_mode: bool = False,
+                 sample_time: float = 1,
+                 use_multiple_sources: bool = False,
                 ) -> None:
 
         self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
@@ -71,6 +75,11 @@ class BaseProblem(ABC):
         self.store_x = store_x
         self.store_fitness = store_fitness
         self.debug_mode = debug_mode
+        self.sample_time = sample_time
+        self.use_multiple_sources = use_multiple_sources
+        
+        if use_multiple_sources:
+            assert sample_time is not None, "Sample time must be defined when using multiple sources of water"
         
         # self.cc_model = combined_cooler_model.initialize()
         
@@ -128,9 +137,18 @@ class BaseProblem(ABC):
     def evaluate_static_problem(self, x: np.ndarray[float]) -> OperationPoint:
 
         dv = self.decision_vector_to_decision_variables(x)
-        ev = self.env_vars.to_matlab()
+        ev = self.env_vars
+        ev_m = self.env_vars.to_matlab()
         
-        _, _, detailed = self.cc_model.combined_cooler_model(ev.Tamb, ev.HR, ev.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev.Tv, nargout=3)
+        _, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv, nargout=3)
+
+        # Calculate cost using multiple sources
+        if  self.use_multiple_sources:
+            Cw_s1 = min( Cw_lh*self.sample_time, ev.Vavail*1e3) / self.sample_time
+            Cw_s2 = Cw_lh - Cw_s1
+            
+            detailed["Cw_s1"] = Cw_s1
+            detailed["Cw_s2"] = Cw_s2
 
         return OperationPoint.from_multiple_sources(detailed, env_vars=self.env_vars)
 
@@ -169,6 +187,8 @@ class DryCoolerProblem(BaseProblem):
             store_fitness=store_fitness,
             real_dec_vars_box_bounds=real_dec_vars_box_bounds,
             debug_mode=debug_mode,
+            sample_time=None,
+            use_multiple_sources=False,
         )
 
         # self.initialize_matlab_model().warning('off', 'all', nargout=0)  # Turns off all warnings
@@ -208,7 +228,7 @@ class DryCoolerProblem(BaseProblem):
         ]
         ics = [
             abs( detailed["Tcc_out"] - detailed["Tc_in"] ),        # Tcc,out == Tc,in
-            detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,  # Tc,out < Tv-ΔTc-v,min 
+            detailed["Tc_out"] - (ev.Tv[0][0] - self.deltaTcv_min),  # Tc,out < Tv-ΔTc-v,min 
             abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
             # detailed["Tdc_in"] - self.model_inputs_range.Tdc_in[1],# Tdc < Tdc,max
             # self.model_inputs_range.Tdc_in[0] - detailed["Tdc_in"],# Tdc > Tdc,min
@@ -230,14 +250,14 @@ class DryCoolerProblem(BaseProblem):
 class WetCoolerProblem(BaseProblem):
     """
     Wet cooling tower problem with no water consumption restriction
-    and only one source of water
+    and one or two sources of water
 
     Optimization problem type: static optimization
     """
 
     dec_var_ids: list[str] = ["qc", "wwct"] # Decision variables ids
     size_dec_vector: int = 2 # Size of the decision vector
-    c_tol: list[float] = [0.5, 1e-3, 10]
+    c_tol: list[float] = [0.1, 1e-3, 10]
     
     def __init__(self,
                  env_vars: EnvironmentVariables,
@@ -245,6 +265,8 @@ class WetCoolerProblem(BaseProblem):
                  store_fitness: bool = False,
                  real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds.from_model_inputs_range(),
                  debug_mode: bool = False,
+                 sample_time: float = 1,
+                 use_multiple_sources: bool = False,
                 ) -> None:
 
         super().__init__(
@@ -253,6 +275,8 @@ class WetCoolerProblem(BaseProblem):
             store_fitness = store_fitness,
             real_dec_vars_box_bounds = real_dec_vars_box_bounds,
             debug_mode = debug_mode,
+            sample_time = sample_time,
+            use_multiple_sources = use_multiple_sources,
         )
 
     # def get_nec(self) -> int:
@@ -284,16 +308,17 @@ class WetCoolerProblem(BaseProblem):
     def fitness(self, x: np.ndarray[float], ) -> list[float]:
 
         dv = self.decision_vector_to_decision_variables(x)
-        ev = self.env_vars.to_matlab()
+        ev = self.env_vars
+        ev_m = self.env_vars.to_matlab()
 
-        Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev.Tamb, ev.HR, ev.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev.Tv, nargout=3)
+        Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv, nargout=3)
 
         ecs = [
         #     detailed["Tcc_out"] - detailed["Tc_in"],
         ]
         ics = [
             abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
-            detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,    # Tc,out < Tv-ΔTc-v,min 
+            detailed["Tc_out"] - (ev.Tv - self.deltaTcv_min),    # Tc,out < Tv-ΔTc-v,min 
             abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
             
             # detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
@@ -301,27 +326,38 @@ class WetCoolerProblem(BaseProblem):
             # detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1
         ]
 
-        J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0] # u.m./l
+        # If Vavail is defined in environment, calculate cost using multiple sources
+        if  self.use_multiple_sources:
+            Cw_s1 = min( Cw_lh*self.sample_time, ev.Vavail*1e3) / self.sample_time
+            Cw_s2 = Cw_lh - Cw_s1
+            Jw = Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2 # u.m./h
+            
+            # print(f"{Cw_s1=:.2f} + {Cw_s2=:.2f} = {Cw_lh=:.2f}")
+            # print(f"{ev.Pw_s1=:.2f} + {ev.Pw_s2=:.2f} = {Jw=:.2f}")
+        else:
+            Jw = Cw_lh * ev.Pw # u.m./h
+            
+        J = Ce_kWe * ev.Pe + Jw # u.m./h
         outputs = [J, *ecs, *ics]
 
         self.store_results(fitness=J, x=x)
 
         if self.debug_mode:
-            print(f"{Ce_kWe=:.2f} x {ev.Pe[0][0]=:.3f} + {Cw_lh=:.2f} x {ev.Pw[0][0]=:.3f} = {J:.2f} | {ics=}")
+            print(f"{Ce_kWe=:.2f} x {ev.Pe=:.3f} + {Cw_lh=:.2f} x {ev.Pw=:.3f} = {J:.2f} | {ics=}")
 
         return outputs
     
 class CombinedCoolerProblem(BaseProblem):
     """
     Combined cooler problem with no water consumption restriction
-    and only one source of water
+    and one or two sources of water
 
     Optimization problem type: static optimization
     """
 
     dec_var_ids: list[str] = ["qc", "Rp", "Rs", "wdc", "wwct"] # Decision variables ids
     size_dec_vector: int = 5 # Size of the decision vector
-    c_tol: list[float] = [0.5, 1e-3, 10]
+    c_tol: list[float] = [0.1, 1e-3, 10]
     Qmax: float = 230 # kWth
 
     def __init__(self,
@@ -330,6 +366,8 @@ class CombinedCoolerProblem(BaseProblem):
                  store_fitness: bool = False,
                  real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds.from_model_inputs_range(),
                  debug_mode: bool = False,
+                 sample_time: float = 1,
+                 use_multiple_sources: bool = True,
                 ) -> None:
 
         super().__init__(
@@ -338,6 +376,8 @@ class CombinedCoolerProblem(BaseProblem):
             store_fitness = store_fitness,
             real_dec_vars_box_bounds = real_dec_vars_box_bounds,
             debug_mode = debug_mode,
+            sample_time = sample_time,
+            use_multiple_sources = use_multiple_sources,
         )
 
     # def get_nec(self) -> int:
@@ -369,24 +409,36 @@ class CombinedCoolerProblem(BaseProblem):
     def fitness(self, x: np.ndarray[float], ) -> list[float]:
 
         dv = self.decision_vector_to_decision_variables(x)
-        ev = self.env_vars.to_matlab()
+        ev = self.env_vars
+        ev_m = self.env_vars.to_matlab()
 
-        Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev.Tamb, ev.HR, ev.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev.Tv, nargout=3)
+        Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv, nargout=3)
 
         ecs = [
         #     detailed["Tcc_out"] - detailed["Tc_in"],
         ]
         ics = [
             abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
-            detailed["Tc_out"] - ev.Tv[0][0] - self.deltaTcv_min,    # Tc,out < Tv-ΔTc-v,min 
+            detailed["Tc_out"] - (ev.Tv - self.deltaTcv_min),    # Tc,out < Tv-ΔTc-v,min 
             abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
             
             # detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
             # self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
             # detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1
         ]
+        
+        # If Vavail is defined in environment, calculate cost using multiple sources
+        if  self.use_multiple_sources:
+            Cw_s1 = min( Cw_lh*self.sample_time, ev.Vavail*1e3) / self.sample_time
+            Cw_s2 = Cw_lh - Cw_s1
+            Jw = Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2 # u.m./h
+            
+            # print(f"{Cw_s1=:.2f} + {Cw_s2=:.2f} = {Cw_lh=:.2f}")
+            # print(f"{ev.Pw_s1=:.2f} + {ev.Pw_s2=:.2f} = {Jw=:.2f}")
+        else:
+            Jw = Cw_lh * ev.Pw # u.m./h
 
-        J = Ce_kWe * ev.Pe[0][0] + Cw_lh * ev.Pw[0][0] # u.m./l
+        J = Ce_kWe * ev.Pe + Jw # u.m./l
         outputs = [J, *ecs, *ics]
 
         self.store_results(fitness=J, x=x)

@@ -48,7 +48,8 @@ def plot_algo_comparison(results: list[dict], **kwargs) -> go.Figure:
     # Create the subplot layout
     combined_fig = make_subplots(rows=rows, cols=cols, 
                                 row_titles=np.arange(len(results)).tolist(),#[f"{dt:%h}" for dt in df_.index],
-                                column_titles=["Fitness evolution", "Solutions distribution"],)
+                                column_titles=["Fitness evolution", "Solutions distribution"],
+                                shared_xaxes=True)
 
     algo_ids = list(set([values["algo_id"] for values in results[0].values()]))
     avg_fitness_per_algo = {algo_id: [] for algo_id in algo_ids}

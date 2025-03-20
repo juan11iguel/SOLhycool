@@ -1,3 +1,4 @@
+import itertools
 from enum import Enum
 import numpy as np
 import pandas as pd
@@ -45,7 +46,7 @@ class AlgoFitnessCol(Enum):
 def optimize(problem: BaseProblem, extra_outputs: bool = False,  
              algo_id: str = "compass_search", initial_pop_size: int = 20,
              n_trials: int = 5, log_verbosity: int = 1, 
-             use_mbh: bool = True, use_cstrs: bool = False, wrapper_algo_iters: int = 3,
+             use_mbh: bool = False, use_cstrs: bool = False, wrapper_algo_iters: int = 3,
              max_iter: int = 200, tol: float = 1e-1
             ) -> list[dict] | tuple[list[dict], list[pg.algorithm], list[pg.population], np.ndarray, list[np.ndarray]]:
     
@@ -112,11 +113,14 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
             algo_cls = getattr(pg, algo_id)
         algo_logs = pd.DataFrame(algo.extract(algo_cls).get_log(), columns=AlgoLogColumns[algo_id_].columns, dtype=float)
         
-        fitness_history = np.interp(
-            x=np.arange(pop.problem.get_fevals()), 
-            xp=algo_logs["Fevals"], 
-            fp=algo_logs[AlgoFitnessCol[algo_id_].value]
-        )
+        if log_verbosity > 0:
+            fitness_history = np.interp(
+                x=np.arange(pop.problem.get_fevals()), 
+                xp=algo_logs["Fevals"], 
+                fp=algo_logs[AlgoFitnessCol[algo_id_].value]
+            )
+        else:
+            fitness_history = []
         
         return op_pt, algo, pop, pop.champion_f, fitness_history
         
@@ -147,3 +151,63 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         return operation_pt_list, algo_list, pop_list, fitness_list, fitness_history_list
     else:
         return operation_pt_list
+    
+    
+from dataclasses import asdict
+
+def evaluate_global_algos(
+    problem,
+    n_trials: int = 1,
+    max_n_obj_fun_evals: int = 1000,
+    algo_ids: list[str] = ["ihs", "sea", "de", ],
+    use_cstr: list[bool] = [False, True, True,],
+    pop_size: list[int] = [50, 100, 400],
+    wrapper_algo_iters: int = 10,
+    log_verbosity: list[int] = [100, 1, 1],
+) -> dict:
+    
+    results = {}
+    # {case_study_id: {parameters: ..., avg_fitness: x, var_fitness: x}}
+
+    for algo_id, pop_size in itertools.product(algo_ids, pop_size):
+        idx = algo_ids.index(algo_id)
+        max_iter = max_n_obj_fun_evals
+        if use_cstr[idx]:
+            max_iter = max_iter // wrapper_algo_iters
+        
+        if algo_id not in ["sea", "ihs"]: # Evolves only one individual
+            max_iter = max_iter // pop_size
+        
+        logger.info(f"Running {algo_id} with cstr={use_cstr[idx]}, pop_size={pop_size} and max_iter={max_iter}")
+        
+        algo_str = f"{algo_id}_cstr" if use_cstr[idx] else algo_id
+        case_study_id = f"{algo_str}_{pop_size}_{max_iter}"
+        
+        operation_pt_list, algo_list, pop_list, fitness_list, fitness_history_list = optimize(
+            problem, algo_id=algo_id, 
+            n_trials = n_trials, log_verbosity = log_verbosity[idx], extra_outputs=True, 
+            max_iter=max_iter, use_mbh=False, use_cstrs=use_cstr[idx],
+            initial_pop_size=pop_size, wrapper_algo_iters=wrapper_algo_iters, 
+        )
+        best_idx = np.argmin(fitness_list[:, 0])
+
+        results[case_study_id] = dict(
+            algo_id=algo_id,
+            params = dict(pop_size = pop_size, max_iter = max_iter, cstr_sa = use_cstr[idx], wrapper_algo_iters = wrapper_algo_iters),
+            avg_fitness = np.mean(fitness_list[:, 0]),
+            var_fitness = np.var(fitness_list[:, 0]),
+            best_op_pt = asdict(operation_pt_list[best_idx]),
+            avg_n_obj_fun_evals = np.floor(np.mean([len(fitness_history) for fitness_history in fitness_history_list])),
+            fitness_history = fitness_history_list[best_idx]
+        )
+        
+    return results
+
+def evaluate_local_algos(
+    problem,
+    n_trials: int = 1,
+    algo_ids: list[str] = ["ipopt", "slsqp", "compass_search"],
+    pop_size: list[int] = [50, 100, 400],
+    wrapper_algo_iters: int = 5,
+) -> dict:
+    pass

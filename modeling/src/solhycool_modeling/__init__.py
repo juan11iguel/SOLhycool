@@ -139,6 +139,12 @@ class EnvironmentVariables:
         self.Q = self.Q * reduction_factor
         self.mv = self.mv * reduction_factor
         
+    def update_available_water(self, Cw_lh: float, sample_time_h: float = 1) -> float:
+        # Vavail in m^3
+        self.Vavail = max(0, self.Vavail-Cw_lh*1e-3*sample_time_h)
+        
+        return self.Vavail
+        
 
     def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["number", "matlab"] = "number") -> "EnvironmentVariables":
         """
