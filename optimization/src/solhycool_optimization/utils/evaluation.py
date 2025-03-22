@@ -1,5 +1,6 @@
 import itertools
 from enum import Enum
+from dataclasses import asdict
 import numpy as np
 import pandas as pd
 import pygmo as pg
@@ -22,6 +23,7 @@ class AlgoLogColumns(Enum):
     IHS = ["Fevals", "ppar", "bw", "dx", "df", "Violated", "Viol. Norm", "ideal1"]
     MBH = ["Fevals", "Best", "Violated", "Viol. Norm", "Trial"]
     CSTRS_SELF_ADAPTIVE = ["Iter", "Fevals", "Best", "Infeasibility", "Violated", "Viol. Norm", "N. Feasible"]
+    SLSQP = ["Fevals", "objval", "violated", "viol. norm", "feasible"] 
     
     @property
     def columns(self) -> list[str]:
@@ -42,12 +44,14 @@ class AlgoFitnessCol(Enum):
     IHS = "ideal1"
     MBH = "Best"
     CSTRS_SELF_ADAPTIVE = "Best"
+    SLSQP = "objval"
 
 def optimize(problem: BaseProblem, extra_outputs: bool = False,  
              algo_id: str = "compass_search", initial_pop_size: int = 20,
              n_trials: int = 5, log_verbosity: int = 1, 
              use_mbh: bool = False, use_cstrs: bool = False, wrapper_algo_iters: int = 3,
-             max_iter: int = 200, tol: float = 1e-1
+             max_iter: int = 200, tol: float = 1e-1, 
+             pop0: list[list[float]] = None, evaluate_global_with_local: bool = False,
             ) -> list[dict] | tuple[list[dict], list[pg.algorithm], list[pg.population], np.ndarray, list[np.ndarray]]:
     
     def optimize_single() -> tuple[dict, pg.algorithm, pg.population, np.ndarray]:
@@ -98,6 +102,10 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         algo.set_verbosity(log_verbosity)
 
         pop = pg.population(prob, initial_pop_size)
+        
+        if pop0 is not None:
+            [pop.push_back(x0) for x0 in pop0]
+        
         pop = algo.evolve(pop)
         
         op_pt = problem.evaluate(pop.champion_x)
@@ -109,6 +117,8 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
             algo_cls = pg.mbh
         elif use_cstrs:
             algo_cls = pg.cstrs_self_adaptive
+        elif algo_id in ["slsqp", ]:
+            algo_cls = pg.nlopt
         else:
             algo_cls = getattr(pg, algo_id)
         algo_logs = pd.DataFrame(algo.extract(algo_cls).get_log(), columns=AlgoLogColumns[algo_id_].columns, dtype=float)
@@ -125,6 +135,10 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         return op_pt, algo, pop, pop.champion_f, fitness_history
         
     # Outer function
+    if pop0 is not None:
+        for idx_x0, x0 in enumerate(pop0):
+            assert len(x0) == problem.size_dec_vector, f"Input decision vector at position {idx_x0} length does not match problem decision vector size: {len(x0)=} vs {problem.size_dec_vector=}"
+    
     fitness_list: list[float] = []
     algo_list: list = []
     operation_pt_list = []
@@ -144,6 +158,25 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         fitness_history_list.append(fitness_history)
         
     fitness_list = np.array(fitness_list)
+
+    # Evaluate the best solution with a local optimizer
+    if evaluate_global_with_local:
+        best_idx = np.argmin(fitness_list[:, 0])
+        algo_id = "slsqp"
+        tol=1e-9
+        pop0 = [pop_list[best_idx].champion_x]
+        use_cstrs = False
+        use_mbh = False
+        op_pt, algo, pop, fitness, fitness_history = optimize_single()
+        
+        logger.info(f"After evaluting best solution with local optimizer: {fitness[0]}, before {fitness_list[best_idx][0]}")
+        
+        # Replace the best solution
+        fitness_list[best_idx] = fitness
+        operation_pt_list[best_idx] = op_pt
+        algo_list[best_idx] = algo
+        pop_list[best_idx] = pop
+        fitness_history_list[best_idx] = fitness_history
         
     logger.info(f"Variance: {np.var(fitness_list[:, 0]):.3f} | {fitness_list[:, 0]}")
     
@@ -153,7 +186,6 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         return operation_pt_list
     
     
-from dataclasses import asdict
 
 def evaluate_global_algos(
     problem,

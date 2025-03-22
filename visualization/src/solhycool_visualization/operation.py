@@ -12,6 +12,7 @@ def plot_hydraulic_distribution(qc: np.ndarray, Rp: np.ndarray, Rs: np.ndarray, 
     qdc = qc * (1 - Rp)
     qwct_p = qc * Rp
     qwct_s = qdc * Rs
+    qdc_only = qdc-qwct_s
     x = np.arange(len(qc)) if x is None else x
     
     # print(f"{qc=}, \n{qwct_p=}, \n{qdc=}, \n{qwct_s=}")
@@ -21,15 +22,30 @@ def plot_hydraulic_distribution(qc: np.ndarray, Rp: np.ndarray, Rs: np.ndarray, 
     # Add stacked bars for qdc and qwct_p
     fig.add_trace(go.Bar(
         x=x,
-        y=qdc,
-        name='DC',
+        y=qdc_only,
+        name='DC //',
         marker=dict(color=ComponentColors.DC.value)
+    ))
+    
+    fig.add_trace(go.Bar(
+        x=x,
+        y=qwct_s,
+        name='DC 🠒 WCT',
+        marker=dict(
+            color=ComponentColors.DC.value, 
+            pattern=dict(shape="/", 
+                         fgcolor=ComponentColors.WCT.value, 
+                         size=15,
+                         fgopacity=1,
+                         solidity=0.5)
+            ),
+        # marker_pattern_shape
     ))
 
     fig.add_trace(go.Bar(
         x=x,
         y=qwct_p,
-        name='WCT',
+        name='WCT //',
         marker=dict(color=ComponentColors.WCT.value)
     ))
     
@@ -41,21 +57,21 @@ def plot_hydraulic_distribution(qc: np.ndarray, Rp: np.ndarray, Rs: np.ndarray, 
 
 
     # Add shape for qwct_s starting from the end of qdc
-    for i in range(len(qc)):
-        # print(f"{qc[i]=:.0f}, {qdc[i]=:.0f}, {qwct_p[i]=:.0f}, {qwct_s[i]=:.0f}, {Rp[i]=}, {Rs[i]=}")
-        fig.add_shape(
-            type="rect",
-            xref="x",
-            yref="y",
-            x0=x[i] - dx, x1=x[i] + dx,  # Dynamically computed x-range
-            y0=qdc[i] - qwct_s[i], y1=qdc[i],
-            line=dict(color=ComponentColors.WCT.value, width=5),
-            # fillcolor="red",
-            opacity=1,
-            layer="above",
-            name="DC 🠒 WCT",
-            showlegend=True if i == 0 else False,
-        )
+    # for i in range(len(qc)):
+    #     # print(f"{qc[i]=:.0f}, {qdc[i]=:.0f}, {qwct_p[i]=:.0f}, {qwct_s[i]=:.0f}, {Rp[i]=}, {Rs[i]=}")
+    #     fig.add_shape(
+    #         type="rect",
+    #         xref="x",
+    #         yref="y",
+    #         x0=x[i] - dx, x1=x[i] + dx,  # Dynamically computed x-range
+    #         y0=qdc[i] - qwct_s[i], y1=qdc[i],
+    #         line=dict(color=ComponentColors.WCT.value, width=5),
+    #         # fillcolor="red",
+    #         opacity=1,
+    #         layer="above",
+    #         name="DC 🠒 WCT",
+    #         showlegend=True if i == 0 else False,
+    #     )
 
     fig.update_layout(
         barmode='stack', 

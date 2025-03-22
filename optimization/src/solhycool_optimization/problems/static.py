@@ -278,7 +278,7 @@ class WetCoolerProblem(BaseProblem):
             sample_time = sample_time,
             use_multiple_sources = use_multiple_sources,
         )
-
+        
     # def get_nec(self) -> int:
     #     return 1
 
@@ -359,6 +359,8 @@ class CombinedCoolerProblem(BaseProblem):
     size_dec_vector: int = 5 # Size of the decision vector
     c_tol: list[float] = [0.1, 1e-3, 10]
     Qmax: float = 230 # kWth
+    penalization_factor: float = 0.2 # Penalization factor to apply when flow is circulated on a stoped system (1 would equal doubling the cost)
+
 
     def __init__(self,
                  env_vars: EnvironmentVariables,
@@ -379,6 +381,8 @@ class CombinedCoolerProblem(BaseProblem):
             sample_time = sample_time,
             use_multiple_sources = use_multiple_sources,
         )
+        assert self.penalization_factor >= 0, f"Penalization factor needs to be a number greater or equal to zero, not {self.penalization_factor}"
+
 
     # def get_nec(self) -> int:
     #     return 1
@@ -411,6 +415,7 @@ class CombinedCoolerProblem(BaseProblem):
         dv = self.decision_vector_to_decision_variables(x)
         ev = self.env_vars
         ev_m = self.env_vars.to_matlab()
+        b = self.real_dec_vars_box_bounds
 
         Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv, nargout=3)
 
@@ -426,7 +431,6 @@ class CombinedCoolerProblem(BaseProblem):
             # self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
             # detailed["Twct_out"]+1 - detailed["Twct_in"]               # Twct,in > Twct,out+1
         ]
-        
         # If Vavail is defined in environment, calculate cost using multiple sources
         if  self.use_multiple_sources:
             Cw_s1 = min( Cw_lh*self.sample_time, ev.Vavail*1e3) / self.sample_time
@@ -437,8 +441,24 @@ class CombinedCoolerProblem(BaseProblem):
             # print(f"{ev.Pw_s1=:.2f} + {ev.Pw_s2=:.2f} = {Jw=:.2f}")
         else:
             Jw = Cw_lh * ev.Pw # u.m./h
+            
 
         J = Ce_kWe * ev.Pe + Jw # u.m./l
+        
+        # Penalize water circulation on stopped system (w=0)
+        if detailed["wdc"] <= b.wdc[0]:
+            # qdc should be zero
+            # J = J + J * penalization factor / qc_max * qdc
+            J += self.penalization_factor*J/b.qc[-1] * detailed["qdc"]
+            if self.debug_mode:
+                print(f"Penalizado!: dc {self.penalization_factor*J/b.qc[-1] * detailed["qdc"]}")
+        if detailed["wwct"] <= b.wwct[0]:
+            # qwct should be zero
+            # J = J + J * penalization factor / qc_max * qwct
+            J += self.penalization_factor*J/b.qc[-1] * detailed["qwct"]
+            if self.debug_mode:
+                print(f"Penalizado!: wct {self.penalization_factor*J/b.qc[-1] * detailed["qdc"]}")
+        
         outputs = [J, *ecs, *ics]
 
         self.store_results(fitness=J, x=x)
