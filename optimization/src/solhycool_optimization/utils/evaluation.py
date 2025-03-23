@@ -167,6 +167,8 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         pop0 = [pop_list[best_idx].champion_x]
         use_cstrs = False
         use_mbh = False
+        log_verbosity = 0
+        max_iter = 1000
         op_pt, algo, pop, fitness, fitness_history = optimize_single()
         
         logger.info(f"After evaluting best solution with local optimizer: {fitness[0]}, before {fitness_list[best_idx][0]}")

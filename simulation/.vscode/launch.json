@@ -18,10 +18,11 @@
             "name": "Run yearly simulation (static)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static2.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "python": "/miniconda3/envs/conda-env/bin/python"
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": ["--problem_id", "dc"]
         },
         {
             "name": "Test",

@@ -34,32 +34,43 @@ date_span: tuple[str, str] = ("20220117", "20221231")#"20221233")
 date_span_str: str = f"{date_span[0]}_{date_span[1]}"
 
 # Parameters
-initial_pop_size: int = 50
-log_verbosity: int = 100
-algo_id: str = "mbh"
-inner_algo_id: str | None = "compass_search"
-algo_params: dict = {
-    "max_fevals": 300,
-}
-problem_id: Literal["dc", "wct"] = "dc"
+problem_id: Literal["dc", "wct", "cc"] = "dc"
 save_algo_logs: bool = False
+reduce_load: bool = True
+params_per_problem: dict = {
+    "dc": dict(
+        initial_pop_size = 400,
+        log_verbosity = 5,
+        algo_id = "sea",
+        use_mbh = False,
+        use_cstrs = True,
+        n_trials = 3,
+        wrapper_algo_iters=10,
+        max_iter=80,
+    )
+}
+params = params_per_problem[problem_id]
 
 # Import problem definition based on problem_id
 if problem_id == "dc":
-    from solhycool_optimization.problems.static import DcProblem as Problem
+    from solhycool_optimization.problems.static import DryCoolerProblem as Problem
 elif problem_id == "wct":
-    from solhycool_optimization.problems.static import WctProblem as Problem
+    from solhycool_optimization.problems.static import WetCoolerProblem as Problem
+elif problem_id == "cc":
+    from solhycool_optimization.problems.static import CombinedCoolerProblem as Problem
 else:
     raise ValueError(f"Invalid problem_id: {problem_id}")
 
-if algo_id == "mbh":
-    assert inner_algo_id is not None, "If wrapper algorithm is used, a inner_algo_id needs to be specified"
+# if algo_id == "mbh":
+#     assert inner_algo_id is not None, "If wrapper algorithm is used, a inner_algo_id needs to be specified"
 np.set_printoptions(precision=2)
 metadata: dict = {
     "date_span": date_span,
-    "initial_pop_size": initial_pop_size,
-    "algo_id": algo_id,
-    "algo_params": algo_params,
+    "problem_id": problem_id,
+    **params,
+    # "initial_pop_size": initial_pop_size,
+    # "algo_id": algo_id,
+    # "algo_params": algo_params,
 }
 file_id = f"eval_at_{datetime.datetime.now():%Y%m%dT%H%M}"
 
@@ -76,7 +87,8 @@ def process_entry(args) -> tuple[pd.DatetimeIndex, OperationPoint]:
     logger.info(f"Evaluting {dt}")
     
     env_vars = EnvironmentVariables.from_series(ds)
-    env_vars.reduce_load(0.5)
+    if reduce_load:
+        env_vars.reduce_load(0.5)
     
     # print(x)
     result = Problem(env_vars=env_vars).evaluate(x)
@@ -128,8 +140,7 @@ def main() -> None:
      
     # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
     # print(df_sim)
-    
-    
+
     # archi = pg.archipelago()
     # pg._cleanup()
     # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
@@ -139,13 +150,13 @@ def main() -> None:
     # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
     # print(df_sim)
     
-    if algo_id == "mbh":
-        inner_algo = pg.algorithm(getattr(pg, inner_algo_id)(**algo_params))
-        inner_algo.set_verbosity(log_verbosity) 
-        algo = pg.algorithm(pg.mbh(inner_algo))
-    else:
-        algo = pg.algorithm(getattr(pg, algo_id)(**algo_params))
-    algo.set_verbosity(log_verbosity) 
+    # if algo_id == "mbh":
+    #     inner_algo = pg.algorithm(getattr(pg, inner_algo_id)(**algo_params))
+    #     inner_algo.set_verbosity(log_verbosity) 
+    #     algo = pg.algorithm(pg.mbh(inner_algo))
+    # else:
+    #     algo = pg.algorithm(getattr(pg, algo_id)(**algo_params))
+    # algo.set_verbosity(log_verbosity) 
     
     current_month = start_date.month
     results_dict: dict = {}
