@@ -361,7 +361,6 @@ class CombinedCoolerProblem(BaseProblem):
     Qmax: float = 230 # kWth
     penalization_factor: float = 0.2 # Penalization factor to apply when flow is circulated on a stoped system (1 would equal doubling the cost)
 
-
     def __init__(self,
                  env_vars: EnvironmentVariables,
                  store_x: bool = False,
@@ -451,13 +450,13 @@ class CombinedCoolerProblem(BaseProblem):
             # J = J + J * penalization factor / qc_max * qdc
             J += self.penalization_factor*J/b.qc[-1] * detailed["qdc"]
             if self.debug_mode:
-                print(f"Penalizado!: dc {self.penalization_factor*J/b.qc[-1] * detailed["qdc"]}")
+                print(f"Penalizado!: dc {self.penalization_factor*J/b.qc[-1] * detailed['qdc']}")
         if detailed["wwct"] <= b.wwct[0]:
             # qwct should be zero
             # J = J + J * penalization factor / qc_max * qwct
             J += self.penalization_factor*J/b.qc[-1] * detailed["qwct"]
             if self.debug_mode:
-                print(f"Penalizado!: wct {self.penalization_factor*J/b.qc[-1] * detailed["qdc"]}")
+                print(f"Penalizado!: wct {self.penalization_factor*J/b.qc[-1] * detailed['qwct']}")
         
         outputs = [J, *ecs, *ics]
 

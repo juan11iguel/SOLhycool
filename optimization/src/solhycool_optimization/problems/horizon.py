@@ -1,5 +1,7 @@
 from collections.abc import Iterable
+import copy
 from dataclasses import asdict
+import time
 import pygmo as pg
 import numpy as np
 from loguru import logger
@@ -10,14 +12,15 @@ import matlab
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
 from solhycool_optimization import RealDecVarsBoxBounds, DecisionVariables
+
 """ Global variables """
-cc_model = combined_cooler_model.initialize()  # Could we get away initiating this only once at the beginning?
+# cc_model = combined_cooler_model.initialize()  # Could we get away initiating this only once at the beginning?
 
 # TODO: Refactor use of cc_model to use it the same way as in static
 # TODO: Include new constraints
 
-class WetCoolerProblem:
-    """ Wet cooling tower problem with two sources of water: a cheaper and a
+class CombinedCoolerProblem:
+    """ Combined cooler problem with two sources of water: a cheaper and a
     more expensive one, with volume restriction on the cheaper one 
     
     Optimization problem type: receding horizon optimization
@@ -39,55 +42,18 @@ class WetCoolerProblem:
     fitness_history: list[float]  # Fitness record of decision variables sent to the fitness function
     sample_time: float  # Sample time, hours
     Vavail0: float  # Available volume of the cheaper water source
-    dec_var_ids: list[str] = ["qc", "wwct"]  # Decision variables ids
-    
     n_evals: int  # Number of evaluations in the prediction horizon
     size_dec_vector: int  # Size of the decision vector
-    
+    dec_var_ids: list[str] = ["qc", "Rp", "Rs", "wdc", "wwct"]  # Decision variables ids
     deltaTcv_min: float = 2 # Minimum temperature difference between cooling fluid outlet and vapor (ºC) 
-    c_tol: float = 0.5  # Constraint tolerances (ºC)
-    Qmax: float = 150 # kWth
+    c_tol_base: list[float] = [0.1, 1e-3, 10]  # Base constraint tolerance values
+    c_tol: list[float] = None  # Constraint tolerances
+    Qmax: float = 230 # kWth
     model_inputs_range: ModelInputsRange = ModelInputsRange()
+    use_multiple_sources: bool = None # Use multiple sources of water
+    sample_time: float = None # Sample time (h)
+    penalization_factor: float = 0.2 # Penalization factor to apply when flow is circulated on a stoped system (1 would equal doubling the cost)
     
-    def __init__(self, 
-                 env_vars: EnvironmentVariables, 
-                 store_x: bool = False,
-                 store_fitness: bool = False,
-                 real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds(),
-                 sample_time: int = 1,
-                 debug_mode: bool = False,
-                 ) -> None:
-        
-        self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
-        self.env_vars = env_vars
-        # Update environment variables to remove Pw data
-        self.env_vars.Pw = None
-        self.store_x = store_x
-        self.store_fitness = store_fitness
-        self.debug_mode = debug_mode
-        self.sample_time = sample_time
-        
-        if np.any(env_vars.Q > self.Qmax):
-            logger.warning(f"Asked to cool a load larger than the maximum for the system: {env_vars.Q:} > {self.Qmax}")
-            
-        self.Vavail0 = env_vars.Vavail[0]
-        self.n_evals: int = len(list(asdict(env_vars).values())[0])
-        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals
-        
-        # Validate range of inputs
-        var_ids = ["Tamb", "HR"]
-        for var_id in var_ids:
-            value = getattr(env_vars, var_id)
-            bounds = getattr(self.model_inputs_range, var_id)
-            if value > bounds[1] or value < bounds[0]:
-                new_value = max(min(bounds[1], value), bounds[0])
-                logger.warning(f"{var_id}={value} outside range: {bounds}, setting to: {new_value}")
-                setattr(env_vars, var_id, new_value)
-        
-        # Initialize decision vector history
-        self.x_evaluated = []
-        self.fitness_history = []   
-        
     @property
     def cc_model(self):
         # Lazy loading of cc_model so it's only initialized when used for the first time
@@ -114,8 +80,52 @@ class WetCoolerProblem:
             del state["_cc_model"]  # Remove the MATLAB object before pickling
         return state
     
+    def __init__(self, 
+                 env_vars: EnvironmentVariables, 
+                 store_x: bool = False,
+                 store_fitness: bool = False,
+                 real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds.from_model_inputs_range(),
+                 sample_time: int = 1,
+                 debug_mode: bool = False,
+                 ) -> None:
+        
+        # Validation
+        assert self.penalization_factor >= 0, f"Penalization factor needs to be a number greater or equal to zero, not {self.penalization_factor}"
+        if np.any(env_vars.Q > self.Qmax):
+            logger.warning(f"Asked to cool a load larger than the maximum for the system: {env_vars.Q:} > {self.Qmax}")
+
+        self.real_dec_vars_box_bounds = real_dec_vars_box_bounds
+        self.env_vars = env_vars
+        self.store_x = store_x
+        self.store_fitness = store_fitness
+        self.debug_mode = debug_mode
+        self.sample_time = sample_time
+        
+        # Update environment variables to remove Pw data
+        self.env_vars.Pw = None
+        
+        self.Vavail0 = env_vars.Vavail[0]
+        self.n_evals: int = len(list(asdict(env_vars).values())[0])
+        self.size_dec_vector = len(self.dec_var_ids) * self.n_evals
+        self.c_tol = self.c_tol_base * self.n_evals
+        
+        # Validate range of inputs
+        var_ids = ["Tamb", "HR"]
+        for var_id in var_ids:
+            value = getattr(env_vars, var_id)
+            bounds = getattr(self.model_inputs_range, var_id)
+            if np.all(value > bounds[1]) or np.all(value < bounds[0]):
+                new_value = max(min(bounds[1], value), bounds[0])
+                logger.warning(f"{var_id}={value} outside range: {bounds}, setting to: {new_value}")
+                setattr(env_vars, var_id, new_value)
+        
+        # Initialize decision vector history
+        self.x_evaluated = []
+        self.fitness_history = []   
+    
     def get_nic(self) -> int:
-        return 2 * self.n_evals  # Two inequality constraints per evaluation in the prediction horizon
+        return len(self.c_tol)
+        # return len(self.c_tol) * self.n_evals  # Two inequality constraints per evaluation in the prediction horizon
     
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
         """ Convert decision vector to decision variables """
@@ -123,11 +133,18 @@ class WetCoolerProblem:
         for idx, var_id in enumerate(self.dec_var_ids):
             dec_var_dict[var_id] = x[idx*self.n_evals:(idx+1)*self.n_evals]
         
+        # return DecisionVariables(
+        #     qc=dec_var_dict["qc"],
+        #     Rp=np.full((self.n_evals, ), 1.0, dtype=float),
+        #     Rs=np.full((self.n_evals, ), 0.0, dtype=float),
+        #     wdc=np.full((self.n_evals, ), 0.0, dtype=float),
+        #     wwct=dec_var_dict["wwct"]
+        # )
         return DecisionVariables(
             qc=dec_var_dict["qc"],
-            Rp=np.full((self.n_evals, ), 1.0, dtype=float),
-            Rs=np.full((self.n_evals, ), 0.0, dtype=float),
-            wdc=np.full((self.n_evals, ), 0.0, dtype=float),
+            Rp=dec_var_dict["Rp"],
+            Rs=dec_var_dict["Rs"],
+            wdc=dec_var_dict["wdc"],
             wwct=dec_var_dict["wwct"]
         )
         
@@ -153,19 +170,19 @@ class WetCoolerProblem:
         
         dec_vars = self.decision_vector_to_decision_variables(x)
         
-        Vavail = self.Vavail0 * 1e3  # m³ -> l
+        Vavail = self.Vavail0  # m³
         ops: list[OperationPoint] = []
         for step_idx in range(self.n_evals):
             dv = dec_vars.dump_at_index(step_idx)
-            ev = self.env_vars.dump_at_index(step_idx)
+            ev = copy.deepcopy(self.env_vars.dump_at_index(step_idx))
             dv_m = dv.to_matlab()
             ev_m = ev.to_matlab()
             
             _, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
-            Cw_s1 = min( Cw_lh*self.sample_time, Vavail) / self.sample_time
+            Cw_s1 = min( Cw_lh*self.sample_time, Vavail * 1e3) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
-            Vavail = Vavail - Cw_s1*self.sample_time
+            Vavail = max(0, Vavail - Cw_s1*1e-3*self.sample_time)
             # print(f"{ev.Vavail=}")
             
             # Update outputs before creating the operation point
@@ -185,32 +202,53 @@ class WetCoolerProblem:
         # Every field in the objects should be a numpy array with values for each time step
         # in the prediction horizon
         
+        start_time = time.time()
+        
         J = 0
         ecs = []
         ics = []
-        Vavail = self.Vavail0 * 1e3  # m³ -> l
+        Vavail = self.Vavail0  # m³
         for step_idx in range(self.n_evals):
             dv = dec_vars.dump_at_index(step_idx)
             ev = self.env_vars.dump_at_index(step_idx)
             dv_m = dv.to_matlab()
             ev_m = ev.to_matlab()
+            b = self.real_dec_vars_box_bounds
             
             Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
-            Cw_s1 = min( max(Cw_lh, 0)*self.sample_time, Vavail) / self.sample_time
+            Cw_s1 = min( Cw_lh*self.sample_time, Vavail*1e3) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
-            Vavail = Vavail - Cw_s1*self.sample_time
+            Vavail = max(0, Vavail-Cw_s1*1e-3*self.sample_time)
 
-            J += Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
             # ecs.append(ecs_)
             ics.extend([
                 abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
-                detailed["Tc_out"] - ev.Tv - self.deltaTcv_min,          # Tc,out < Tv-ΔTc-v,min 
-                detailed["Twct_in"] - self.model_inputs_range.Twct_in[1],# Twct,in < Twct,in,,max
-                self.model_inputs_range.Twct_in[0] - detailed["Twct_in"],# Twct,in > Twct,in,min
-                detailed["Twct_out"]+1 - detailed["Twct_in"]             # Twct,in > Twct,out+1
+                detailed["Tc_out"] - (ev.Tv - self.deltaTcv_min),    # Tc,out < Tv-ΔTc-v,min 
+                abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
             ])
-        # print(J)
+            
+            J_ = Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
+            # print(J)
+            
+            # Penalize water circulation on stopped system (w=0)
+            if detailed["wdc"] <= b.wdc[0]:
+                # qdc should be zero
+                # J = J + J * penalization factor / qc_max * qdc
+                J_ += self.penalization_factor*J/b.qc[-1] * detailed["qdc"]
+                if self.debug_mode:
+                    print(f"Penalizado!: dc {self.penalization_factor*J/b.qc[-1] * detailed['qdc']}")
+            if detailed["wwct"] <= b.wwct[0]:
+                # qwct should be zero
+                # J = J + J * penalization factor / qc_max * qwct
+                J_ += self.penalization_factor*J/b.qc[-1] * detailed["qwct"]
+                if self.debug_mode:
+                    print(f"Penalizado!: wct {self.penalization_factor*J/b.qc[-1] * detailed['qwct']}")
+            
+            J += J_
             
         self.store_results(fitness=J, x=x)
+        
+        # print(f"J={J:.2f}, {time.time()-start_time:.2f} s")
+        
         return [J, *ecs, *ics]

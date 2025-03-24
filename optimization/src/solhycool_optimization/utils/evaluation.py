@@ -1,6 +1,7 @@
 import itertools
 from enum import Enum
 from dataclasses import asdict
+import time
 import numpy as np
 import pandas as pd
 import pygmo as pg
@@ -144,6 +145,7 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
     operation_pt_list = []
     pop_list = []
     fitness_history_list = []
+    start_time = time.time()
     # problem.store_fitness = True
     
     for eval_idx in range(n_trials):
@@ -180,7 +182,7 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
         pop_list[best_idx] = pop
         fitness_history_list[best_idx] = fitness_history
         
-    logger.info(f"Variance: {np.var(fitness_list[:, 0]):.3f} | {fitness_list[:, 0]}")
+    logger.info(f"Variance: {np.var(fitness_list[:, 0]):.3f} | {fitness_list[:, 0]}. Time: {time.time()-start_time:.2f}s")
     
     if extra_outputs:
         return operation_pt_list, algo_list, pop_list, fitness_list, fitness_history_list
@@ -230,7 +232,7 @@ def evaluate_global_algos(
             params = dict(pop_size = pop_size, max_iter = max_iter, cstr_sa = use_cstr[idx], wrapper_algo_iters = wrapper_algo_iters),
             avg_fitness = np.mean(fitness_list[:, 0]),
             var_fitness = np.var(fitness_list[:, 0]),
-            best_op_pt = asdict(operation_pt_list[best_idx]),
+            best_op_pt = operation_pt_list[best_idx],
             avg_n_obj_fun_evals = np.floor(np.mean([len(fitness_history) for fitness_history in fitness_history_list])),
             fitness_history = fitness_history_list[best_idx]
         )
