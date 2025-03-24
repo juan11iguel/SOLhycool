@@ -71,6 +71,10 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % condenser_model_fun = function_handle(char(fullfile('.', 'component_models', 'condenser_model.m')));
     % mixer_model_fun = function_handle(char(fullfile('.', 'component_models', 'mixer_model.m')));
 
+    if silence_warnings
+        warning('off','all') % disable all warnings
+    end
+
 
     % Calculations
     % Unit conversion
@@ -151,7 +155,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     Cw_lh = Cw;
 
     % Condenser heat
-    Q = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A);
+    [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A);
     Qc_released = Q(1);
     Qc_absorbed = Q(2);
     Qc_transfered = Q(3);
@@ -234,6 +238,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         d.Tc_out = Tc_out;
         d.Tcond = Tcond;
         d.Ce_c = Ce_c;
+        d.Uc = U;
         % Combined cooler
         d.qcc = qcc;
         d.Tcc_in = Tcc_in;

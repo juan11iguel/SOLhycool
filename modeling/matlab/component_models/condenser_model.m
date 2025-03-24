@@ -29,7 +29,7 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
     
     % opt= optimoptions('fsolve', 'Display', 'off', 'Algorithm', 'trust-region');
     opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display','none'); 
-   
+
     Cp = XSteam('Cp_pT',2,Tv_C);
     lambda=XSteam('hV_T',Tv_C)-XSteam('hL_T',Tv_C);
     Qc = mv_kgs * lambda;

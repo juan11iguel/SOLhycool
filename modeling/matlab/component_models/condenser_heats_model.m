@@ -1,4 +1,4 @@
-function Q = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, options)
+function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, options)
     %CONDENSER_MODEL Model of a surface condenser using saturated vapor as
     %input and that outputs saturated liquid
     % It returns thermal power calculated in three different ways:
@@ -24,6 +24,7 @@ function Q = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, options)
 
     arguments (Output)
         Q (1,3) double
+        U (1,1) double
     end
     
     U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv, options.option); % qc/mc: kg/s -> m3/h
