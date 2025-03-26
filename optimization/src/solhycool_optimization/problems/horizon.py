@@ -38,6 +38,7 @@ class CombinedCoolerProblem:
     store_x: bool # Store decision variables
     store_fitness: bool  # Store fitness values
     real_dec_vars_box_bounds: RealDecVarsBoxBounds
+    use_constraints: bool # 
     x_evaluated: list[list[float]]  # Decision variables vector evaluated (i.e. sent to the fitness function)
     fitness_history: list[float]  # Fitness record of decision variables sent to the fitness function
     sample_time: float  # Sample time, hours
@@ -87,6 +88,7 @@ class CombinedCoolerProblem:
                  real_dec_vars_box_bounds: RealDecVarsBoxBounds = RealDecVarsBoxBounds.from_model_inputs_range(),
                  sample_time: int = 1,
                  debug_mode: bool = False,
+                 use_constraints: bool = False,
                  ) -> None:
         
         # Validation
@@ -100,6 +102,7 @@ class CombinedCoolerProblem:
         self.store_fitness = store_fitness
         self.debug_mode = debug_mode
         self.sample_time = sample_time
+        self.use_constraints = use_constraints
         
         # Update environment variables to remove Pw data
         self.env_vars.Pw = None
@@ -112,19 +115,31 @@ class CombinedCoolerProblem:
         # Validate range of inputs
         var_ids = ["Tamb", "HR"]
         for var_id in var_ids:
-            value = getattr(env_vars, var_id)
+            values = np.asarray(getattr(env_vars, var_id))  # ensure it's an array
             bounds = getattr(self.model_inputs_range, var_id)
-            if np.all(value > bounds[1]) or np.all(value < bounds[0]):
-                new_value = max(min(bounds[1], value), bounds[0])
-                logger.warning(f"{var_id}={value} outside range: {bounds}, setting to: {new_value}")
-                setattr(env_vars, var_id, new_value)
+            lower, upper = bounds
+
+            # Find values outside the bounds
+            out_of_bounds = (values < lower) | (values > upper)
+
+            if np.any(out_of_bounds):
+                corrected_values = np.clip(values, lower, upper)
+                logger.warning(
+                    f"{var_id} contains values outside range {bounds}. "
+                    f"Clipping values: original={values[out_of_bounds]}, "
+                    f"corrected={corrected_values[out_of_bounds]}"
+                )
+                setattr(env_vars, var_id, corrected_values)
         
         # Initialize decision vector history
         self.x_evaluated = []
         self.fitness_history = []   
     
     def get_nic(self) -> int:
-        return len(self.c_tol)
+        if self.use_constraints:
+            return len(self.c_tol)
+        else:
+            return 0
         # return len(self.c_tol) * self.n_evals  # Two inequality constraints per evaluation in the prediction horizon
     
     def decision_vector_to_decision_variables(self, x: np.ndarray[float]) -> DecisionVariables:
@@ -186,7 +201,7 @@ class CombinedCoolerProblem:
             # print(f"{ev.Vavail=}")
             
             # Update outputs before creating the operation point
-            ev.Vavail = Vavail / 1e3  # l -> m³
+            ev.Vavail = Vavail  # m³
             detailed.update({"Cw_s1": Cw_s1, "Cw_s2": Cw_s2})
 
             ops.append(OperationPoint.from_multiple_sources(detailed, env_vars=ev))
@@ -214,36 +229,50 @@ class CombinedCoolerProblem:
             dv_m = dv.to_matlab()
             ev_m = ev.to_matlab()
             b = self.real_dec_vars_box_bounds
-            
+
             Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv_m.qc, dv_m.Rp, dv_m.Rs, dv_m.wdc, dv_m.wwct, ev_m.Tv, nargout=3)
             
             Cw_s1 = min( Cw_lh*self.sample_time, Vavail*1e3) / self.sample_time
             Cw_s2 = Cw_lh - Cw_s1
             Vavail = max(0, Vavail-Cw_s1*1e-3*self.sample_time)
 
+            J_ = Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
+            
             # ecs.append(ecs_)
-            ics.extend([
+            # ics.extend([
+            ics_ = [
                 abs( detailed["Tcc_out"] - detailed["Tc_in"] ),          # Tcc,out == Tc,in
                 detailed["Tc_out"] - (ev.Tv - self.deltaTcv_min),    # Tc,out < Tv-ΔTc-v,min 
                 abs( detailed["Qdc"] + detailed["Qwct"] - detailed["Qc_released"] ), # Qdc + Qwct == Qc
-            ])
+            ]
             
-            J_ = Ce_kWe * ev.Pe + Cw_s1 * ev.Pw_s1 + Cw_s2 * ev.Pw_s2
+            if self.use_constraints:
+                ics.extend(ics_)
+            else:
+                J_pen = 0
+                for idx, (c_tol, ic) in enumerate(zip(self.c_tol_base, ics_)):
+                    if ic > c_tol:
+                        # Just penalize the same amount times the number of violations
+                        J_pen += 1 # self.penalization_factor*J_ #  * (abs(ic-c_tol) / c_tol)
+                        # J_pen += self.penalization_factor*J_ * (abs(ic-c_tol) / c_tol)
+                        # print(f"[{idx}] Penalizado!: {ic:.2f} > {c_tol:.5f}, penalize={self.penalization_factor*J_ * (abs(ic-c_tol) / c_tol):.2f}")
+                J_ += J_pen
+            # ])
             # print(J)
             
             # Penalize water circulation on stopped system (w=0)
             if detailed["wdc"] <= b.wdc[0]:
                 # qdc should be zero
                 # J = J + J * penalization factor / qc_max * qdc
-                J_ += self.penalization_factor*J/b.qc[-1] * detailed["qdc"]
+                J_ += self.penalization_factor*J_/b.qc[-1] * detailed["qdc"]
                 if self.debug_mode:
-                    print(f"Penalizado!: dc {self.penalization_factor*J/b.qc[-1] * detailed['qdc']}")
+                    print(f"Penalizado!: dc {self.penalization_factor*J_/b.qc[-1] * detailed['qdc']}")
             if detailed["wwct"] <= b.wwct[0]:
                 # qwct should be zero
                 # J = J + J * penalization factor / qc_max * qwct
-                J_ += self.penalization_factor*J/b.qc[-1] * detailed["qwct"]
+                J_ += self.penalization_factor*J_/b.qc[-1] * detailed["qwct"]
                 if self.debug_mode:
-                    print(f"Penalizado!: wct {self.penalization_factor*J/b.qc[-1] * detailed['qwct']}")
+                    print(f"Penalizado!: wct {self.penalization_factor*J_/b.qc[-1] * detailed['qwct']}")
             
             J += J_
             

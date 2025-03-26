@@ -11,11 +11,7 @@ dependencies = [
     "pandas>=2.2.3",
     "plotly-resampler>=0.10.0",
     "tables>=3.10.2",
-    "suntime==1.2.5", # Do not update, the library is kinda broken: https://github.com/SatAgro/suntime/issues/30 
-    # Commented since using the conda environment from solhycool-optimization
-    # "phd-visualizations",
-    # "solhycool-modeling",
-    # "solhycool-optimization",
+    "suntime==1.2.5",
 ]
 
 [project.scripts]

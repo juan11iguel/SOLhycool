@@ -11,10 +11,12 @@ dependencies = [
     "hjson>=3.1.0",
     "matplotlib>=3.10.0",
     "pandas>=2.2.3",
-    # "solhycool-visualization",
-    # "solhycool-modeling",
     "tables>=3.10.2",
     "tqdm>=4.67.1",
+    # "solhycool-visualization",
+    # "solhycool-modeling",
+    # "bayesian-optimization>=2.0.3",
+    # "combined_cooler_model-r2024b",
 ]
 
 [project.scripts]
@@ -27,6 +29,8 @@ build-backend = "hatchling.build"
 # [tool.uv.sources]
 # solhycool-visualization = { path = "../visualization", editable = true }
 # solhycool-modeling = { path = "../modeling", editable = true }
+# combined_cooler_model-r2024b = { path = "../modeling/matlab/exports/for_redistribution_files_only" }
+# phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
 
 [dependency-groups]
 dev = [

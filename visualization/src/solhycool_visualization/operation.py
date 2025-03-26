@@ -120,9 +120,9 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str) -> go.Fig
     return fig_out
 
 
-def plot_results(plot_config: dict, df: pd.DataFrame) -> go.Figure:
+def plot_results(plot_config: dict, df: pd.DataFrame, df_comp: pd.DataFrame = None) -> go.Figure:
     
-    fig = experimental_results_plot(plot_config, df=df, resample=False)
+    fig = experimental_results_plot(plot_config, df=df, df_comp=df_comp, resample=False)
     
     # Join hydraulic distribution plot
     placeholder_plot_id = "hydraulic_distribution"

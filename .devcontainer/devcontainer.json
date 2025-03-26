@@ -34,7 +34,8 @@
 				"ms-python.python",
 				"ms-python.debugpy",
 				"ms-toolsai.datawrangler",
-				"mechatroner.rainbow-csv"
+				"mechatroner.rainbow-csv",
+				"GitHub.copilot-chat"
 			],
 			"containerEnv": {
 				"ENVIRONMENT": "container",

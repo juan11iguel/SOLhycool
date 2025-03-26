@@ -96,17 +96,17 @@ class EnvironmentVariables:
         - An EnvironmentVariables instance
         """
         return cls(
-            HR=df["HR_pct"].values,
-            Tamb=df["Tamb_C"].values,
-            Q=df["Q_kW"].values,
-            Tv=df["Tv_C"].values,
+            HR=np.asarray(df["HR_pct"]),
+            Tamb=np.asarray(df["Tamb_C"]),
+            Q=np.asarray(df["Q_kW"]),
+            Tv=np.asarray(df["Tv_C"]),
             mv=df["mv_kgh"] if "mv_kgh" in df else None, 
-            Pe=df["Ce_spot_market_price_eur_kWh"].values,
-            Pw=df["water_price_morocco_eur_l"].values if "water_price_morocco_eur_l" in df else None,
-            Pw_s1=df["water_price_morocco_eur_l"].values if "water_price_morocco_eur_l" in df else None,
-            Pw_s2=df["water_price_morocco_alternative_eur_l"].values if "water_price_morocco_alternative_eur_l" in df else None,
-            Vavail=df["Vavail_m3"].values if "Vavail_m3" in df else None,
-            deltaV=df["deltaV_m3_h"].values if "deltaV_m3_h" in df else None 
+            Pe=np.asarray(df["Ce_spot_market_price_eur_kWh"]),
+            Pw=np.asarray(df["water_price_morocco_eur_l"]) if "water_price_morocco_eur_l" in df else None,
+            Pw_s1=np.asarray(df["water_price_morocco_eur_l"]) if "water_price_morocco_eur_l" in df else None,
+            Pw_s2=np.asarray(df["water_price_morocco_alternative_eur_l"]) if "water_price_morocco_alternative_eur_l" in df else None,
+            Vavail=np.asarray(df["Vavail_m3"]) if "Vavail_m3" in df else None,
+            deltaV=np.asarray(df["deltaV_m3_h"]) if "deltaV_m3_h" in df else None 
         )
 
     @classmethod
