@@ -1,4 +1,4 @@
-combined_cooler_model MATLAB Python Package
+combined_cooler MATLAB Python Package
 
 1. Prerequisites for Deployment 
 
@@ -21,10 +21,10 @@ in the MathWorks Documentation Center.
 
 Verify that a Linux version of Python 3.9, 3.10, 3.11, and/or 3.12 is installed.
 
-2. Installing the combined_cooler_model Package
+2. Installing the combined_cooler Package
 
 A. Change to the directory that contains the file setup.py and the subdirectory 
-combined_cooler_model. If you do not have write permissions, copy all its contents to a 
+combined_cooler. If you do not have write permissions, copy all its contents to a 
 temporary location and change to that directory.
 
 B. Execute the command:
@@ -55,11 +55,11 @@ If it is defined, set it to the following:
 
 ${LD_LIBRARY_PATH}:MR/R2024b/runtime/glnxa64:MR/R2024b/bin/glnxa64:MR/R2024b/sys/os/glnxa64:MR/R2024b/sys/opengl/lib/glnxa64
 
-3. Using the combined_cooler_model Package
+3. Using the combined_cooler Package
 
-The combined_cooler_model package is on your Python path. To import it into a Python 
-script or session, execute:
+The combined_cooler package is on your Python path. To import it into a Python script or 
+session, execute:
 
-    import combined_cooler_model
+    import combined_cooler
 
 If a namespace must be specified for the package, modify the import statement accordingly.

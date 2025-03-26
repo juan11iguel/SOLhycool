@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
   <configuration build-checksum="2447773735" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
-    <param.appname>combined_cooler_model</param.appname>
+    <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.1</param.version>
+    <param.version>1.2</param.version>
     <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
     <param.email>lroca@psa.es</param.email>
     <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
@@ -11,7 +11,7 @@
     <param.description>This package contains the model of a cooling system. The system is composed by a condenser and a combined cooler. The condenser, which takes in saturated vapor from the outlet of a turbine (or any other process really), condenses it, and thus returns it as saturated liquid. In order to achieve this, a cooling fluid (water) which absorbs the heat, is circulated. The combined cooler is in charge of cooling down this cooling fluid. It does it by using two cooling technologies: a Dry Cooler (DC) and a Wet Cooler (Tower, WCT). They are connected in a circuit with two three-way valves which allows almost continuous variation in the hydraulic distribution of the cooling fluid in: series operation (DC -&gt; WCT), parallel, or using only one of the systems (only DC, only WCT).</param.description>
     <param.screenshot />
     <param.guid />
-    <param.installpath.string>/CIEMAT_-_Plataforma_Solar_de_Almería/combined_cooler_model/</param.installpath.string>
+    <param.installpath.string>/CIEMAT_-_Plataforma_Solar_de_Almería/combined_cooler/</param.installpath.string>
     <param.installpath.combo>option.installpath.user</param.installpath.combo>
     <param.logo />
     <param.install.notes />
@@ -113,9 +113,13 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/condenser_heats_model.m</file>
       <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
       <file>${PROJECT_ROOT}/component_models/data/dc_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/data/wct_inverse_model.m</file>
       <file>${PROJECT_ROOT}/component_models/data/wct_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/mixer_inverse_model.m</file>
       <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
       <file>${PROJECT_ROOT}/default_parameters.m</file>
+      <file>${PROJECT_ROOT}/evaluate_operation.m</file>
+      <file>${PROJECT_ROOT}/fans_calculator.m</file>
       <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
       <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
       <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
@@ -132,11 +136,15 @@ For details, see GettingStarted.html, distributed with this package, or the offi
           <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
           <file>${PROJECT_ROOT}/component_models/data/dc_model.m</file>
           <file>${PROJECT_ROOT}/default_parameters.m</file>
+          <file>${PROJECT_ROOT}/evaluate_operation.m</file>
+          <file>${PROJECT_ROOT}/fans_calculator.m</file>
           <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
+          <file>${PROJECT_ROOT}/component_models/mixer_inverse_model.m</file>
           <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
           <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
           <file>${PROJECT_ROOT}/utils/recirculation_pump_consumption.m</file>
           <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
+          <file>${PROJECT_ROOT}/component_models/data/wct_inverse_model.m</file>
           <file>${PROJECT_ROOT}/component_models/data/wct_model.m</file>
         </entity.class>
       </entity.package>
@@ -159,19 +167,23 @@ For details, see GettingStarted.html, distributed with this package, or the offi
     </fileset.resources>
     <fileset.depfun>
       <file>/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
+      <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
+      <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
+      <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
     </fileset.depfun>
     <fileset.package>
       <file>${PROJECT_ROOT}/README.md</file>
       <file>${PROJECT_ROOT}/assets</file>
     </fileset.package>
     <fileset.examples>
-      <file>${PROJECT_ROOT}/combined_cooler_modelSample1.m</file>
-      <file>${PROJECT_ROOT}/combined_cooler_modelSample2.m</file>
+      <file>${PROJECT_ROOT}/example_extended_combined_cooler_model.m</file>
+      <file>${PROJECT_ROOT}/example_fans_calculator.m</file>
+      <file>${PROJECT_ROOT}/example_simple_combined_cooler_model.m</file>
     </fileset.examples>
     <fileset.documentation />
     <build-deliverables>
       <file location="${PROJECT_ROOT}/exports/for_testing" name="setup.py" optional="false">/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_testing/setup.py</file>
-      <file location="${PROJECT_ROOT}/exports/for_testing" name="combined_cooler_model" optional="false">/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_testing/combined_cooler_model</file>
+      <file location="${PROJECT_ROOT}/exports/for_testing" name="combined_cooler" optional="false">/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_testing/combined_cooler</file>
     </build-deliverables>
     <workflow />
     <matlab>

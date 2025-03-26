@@ -62,16 +62,16 @@ class InstallAndCleanBuildArea(install):
     
 if __name__ == '__main__':
     setup_dict = {
-        'name': 'combined_cooler_model-R2024b',
+        'name': 'combined_cooler-R2024b',
         'version': '24.2',
-        'description': 'A Python interface to combined_cooler_model',
+        'description': 'A Python interface to combined_cooler',
         'author': 'MathWorks',
         'url': 'https://www.mathworks.com/',
         'platforms': ['Linux', 'Windows', 'macOS'],
         'packages': [
-            'combined_cooler_model'
+            'combined_cooler'
         ],
-        'package_data': {'combined_cooler_model': ['*.ctf']}
+        'package_data': {'combined_cooler': ['*.ctf']}
     }
     
     if not 'bdist_wheel' in sys.argv[1:]:
