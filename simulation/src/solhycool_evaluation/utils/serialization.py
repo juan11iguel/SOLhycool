@@ -146,6 +146,10 @@ def export_evaluation_results(results_dict: dict, metadata:dict,
         out_path = output_path / f"df_sim_{file_id}.h5"
         if out_path.exists():
             df_sim = pd.concat([pd.read_hdf(out_path), df_sim])
+            # Remove duplicates
+            df_sim = df_sim[~df_sim.index.duplicated(keep='last')]
+            # Order by index
+            df_sim = df_sim.sort_index()
         df_sim.to_hdf(out_path, key="simulation_data")
         logger.info(f"Exported simulation data to {out_path}")
     

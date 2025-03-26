@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pygmo as pg
 from loguru import logger
+from concurrent.futures import ProcessPoolExecutor, as_completed
 # TODO: We should be able to use a generic Problem class not specifically the static
 from solhycool_optimization.problems.static import BaseProblem
 
@@ -50,15 +51,21 @@ class AlgoFitnessCol(Enum):
 def optimize(problem: BaseProblem, extra_outputs: bool = False,  
              algo_id: str = "compass_search", initial_pop_size: int = 20,
              n_trials: int = 5, log_verbosity: int = 1, 
-             use_mbh: bool = False, use_cstrs: bool = False, wrapper_algo_iters: int = 3,
+             use_mbh: bool = False, use_cstrs: bool = False,
+             unconstrain: bool = False, 
+             wrapper_algo_iters: int = 3,
              max_iter: int = 200, tol: float = 1e-1, 
              pop0: list[list[float]] = None, evaluate_global_with_local: bool = False,
             ) -> list[dict] | tuple[list[dict], list[pg.algorithm], list[pg.population], np.ndarray, list[np.ndarray]]:
     
     def optimize_single() -> tuple[dict, pg.algorithm, pg.population, np.ndarray]:
-    
-        prob = pg.problem(problem)
-        prob.c_tol = problem.c_tol
+        
+        if unconstrain:
+            prob = pg.unconstrain(problem, method="kuri")
+        else:
+            prob = pg.problem(problem)
+            if prob.get_nic() > 0:
+                prob.c_tol = problem.c_tol
         
         # Internal algorithms
         if algo_id == "ipopt":
@@ -189,8 +196,6 @@ def optimize(problem: BaseProblem, extra_outputs: bool = False,
     else:
         return operation_pt_list
     
-    
-
 def evaluate_global_algos(
     problem,
     n_trials: int = 1,
@@ -200,6 +205,7 @@ def evaluate_global_algos(
     pop_size: list[int] = [50, 100, 400],
     wrapper_algo_iters: int = 10,
     log_verbosity: list[int] = [100, 1, 1],
+    pop0: list[list[float]] = None,
 ) -> dict:
     
     results = {}
@@ -224,6 +230,7 @@ def evaluate_global_algos(
             n_trials = n_trials, log_verbosity = log_verbosity[idx], extra_outputs=True, 
             max_iter=max_iter, use_mbh=False, use_cstrs=use_cstr[idx],
             initial_pop_size=pop_size, wrapper_algo_iters=wrapper_algo_iters, 
+            pop0=pop0
         )
         best_idx = np.argmin(fitness_list[:, 0])
 
@@ -237,6 +244,98 @@ def evaluate_global_algos(
             fitness_history = fitness_history_list[best_idx]
         )
         
+    return results
+
+def _optimize_task(args) -> dict:
+    problem, algo_id, pop_size, max_iter, use_cstr_flag, log_verbosity_val, wrapper_algo_iters, n_trials, pop0, unconstrain = args
+    operation_pt_list, algo_list, pop_list, fitness_list, fitness_history_list = optimize(
+        problem,
+        algo_id=algo_id,
+        n_trials=n_trials,
+        log_verbosity=log_verbosity_val,
+        extra_outputs=True,
+        max_iter=max_iter,
+        use_mbh=False,
+        use_cstrs=use_cstr_flag,
+        initial_pop_size=pop_size,
+        wrapper_algo_iters=wrapper_algo_iters,
+        pop0=pop0,
+        unconstrain=unconstrain,
+    )
+    best_idx = np.argmin(fitness_list[:, 0])
+    algo_str = f"{algo_id}_cstr" if use_cstr_flag else algo_id
+    case_study_id = f"{algo_str}_{pop_size}_{max_iter}"
+
+    result = {
+        case_study_id: dict(
+            algo_id=algo_id,
+            params=dict(
+                pop_size=pop_size,
+                max_iter=max_iter,
+                cstr_sa=use_cstr_flag,
+                wrapper_algo_iters=wrapper_algo_iters,
+                unconstrained=unconstrain,
+            ),
+            avg_fitness=np.mean(fitness_list[:, 0]),
+            var_fitness=np.var(fitness_list[:, 0]),
+            best_op_pt=operation_pt_list[best_idx],
+            avg_n_obj_fun_evals=np.floor(np.mean([len(f) for f in fitness_history_list])),
+            fitness_history=fitness_history_list[best_idx],
+        )
+    }
+    return result
+
+def evaluate_global_algos_parallel_support(
+    problem,
+    n_trials: int = 1,
+    max_n_obj_fun_evals: int = 1000,
+    algo_ids: list[str] = ["ihs", "sea", "sea", "de"],
+    use_cstr: list[bool] = [False, True, False, True],
+    unconstrain: list[bool] = [False, False, True, False],
+    pop_size: list[int] = [50, 100, 400],
+    wrapper_algo_iters: int = 10,
+    log_verbosity: list[int] = [100, 1, 1],
+    pop0: list[list[float]] = None,
+    parallel: bool = False,
+) -> dict:
+
+    tasks = []
+    for algo_id, pop_sz in itertools.product(algo_ids, pop_size):
+        idx = algo_ids.index(algo_id)
+        max_iter = max_n_obj_fun_evals
+        if use_cstr[idx]:
+            max_iter = max_iter // wrapper_algo_iters
+        if algo_id not in ["sea", "ihs"]:
+            max_iter = max_iter // pop_sz
+
+        logger.info(f"Running {algo_id} with cstr={use_cstr[idx]}, pop_size={pop_sz} and max_iter={max_iter}")
+
+        task_args = (
+            problem,
+            algo_id,
+            pop_sz,
+            max_iter,
+            use_cstr[idx],
+            log_verbosity[idx],
+            wrapper_algo_iters,
+            n_trials,
+            pop0,
+            unconstrain[idx],
+        )
+        tasks.append(task_args)
+
+    results = {}
+    if parallel:
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(_optimize_task, args) for args in tasks]
+            for future in as_completed(futures):
+                result = future.result()
+                results.update(result)
+    else:
+        for args in tasks:
+            result = _optimize_task(args)
+            results.update(result)
+
     return results
 
 def evaluate_local_algos(

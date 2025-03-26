@@ -416,6 +416,7 @@ class CombinedCoolerProblem(BaseProblem):
         ev_m = self.env_vars.to_matlab()
         b = self.real_dec_vars_box_bounds
 
+        # print(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv)
         Ce_kWe, Cw_lh, detailed = self.cc_model.combined_cooler_model(ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, dv.wwct, ev_m.Tv, nargout=3)
 
         ecs = [
