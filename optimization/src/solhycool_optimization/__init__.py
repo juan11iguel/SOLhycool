@@ -3,8 +3,8 @@ from inspect import signature
 from dataclasses import dataclass, asdict, field
 import numpy as np
 
-# Always import combined_cooler_model before importing matlab
-import combined_cooler_model
+# Always import combined_cooler before importing matlab
+import combined_cooler
 import matlab
 
 from solhycool_modeling import ModelInputsRange

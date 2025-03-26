@@ -7,14 +7,14 @@ import numpy as np
 from loguru import logger
 import pandas as pd
 
-import combined_cooler_model
+import combined_cooler
 import matlab
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
 from solhycool_optimization import RealDecVarsBoxBounds, DecisionVariables
 
 """ Global variables """
-# cc_model = combined_cooler_model.initialize()  # Could we get away initiating this only once at the beginning?
+# cc_model = combined_cooler.initialize()  # Could we get away initiating this only once at the beginning?
 
 # TODO: Refactor use of cc_model to use it the same way as in static
 # TODO: Include new constraints
@@ -60,7 +60,7 @@ class CombinedCoolerProblem:
         # Lazy loading of cc_model so it's only initialized when used for the first time
         # print("I was called!")
         if not hasattr(self, "_cc_model"):
-            self._cc_model = combined_cooler_model.initialize()
+            self._cc_model = combined_cooler.initialize()
             # print("I was initialized!")
         return self._cc_model
     

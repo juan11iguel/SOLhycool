@@ -5,7 +5,7 @@ import numpy as np
 import pygmo as pg
 from loguru import logger
 
-import combined_cooler_model
+import combined_cooler
 import matlab
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
@@ -13,9 +13,9 @@ from solhycool_optimization import DecisionVariables, RealDecVarsBoxBounds
 
 
 """ Global variables """
-# cc_model = combined_cooler_model.initialize()
+# cc_model = combined_cooler.initialize()
 # def initialize_matlab_model():
-#     return combined_cooler_model.initialize()  # Could we get away initiating this only once at the beginning?
+#     return combined_cooler.initialize()  # Could we get away initiating this only once at the beginning?
 
 
 class BaseProblem(ABC):
@@ -39,7 +39,7 @@ class BaseProblem(ABC):
         # Lazy loading of cc_model so it's only initialized when used for the first time
         # print("I was called!")
         if not hasattr(self, "_cc_model"):
-            self._cc_model = combined_cooler_model.initialize()
+            self._cc_model = combined_cooler.initialize()
             # print("I was initialized!")
         return self._cc_model
     
@@ -81,7 +81,7 @@ class BaseProblem(ABC):
         if use_multiple_sources:
             assert sample_time is not None, "Sample time must be defined when using multiple sources of water"
         
-        # self.cc_model = combined_cooler_model.initialize()
+        # self.cc_model = combined_cooler.initialize()
         
         # Initialize decision vector history
         self.x_evaluated = []
