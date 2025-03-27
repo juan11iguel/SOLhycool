@@ -1,5 +1,5 @@
-import combined_cooler_model
+import combined_cooler
 
-cc_model = combined_cooler_model.initialize()
+cc_model = combined_cooler.initialize()
 
 print(dir(cc_model))

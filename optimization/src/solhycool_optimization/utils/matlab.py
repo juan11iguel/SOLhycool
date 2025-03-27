@@ -1,4 +1,4 @@
-import combined_cooler_model
+import combined_cooler
 import matlab
 
 def tmd(value: int | float) -> matlab.double:
