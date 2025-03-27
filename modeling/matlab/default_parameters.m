@@ -13,7 +13,7 @@ function params = default_parameters()
 
 
     % Condenser
-    params.condenser_option = 4;
+    params.condenser_option = 6;
     params.condenser_A = 19.30; %%19.967-> https://collab.psa.es/f/174826 24/U;
     
     % Paths

@@ -100,6 +100,11 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
 
     % With wwct, evaluate model
     [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options);
+
+    % Validation
+    if abs( detailed.Qcc - detailed.Qc_released ) > 10
+        valid = false;
+    end
 end
 
 
