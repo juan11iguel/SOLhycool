@@ -18,6 +18,13 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options)
         valid (1,1) logical
     end
 
+    if q < 1e-3
+        wwct = 0;
+        valid = true;
+
+        return 
+    end
+
     % Optimization options
     opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display', 'none'); 
     
