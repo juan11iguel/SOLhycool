@@ -173,6 +173,23 @@ class EnvironmentVariables:
         """ Convert all attributes to matlab.double """
         
         return EnvironmentVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
+    
+    def constrain_to_model(self, model_inputs_range: ModelInputsRange = ModelInputsRange()) -> "EnvironmentVariables":
+        """
+        Constrain the environment variables to the model inputs range
+
+        Parameters:
+        - model_inputs_range: ModelInputsRange instance
+        """
+        
+        for key, value in asdict(model_inputs_range).items():
+            if key in self.__dict__ and self.__dict__[key] is not None:
+                if isinstance(self.__dict__[key], Iterable):
+                    self.__dict__[key] = np.clip(self.__dict__[key], value[0], value[1])
+                else:
+                    self.__dict__[key] = max(value[0], min(value[1], self.__dict__[key]))
+                    
+        return self
 
 @dataclass
 class OperationPoint:
@@ -229,6 +246,7 @@ class OperationPoint:
     Pe: float = field(default=None, metadata={"description": "Price of electricity", "units": "€/kWh"})
     Vavail: float = field(default=None, metadata={"description": "Available volume of water", "units": "l"}) # Seguro que litros?
     deltaV: float = field(default=None, metadata={"description": "Variation of available volume of water", "units": "l/h"})
+    time: datetime = field(default=None, metadata={"description": "Datetime of the operation point", "units": "datetime"})
 
     # Computable fields
     qdc_only: Optional[float] = field(default=None, metadata={"description": "DC only cooling flow rate", "units": "m³/h"})
@@ -333,7 +351,7 @@ class OperationPoint:
         
 
     @classmethod
-    def from_multiple_sources(cls, dict_src: dict, env_vars: EnvironmentVariables) -> "OperationPoint":
+    def from_multiple_sources(cls, dict_src: dict, env_vars: EnvironmentVariables, time: datetime = None) -> "OperationPoint":
         """
         Create an OperationPoint instance from multiple sources
 
@@ -349,6 +367,9 @@ class OperationPoint:
         data.update(
             {k: v for k,v in asdict(env_vars).items() if k in inspect.signature(cls).parameters}
         )
+        # Add the time if provided
+        if time is not None:
+            data["time"] = time
 
         return cls(**data)
             

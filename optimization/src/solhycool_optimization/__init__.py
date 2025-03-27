@@ -3,6 +3,8 @@ from inspect import signature
 from dataclasses import dataclass, asdict, field
 import numpy as np
 
+from solhycool_modeling import ModelInputsRange
+
 # Always import combined_cooler before importing matlab
 import combined_cooler
 import matlab
@@ -30,7 +32,7 @@ class DecisionVariables:
     Rp: float | np.ndarray[float]
     Rs: float | np.ndarray[float]
     wdc: float | np.ndarray[float]
-    wwct: float | np.ndarray[float]
+    wwct: float | np.ndarray[float] = None
     
     def dump_at_index(self, idx: int, return_dict: bool = False, return_format: Literal["number", "matlab"] = "number") -> "DecisionVariables":
         """
@@ -59,4 +61,18 @@ class DecisionVariables:
         """ Convert all attributes to matlab.double """
         
         return DecisionVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
+
+@dataclass
+class ValuesDecisionVariables:
+    qc: int | np.ndarray[float] = 10
+    Rp: int | np.ndarray[float] = 10
+    Rs: int | np.ndarray[float] = 10
+    wdc: int | np.ndarray[float] = 10
     
+    def generate_arrays(self, ) -> "ValuesDecisionVariables":
+        inputs_range = ModelInputsRange()
+        
+        return ValuesDecisionVariables(**{
+            name: np.linspace(getattr(inputs_range, name)[0], getattr(inputs_range, name)[1], n_values) 
+            for name, n_values in asdict(self).items()
+        })

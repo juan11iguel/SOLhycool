@@ -11,6 +11,7 @@ dependencies = [
     "plotly<6.0.0",
     "phd-visualizations",
     "solhycool-modeling",
+    "solhycool-optimization",
     "cairosvg>=2.7.1",
     "hjson>=3.1.0",
     "tables>=3.10.2",
@@ -31,3 +32,4 @@ dev-dependencies = [
 [tool.uv.sources]
 phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
 solhycool-modeling = { path = "../modeling", editable = true }
+solhycool-optimization = { path = "../optimization", editable = true }
