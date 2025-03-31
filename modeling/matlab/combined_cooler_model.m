@@ -29,7 +29,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         Rs (1,1) double {mustBeLessThanOrEqual(Rs, 1)}
         wdc (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(wdc, 100)}
         wwct (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(wwct, 100)}
-        Tv_C double {mustBeGreaterThanOrEqual(Tv_C, 35), mustBeLessThanOrEqual(Tv_C, 50)} = []
+        Tv_C double {mustBeGreaterThanOrEqual(Tv_C, 20), mustBeLessThanOrEqual(Tv_C, 60)} = []
 
         % Using keyword arguments does not work when exporting the model to
         % python

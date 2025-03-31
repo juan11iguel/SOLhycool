@@ -28,7 +28,7 @@ arguments (Input)
     qc_m3h (1,1) double {mustBePositive}
     Rp (1,1) double {mustBeLessThanOrEqual(Rp, 1)}
     Rs (1,1) double {mustBeLessThanOrEqual(Rs, 1)}
-    Tv_C double {mustBeGreaterThanOrEqual(Tv_C, 30), mustBeLessThanOrEqual(Tv_C, 50)} = []
+    Tv_C double {mustBeGreaterThanOrEqual(Tv_C, 20), mustBeLessThanOrEqual(Tv_C, 60)} = []
 
     % Using keyword arguments does not work when exporting the model to
     % python
