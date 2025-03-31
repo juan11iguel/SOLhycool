@@ -42,3 +42,54 @@ def preprocess_meteonorm_txt_data(txt_file_path: Path) -> pd.DataFrame:
     logger.info(f"Pre-processed data saved to {txt_file_path.with_suffix('.csv')} and {txt_file_path.with_suffix('.h5').name}")
     
     return pd.read_csv(txt_file_path.with_suffix(".csv"), index_col=0)
+
+
+def repeat_and_align_index(
+    df: pd.DataFrame | pd.Series, 
+    new_index: pd.DatetimeIndex, 
+    year_range: tuple[int, int]
+) -> pd.DataFrame:
+    """
+    Expand df by repeating its index for each year in the given range,
+    then align it with df's index using forward and backward fill.
+
+    Args:
+        df (pd.DataFrame): The input dataframe with one year of data.
+        df (pd.DataFrame): The reference dataframe for alignment.
+        year_range (Tuple[int, int]): The start and end year (inclusive).
+
+    Returns:
+        pd.DataFrame: The expanded and aligned dataframe.
+    """
+    year_start, year_end = year_range
+    
+    if isinstance(df, pd.Series):
+        df = df.to_frame()
+    
+    # Ensure the index is timezone-aware and set to UTC
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    else:
+        df.index = df.index.tz_convert("UTC")
+    
+    # Generate repeated data for each year in the range
+    
+    # Generate repeated data for each year in the range
+    dfs = [
+        df.copy().set_index(
+            df.index.map(lambda dt: dt.replace(year=year))
+        )
+        for year in range(year_start, year_end + 1)
+    ]
+    df = pd.concat(dfs)
+    
+    # Adapt provided data index to generated data index
+    start_idx = new_index.get_loc(df.index[0])
+    df = (
+        df.set_index(new_index[start_idx : start_idx + len(df.index)])
+        .reindex(new_index)
+        .ffill()
+        .bfill()
+    )
+    
+    return df
