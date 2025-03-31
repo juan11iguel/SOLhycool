@@ -85,6 +85,10 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv_C, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
     Tcc_in = Tc_out;
     Tcc_out = Tc_in;
+    % Validation
+    if Tc_out >= Tv_C - parameters.condenser_deltaTv_cout_min
+        valid = false;
+    end
 
     % DC
     Tdc_in = Tcc_in;
