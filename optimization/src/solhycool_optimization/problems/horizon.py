@@ -16,9 +16,6 @@ from solhycool_optimization import RealDecVarsBoxBounds, DecisionVariables
 """ Global variables """
 # cc_model = combined_cooler.initialize()  # Could we get away initiating this only once at the beginning?
 
-# TODO: Refactor use of cc_model to use it the same way as in static
-# TODO: Include new constraints
-
 class CombinedCoolerProblem:
     """ Combined cooler problem with two sources of water: a cheaper and a
     more expensive one, with volume restriction on the cheaper one 
@@ -216,9 +213,7 @@ class CombinedCoolerProblem:
         
         # Every field in the objects should be a numpy array with values for each time step
         # in the prediction horizon
-        
-        start_time = time.time()
-        
+                
         J = 0
         ecs = []
         ics = []
@@ -281,3 +276,63 @@ class CombinedCoolerProblem:
         # print(f"J={J:.2f}, {time.time()-start_time:.2f} s")
         
         return [J, *ecs, *ics]
+
+
+class CombinedCoolerPathFinderProblem:
+    df_paretos: list[pd.DataFrame]
+    Vavail0: float
+    sample_time_h: int = 1
+    n_steps: int = None
+    
+    def __init__(self, df_paretos: list[pd.DataFrame], Vavail0: float, sample_time_h: int = 1):
+        self.df_paretos = df_paretos
+        self.Vavail0 = Vavail0
+        self.sample_time_h = sample_time_h
+        self.n_steps = len(df_paretos)
+        
+    def get_nc(self) -> int:
+        return 0
+    
+    def get_nix(self) -> int:
+       return self.n_steps 
+        
+    def get_bounds(self, ) -> tuple[Iterable, Iterable]:
+        return ([0] * self.n_steps, [len(df_pareto)-1 for df_pareto in self.df_paretos])
+    
+    def evaluate(self, ops: list[OperationPoint], update_operation_pts: bool = False) -> float | tuple[float, list[OperationPoint]]:
+        J = 0
+        Vavail = self.Vavail0  # m³
+        for op_idx, op in enumerate(ops):
+
+            # Ce_kWe, Cw_lh, _ = self.cc_model.combined_cooler_model(op.Tamb, op.HR, op.mv, op.qc, op.Rp, op.Rs, op.wdc, op.wwct, op.Tv, nargout=3)
+            
+            Ce_kWe, Cw_lh = op.Ce, op.Cw
+            
+            Cw_s1 = min( Cw_lh*self.sample_time_h, Vavail*1e3 ) / self.sample_time_h
+            Cw_s2 = Cw_lh - Cw_s1
+            Vavail = Vavail-Cw_s1*1e-3*self.sample_time_h
+
+            J += Ce_kWe * op.Pe + Cw_s1 * op.Pw_s1 + Cw_s2 * op.Pw_s2
+            
+            if update_operation_pts:
+                op.Cw_s1 = Cw_s1
+                op.Cw_s2 = Cw_s2
+                op.Vavail = Vavail
+                # Nullify so they are re-calculated
+                op.Vavail_s1 = None
+                op.Jw_s1 = None
+                op.Jw_s2 = None
+                op.J = None
+                ops[op_idx] = OperationPoint(**asdict(op))
+            
+        if update_operation_pts:
+            return J, ops
+        return J
+    
+    def fitness(self, x: np.ndarray[int], ) -> float:
+        
+        ops = [self.df_paretos[step_idx].iloc[int(selected_idx)] for step_idx, selected_idx in enumerate(x)]
+            
+        # assert Vavail >= 0, f"Vavail < 0: {Vavail} m³"
+            
+        return [self.evaluate(ops)]

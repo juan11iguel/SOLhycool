@@ -2,6 +2,7 @@ from typing import Literal
 from inspect import signature
 from dataclasses import dataclass, asdict, field
 import numpy as np
+from loguru import logger
 
 from solhycool_modeling import ModelInputsRange
 
@@ -68,6 +69,15 @@ class ValuesDecisionVariables:
     Rp: int | np.ndarray[float] = 10
     Rs: int | np.ndarray[float] = 10
     wdc: int | np.ndarray[float] = 10
+    
+    @classmethod
+    def initialize(cls, values_per_dv: int):
+        """ Initialize instance with the same number values per decision variable """
+        
+        fld_names = list(cls.__dataclass_fields__.keys())
+        logger.info(f"Initializing {cls.__name__} with {values_per_dv} values per decision variable. A total of {values_per_dv**len(fld_names)} combinations will be generated.")
+        
+        return cls(**{name: values_per_dv for name in fld_names})
     
     def generate_arrays(self, ) -> "ValuesDecisionVariables":
         inputs_range = ModelInputsRange()

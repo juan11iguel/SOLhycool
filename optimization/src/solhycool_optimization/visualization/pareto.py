@@ -9,6 +9,8 @@ from plotly.validators.scatter.marker import SymbolValidator
 from phd_visualizations.constants import color_palette, plt_colors, default_fontsize, newshape_style
 import plotly.graph_objects as go
 
+import warnings
+
 symbols = SymbolValidator().values[2::12]
 symbols_open = SymbolValidator().values[3::12]
 symbols_filled = SymbolValidator().values[4::12]
@@ -32,7 +34,9 @@ def generate_tooltip_data(ops: pd.DataFrame | list[OperationPoint]) -> tuple[np.
 
 def plot_pareto_front(ops_list: list[pd.DataFrame] | list[list[OperationPoint]], objective_keys: tuple[str, str] = ('Cw', 'Ce'),
                 additional_pts: np.ndarray[float] = None,
-                full_legend:bool = False, highlight_idx:int = None, width: int = 550, height: int = 450) -> go.Figure:
+                full_legend:bool = False, highlight_idx:int = None, width: int = 1000, height: int = 450) -> go.Figure:
+
+    warnings.warn("plot_pareto_front is deprecated. Use solhycool_visualizations.optimization.plot_pareto_front instead.", DeprecationWarning)
 
     fig = go.Figure()
     
@@ -127,9 +131,9 @@ def plot_pareto_front(ops_list: list[pd.DataFrame] | list[list[OperationPoint]],
             # # Smaller font
             # font=dict(size=default_fontsize-2),
             # # orientation="h",
-            yanchor="bottom",
-            xanchor="center",
-            x=0.5, y=1,
+            # yanchor="bottom",
+            # xanchor="center",
+            # x=0.5, y=1,
             bgcolor=f'rgba(255,255,255,1)',
             # font_color='white',
             # font=dict(),

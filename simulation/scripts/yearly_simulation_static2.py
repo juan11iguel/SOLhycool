@@ -10,6 +10,7 @@ import pygmo as pg
 import datetime
 import time
 import argparse
+import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 
@@ -49,6 +50,18 @@ params_per_problem = {
         "reduce_load": True,
         "load_factor": 0.5,
     },
+    "cc": {
+        "algo_params": dict(
+            initial_pop_size=1000,
+            log_verbosity=0,
+            algo_id="sea",
+            use_mbh=False,
+            use_cstrs=True,
+            n_trials=1,
+            wrapper_algo_iters=50,
+            max_iter=100,
+        ),
+    }
 }
 
 def evaluate_day(single_date, df_day, params, problem_cls: object):
