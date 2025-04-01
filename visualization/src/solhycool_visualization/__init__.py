@@ -3,6 +3,12 @@ from enum import Enum
 class ComponentColors(Enum):
     DC = "#83b366"
     WCT = "#9573a6"
+    CONDENSER = "#CCCCCC"
+    ELECTRICITY = "#FECB52"
+    WATER = "#5AA9A2"
+    TRANSPARENT = "rgba(0,0,0,0)"
+    WATER1 = "#36D7F3"
+    WATER2 = "#6c8ebf"
     
     
 def reorder_dict(d: dict, key_to_move: str, new_position: int) -> dict:

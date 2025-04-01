@@ -372,4 +372,23 @@ class OperationPoint:
             data["time"] = time
 
         return cls(**data)
+    
+    @classmethod
+    def initialize_null(cls, env_vars: EnvironmentVariables = None):
+        """Return an instance with all values set to zero/none.
+        
+        Returns:
+            OperationPoint: Instance with all values set to zero/none.
+        """
+        op_dict = {
+            k: 0 if v.default is not None else None 
+            for k, v in cls.__dataclass_fields__.items()
+        }
+        if env_vars is not None:
+            op_dict.update({
+                k: v for k, v in asdict(env_vars).items()
+                if k in cls.__dataclass_fields__.keys()
+            })
+        return cls(**op_dict)
+        
             

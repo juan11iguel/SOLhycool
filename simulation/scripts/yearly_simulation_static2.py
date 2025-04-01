@@ -14,12 +14,13 @@ import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 
-from solhycool_modeling import EnvironmentVariables
+from solhycool_modeling import EnvironmentVariables, OperationPoint
 from solhycool_optimization.utils.evaluation import optimize
 from solhycool_evaluation.utils.serialization import export_evaluation_results
 
 logger.disable("phd_visualizations")
 np.set_printoptions(precision=2)
+multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
 
 params_per_problem = {
     "dc": {
@@ -47,7 +48,7 @@ params_per_problem = {
             wrapper_algo_iters=10,
             max_iter=80,
         ),
-        "reduce_load": True,
+        "reduce_load": False,
         "load_factor": 0.5,
     },
     "cc": {
@@ -72,25 +73,40 @@ def evaluate_day(single_date, df_day, params, problem_cls: object):
     results = []
     x_list = []
     fitness_list = []
-
     pop0 = deque(maxlen=10)
-
+    Vavail = df_day.iloc[0]["Vavail_m3"] # Vavail0
+    active_idxs = np.where(df_day["Q_kW"] > 0)[0].tolist()
+    
     for idx, (dt, ds) in enumerate(df_day.iterrows()):
         logger.info(f"Step {idx+1}/{len(df_day)}: {dt}")
+        
+        # Initialize environment
         env_vars = EnvironmentVariables.from_series(ds)
-        if params["reduce_load"]:
+        env_vars.Vavail = Vavail
+        if params.get("reduce_load", False):
             env_vars.reduce_load(params.get("load_factor", 0.5))
-
+        
+        # No operation
+        if idx not in active_idxs:
+            results.append( asdict(OperationPoint.initialize_null(env_vars=env_vars)) )
+            continue
+        
+        # Else
         problem = problem_cls(env_vars=env_vars)
         operation_points, _, pop_list, fitness_list_, _ = optimize(
             problem,
             **params["algo_params"],
-            evaluate_global_with_local=True,
+            evaluate_global_with_local=False,
             extra_outputs=True,
             pop0=pop0 if len(pop0) > 0 else None,
         )
         best_idx = np.argmin(fitness_list_[:, 0])
-        results.append(asdict(operation_points[best_idx]))
+        
+        # Update environment
+        Vavail = env_vars.update_available_water(operation_points[best_idx].Cw_s1)
+        
+        # Store results
+        results.append( asdict(operation_points[best_idx]) )
         pop0.append(pop_list[best_idx].champion_x)
         x_list.append(pop_list[best_idx].champion_x)
         fitness_list.append(fitness_list_[best_idx])
@@ -101,7 +117,7 @@ def evaluate_day(single_date, df_day, params, problem_cls: object):
     df_sim = pd.DataFrame(results, index=df_day.index)
     return date_str, df_sim, x_list, fitness_list, evaluation_time
 
-def main(problem_id: Literal["dc", "wct", "cc"], n_parallel_evals: int, base_path: Path, env_path: Path, date_span: tuple[str, str]):
+def main(problem_id: Literal["dc", "wct", "cc"], evaluation_id: str, n_parallel_evals: int, base_path: Path, env_path: Path, date_span: tuple[str, str]):
     if problem_id == "dc":
         from solhycool_optimization.problems.static import DryCoolerProblem as Problem
     elif problem_id == "wct":
@@ -123,7 +139,7 @@ def main(problem_id: Literal["dc", "wct", "cc"], n_parallel_evals: int, base_pat
         "problem_id": problem_id,
         **params["algo_params"],
     }
-    file_id = f"eval_at_{datetime.datetime.now():%Y%m%dT%H%M}"
+    file_id = f"eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{evaluation_id}"
 
     start_date = datetime.datetime.strptime(date_span[0], "%Y%m%d").replace(hour=0)
     end_date = datetime.datetime.strptime(date_span[1], "%Y%m%d").replace(hour=23)
@@ -184,6 +200,7 @@ def main(problem_id: Literal["dc", "wct", "cc"], n_parallel_evals: int, base_pat
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--problem_id', type=str, required=True)
+    parser.add_argument('--evaluation_id', type=str, default="")
     parser.add_argument('--n_parallel_evals', type=int, default=16)
     parser.add_argument('--base_path', type=str, default="/workspaces/SOLhycool")
     parser.add_argument('--env_path', type=str, default="data/datasets/environment_data_20220101_20241231.h5")
@@ -195,6 +212,7 @@ if __name__ == "__main__":
 
     main(
         problem_id=args.problem_id,
+        evaluation_id=args.evaluation_id,
         n_parallel_evals=args.n_parallel_evals,
         base_path=Path(args.base_path),
         env_path=Path(args.env_path),

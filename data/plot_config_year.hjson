@@ -7,8 +7,8 @@
   # General plot attributes
   title: "SOLhycool operation optimization",
   subtitle: "Evaluation results",
-  height: 1200,
-  width: 1000,
+  height: 1100,
+  width: 1100,
   margin: {
     l:20,
     r:100,
@@ -38,12 +38,11 @@
       traces_left: [
         {
           var_id: "Tamb",
-          name: "T<sub>amb</sub> (ºC) 🠠", # "T<sub>amb,ts</sub>",
+          name: "T<sub>amb</sub> (ºC) ❮", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_green",
           showlegend: true,
           width: 3,
-          // legend_id: 'global_legend',
         },
       ],
 
@@ -51,14 +50,11 @@
         // [
         {
           var_id: "HR",
-          name: "HR (%) ➝", # "T<sub>amb,ts</sub>",
+          name: "HR (%) ❯", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_blue",
           width: 3,
           showlegend: true,
-          // legend_id: 'global_legend',
-          axis_arrow: true,
-          arrow_yrel_pos: -0.1,
         },
         //],
         // [{
@@ -68,9 +64,6 @@
         //   color: "plotly_blue",
         //   width: 3,
         //   showlegend: true,
-        //   // legend_id: 'global_legend',
-        //   axis_arrow: true,
-        //   arrow_yrel_pos: -0.1,
         // }],
       ]
     },
@@ -89,21 +82,18 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>) ❮", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          // legend_id: 'global_legend',
-          axis_arrow: true,
-          arrow_yrel_pos: -0.1,
         },
       ],
       traces_right: [
         {
           var_id: "Tv",
-          name: "T<sub>v</sub> (ºC)",
+          name: "T<sub>v</sub> (ºC) ❯",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -111,7 +101,7 @@
         },
         {
           var_id: "Tc_in",
-          name: "T<sub>c,in</sub> (ºC)",
+          name: "T<sub>c,in</sub> (ºC) ❯",
           mode: "lines",
           color: "plotly_blue",
           dash: "dash",
@@ -120,7 +110,7 @@
         },
         {
           var_id: "Tc_out",
-          name: "T<sub>c,out</sub> (ºC)",
+          name: "T<sub>c,out</sub> (ºC) ❯",
           mode: "lines",
           color: "plotly_red",
           dash: "dot",
@@ -145,7 +135,7 @@
       traces_left: [
         {
           var_id: "Vavail",
-          name: "V<sub>available</sub> (m³)",
+          name: "V<sub>available</sub> (m³) ❮",
           mode: "lines",
           color: "plotly_cyan",
           width: 3,
@@ -157,30 +147,26 @@
         [
           {
             var_id: "Pe",
-            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
+            name: "Electricity price (€/kW<sub>e</sub>) ❯", # "T<sub>amb,ts</sub>",
             mode: "lines",
             color: "plotly_yellow",
             width: 3,
-            axis_arrow: true,
-            arrow_yrel_pos: -0.05,
             showlegend: true,
           },
         ],
         [
           {
             var_id: "Pw_s1",
-            name: "Water price - source 1 (€/l)",
+            name: "Water price - source 1 (€/l) ❯❯",
             mode: "lines",
             color: "turquesa",
             dash: "solid",
             width: 3,
-            axis_arrow: true,
-            arrow_yrel_pos: -0.12,
             showlegend: true,
           },
           {
             var_id: "Pw_s2",
-            name: "Water price - source 2 (€/l)",
+            name: "Water price - source 2 (€/l) ❯❯",
             mode: "lines",
             color: "turquesa",
             dash: "dash",
@@ -218,7 +204,7 @@
           // },
           {
             var_id: "Je_wct",
-            name: "J<sub>e,wct</sub> (€/h)",
+            name: "J<sub>e,wct</sub> (€/h) ❮",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -227,7 +213,7 @@
           },
           {
             var_id: "Je_dc",
-            name: "J<sub>e,dc</sub> (€/h)",
+            name: "J<sub>e,dc</sub> (€/h) ❮",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -236,7 +222,7 @@
           },
           {
             var_id: "Je_c",
-            name: "J<sub>e,c</sub> (€/h)",
+            name: "J<sub>e,c</sub> (€/h) ❮",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -245,7 +231,7 @@
           },
           {
             var_id: "Jw_s2",
-            name: "J<sub>w,s2</sub> (€/h)",
+            name: "J<sub>w,s2</sub> (€/h) ❮",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -254,7 +240,7 @@
           },
           {
             var_id: "Jw_s1",
-            name: "J<sub>w,s1</sub> (€/h)",
+            name: "J<sub>w,s1</sub> (€/h) ❮",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -265,9 +251,9 @@
         traces_right: [
           {
            var_id: "Pe",
-            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
+            name: "Electricity price (€/kW<sub>e</sub>) ❯", # "T<sub>amb,ts</sub>",
             mode: "lines",
-            color: "plotly_green",
+            // color: "plotly_green",
             showlegend: true,
             width: 0.5,
           },
@@ -285,7 +271,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>) ❮", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -294,7 +280,7 @@
         },
         {
           var_id: "Qdc",
-          name: "Q<sub>dc</sub> (kW<sub>th</sub>)",
+          name: "Q<sub>dc</sub> (kW<sub>th</sub>) ❮",
           mode: "lines",
           color: "dc_green",
           width: 3,
@@ -304,7 +290,7 @@
         },
         {
           var_id: "Qwct",
-          name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
+          name: "Q<sub>wct</sub> (kW<sub>th</sub>) ❮",
           mode: "lines",
           color: "wct_purple",
           width: 3,
@@ -337,18 +323,19 @@
       row_height: 1,
       bg_color: "bg_gray",
       ylabels_left: ["<b>Hydraulic distribution</b><br>m<sup>3</sup>/h"],
-      ylims_left: 'manual',
+      ylims_left: [0, 25],
       showlegend: true,
       legend_position: "top",
 
       traces_left: [
         {
-          var_id: "qwct_p",
-          name: "q<sub>wct</sub> (m<sup>3</sup>/h)",
+          var_id: "qdc_only",
+          name: "q<sub>just dc</sub> (m<sup>3</sup>/h)",
           mode: "lines",
-          color: "wct_purple",
+          color: "dc_green",
           width: 3,
-          fill: "tonexty",
+          fill: "tozeroy",
+          stackgroup: "hydraulic_distribution",
           showlegend: true,
         },
         {
@@ -358,20 +345,24 @@
           color: "dc_green",
           width: 3,
           fill: "tonexty",
+          stackgroup: "hydraulic_distribution",
           kwargs: {
             "fillpattern_shape": "/", 
             "fillpattern_fgcolor": "#9573a6",
-            "fillpattern_size": 20,
+            "fillpattern_size": 25,
+            "fillpattern_fgopacity":0.8,
+            "fillpattern_solidity":0.4,
           }
           showlegend: true,
         },
         {
-          var_id: "qdc_only",
-          name: "q<sub>just dc</sub> (m<sup>3</sup>/h)",
+          var_id: "qwct_p",
+          name: "q<sub>wct</sub> (m<sup>3</sup>/h)",
           mode: "lines",
-          color: "dc_green",
+          color: "wct_purple",
           width: 3,
-          fill: "tozeroy",
+          fill: "tonexty",
+          stackgroup: "hydraulic_distribution",
           showlegend: true,
         },
       ],
