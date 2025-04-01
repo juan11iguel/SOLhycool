@@ -109,6 +109,13 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     if abs( detailed.Qcc - detailed.Qc_released ) > 10
         valid = false;
     end
+
+    if detailed.Qdc < 10 && detailed.qdc > 0 % Water circulation on inactive component
+        valid = false;
+    end
+    if detailed.Qwct < 10 && detailed.qwct > 0 % Water circulation on inactive component
+        valid = false;
+    end
 end
 
 
