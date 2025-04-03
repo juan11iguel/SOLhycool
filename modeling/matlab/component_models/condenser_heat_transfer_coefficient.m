@@ -11,10 +11,12 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
         qc_m3h (1,1) double
         Tc_in_C (1,1) double
         Tv_C (1,1) double
-        option (1,1) int8 {mustBeInRange(option, 1, 7)} = 7
+        option (1,1) int8 {mustBeInRange(option, 1, 9)} = 7
     end
     
     qc2=qc_m3h*1000; % m3/h -> kg/h
+    option = int8(option);
+    
     switch option
         case 1
             %% Correlación de U en función de mc (kg/h) y Tv (ºC)
