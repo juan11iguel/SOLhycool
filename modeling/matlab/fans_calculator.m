@@ -1,4 +1,4 @@
-function [wdc,wwct] = fans_calculator(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, Tv_C, options)
+function [wdc,wwct,detailed] = fans_calculator(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, Tv_C, options)
     % FANS CALCULATOR calculates the frequency (%) of the fans for a specific CC configuration.
     % The system is composed by a condenser and a combined cooler.
     %
@@ -34,11 +34,13 @@ arguments (Input)
     % python
     options = struct('model_type', 'data', 'silence_warnings', true, 'parameters', default_parameters()); % Default values
 
+    
 end
 
 arguments (Output)
     wdc (1,1) double
     wwct (1,1) double
+    detailed (1,1) struct
 end
 
 % Unpack options
@@ -73,17 +75,9 @@ end;
 %% Condiciones en los ventildores
 w_fan_dc_min = 11;   % (%)
 w_fan_dc_max  = 99; % (%)
-w_fan_dc_fijo = 20; % (%) establecido para configuración serie
+w_fan_dc_fijo = 20; % (%) establecido para configuración serie. Este valor puede cambiar al máximo bajo algunas condiciones
 w_fan_wct_min = 21; %
 w_fan_wct_max = 93.4161; %
-
-%% Tipo de configuración
-% Rp=0;
-% Rs=0;
-qdc = qc_m3h*(1-Rp); %m3/h
-qwct_p = qc_m3h*Rp;
-qwct_s = qdc*Rs;
-qwct = qwct_p + qwct_s;
 
 %% Calcula setpoint de temperatura a la entrada del surface condenser
 ms_u=mv_kgh/3600; % kg/s
@@ -94,19 +88,53 @@ Q=ms_u*landa;
 
 % Poner fmincon con restricciones en Q, Tv_C
 fun = @(x) SurfaceCondeser_v4(x, A_SC, Tv_C, Q, qc_m3h); 
-options = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display',display_solver);
+options2 = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display',display_solver);
 lb=[10,10]; 
 ub=[Tv_C,Tv_C];
 
 x0 = [Tv_C-10,Tv_C-2];
-[x,fval]=fmincon(fun,x0,[],[],[],[],lb,ub,[],options);
+[x,fval]=fmincon(fun,x0,[],[],[],[],lb,ub,[],options2);
 Tcin_sp=x(1);
 Tcout=x(2);
 
+Twct_out=Tcin_sp;
+Tdc_out=Tcin_sp;
+
 ParoDC=0;
-if Tcout<(Tamb_C+2)
+MaxDC=0;
+
+
+%% Chequeo si se puede operar con DC o no
+dT=2; %rango para chequear si se puede emplear DC o no
+if Tcout<(Tamb_C-dT)
     ParoDC=1; %no tiene sentido trabajar con el DC
+    Rp = 1; % fuerzo a configuración solo WCT
+else
+    if (Tcin_sp<(Tamb_C-dT) && Rs<0.01) %solo tiene sentido este check en paralelo o DC
+        MaxDC=1; %estado DC al máximo
+        wdc = w_fan_dc_max;
+        if Rp<1
+            Rp=1; % en el caso de Solo DC lo paso a serie
+            w_fan_dc_fijo=w_fan_dc_max;
+        else % caso paralelo
+            %hay que recalcular valor de setpoint en WCT
+            % primero calcular la Tout_dc (empleo modelo de datos)
+            qdc = qc_m3h*(1-Rp); %m3/h
+            Tout_dc = dc_model(Tamb_C, Tcout, qdc, wdc);
+            % segundo calcular SP en Toutwct
+            qwct_p = qc_m3h*Rp;
+            Twct_out=(qc_m3h*Tcin_sp-qdc*Tout_dc)/qwct_p;
+        end;
+    end;
 end;
+
+%% Tipo de configuración
+% Rp=0;
+% Rs=0;
+qdc = qc_m3h*(1-Rp); %m3/h
+qwct_p = qc_m3h*Rp;
+qwct_s = qdc*Rs;
+qwct = qwct_p + qwct_s;
 
 
 %% Calcula frecuencia de ventiladores
@@ -117,12 +145,11 @@ A = []; b = []; Aeq = []; beq = [];
 %options_fmincon = optimoptions(@fmincon,'Algorithm','sqp','TolFun',1e-9,'MaxIterations', 10);
 options_fmincon = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11,'MaxIterations', 6, 'Display',display_solver); 
 
-Twct_out=Tcin_sp;
-Tdc_out=Tcin_sp;
+
 % if Rs>0
 %     Tdc_out=decidir;
 % end
-if (Rp~=1 && Rs==0 && ParoDC==0) % DC funcionando y no está en serie
+if (Rp~=1 && Rs<0.01 && ParoDC==0 && MaxDC==0) % DC funcionando y no está en serie y no está al máximo por la Tamb
     fun = @(x)calculo_w_dc(x, Tdc_out, Tamb_C, qdc, Tcout, tm);
     lb = w_fan_dc_min; ub = w_fan_dc_max; x0 = 50;
 
@@ -137,7 +164,7 @@ if (Rp~=1 && Rs==0 && ParoDC==0) % DC funcionando y no está en serie
         % Random Restart settings
         numRestarts = 5;
         bestSolution = w_dc_fan;
-        bestFval = fval_initial;
+        bestFval = 1e10000; %fval_initial
     
         x0_rand=100*(rand(1,numRestarts));
         x0_rand=min(x0_rand,w_fan_dc_max);
@@ -157,6 +184,7 @@ if (Rp~=1 && Rs==0 && ParoDC==0) % DC funcionando y no está en serie
                 bestFval = fval;
                 w_dc_fan = x;
             end
+            
         end
     
         % Display the best solution from random restarts
@@ -167,15 +195,24 @@ if (Rp~=1 && Rs==0 && ParoDC==0) % DC funcionando y no está en serie
        if ~silence_warnings
             fprintf('Initial point was not detected as a local minimum, so no random restarts are performed.\n');
        end
-    end;    
+    end;  
+%     % Chequeo si está al máximo el DC
+%     if w_dc_fan==w_fan_dc_max
+%         % primero calcular la Tout_dc (empleo modelo de datos)
+%         Tout_dc = dc_model(Tamb_C, Tcout, qdc, w_dc_fan);
+%         % segundo calcular el nuevo SP en Toutwct
+%         qwct_p = qc_m3h*Rp;
+%         Twct_out=(qc_m3h*Tcin_sp-qdc*Tout_dc)/qwct_p; 
+%     end;
 else
-    if (Rp~=1 && Rs~=0 && ParoDC==0) %serie
+    if (Rp~=1 && Rs>0.95 && ParoDC==0) %serie Rs~=0
         w_dc_fan=w_fan_dc_fijo;
     end;
 end;
 
-if Rp~=0  % WCT funcionando
-    fun = @(x)calculo_w_wct(x, Tdc_out, Tamb_C, qwct, Tcout, HR_pp, tm);
+if Rp>0.1 %~=0  % WCT funcionando
+    fun = @(x)calculo_w_wct(x, Twct_out, Tamb_C, qwct, Tcout, HR_pp, tm);
+    %fun = @(x)calculo_w_wct(x, Tdc_out, Tamb_C, qwct, Tcout, HR_pp, tm);
     lb = w_fan_wct_min; ub = w_fan_wct_max; x0 = 50;
 
     %Hay que meter la búsqueda con distintas condiciones iniciales
@@ -189,7 +226,7 @@ if Rp~=0  % WCT funcionando
         % Random Restart settings
         numRestarts = 5;
         bestSolution = w_wct_fan;
-        bestFval = fval_initial;
+        bestFval = 1e10000; %fval_initial;
     
         x0_rand=100*(rand(1,numRestarts));
         x0_rand=min(x0_rand,w_fan_dc_max);
@@ -219,12 +256,14 @@ if Rp~=0  % WCT funcionando
         if ~silence_warnings
             fprintf('Initial point was not detected as a local minimum, so no random restarts are performed.\n');
         end;
-    end;    
+    end; 
 else
     %solo DC
     w_wct_fan=0;
 end;
 
-
 wdc=w_dc_fan;
 wwct= w_wct_fan;
+
+% With wwct, evaluate model
+[~, ~, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options);

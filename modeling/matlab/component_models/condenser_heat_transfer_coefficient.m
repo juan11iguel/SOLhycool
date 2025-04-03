@@ -71,6 +71,9 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
 
         case 8 %Uc de El-Dessouky
            U=(1.7194+(3.2063e-3*Tv_C)+(1.5971e-5*Tv_C^2)-(1.9918e-7*Tv_C^3))*1000; % W/m2   
+
+        case 9 % Uc nominal de planta MED PSA
+            U =  650; %W/m2ºC (calculado por Patricia en condiciones nominales de operación)
     
     end
     U=U/1000; % kW/m2ºC 
