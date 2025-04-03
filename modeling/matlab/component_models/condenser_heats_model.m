@@ -18,7 +18,7 @@ function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, optio
         mc_kgs (1,1) double
         Tc_in (1,1) double
         Tc_out (1,1) double
-        options.option (1,1) int8 {mustBeInRange(options.option, 1, 7)} = 7
+        options.option (1,1) int8 {mustBeInRange(options.option, 1, 9)} = 7
         options.A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
     end
 

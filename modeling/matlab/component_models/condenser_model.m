@@ -16,7 +16,7 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
         mv_kgs (1,1) double
         Tv_C (1,1) double
         mc_kgs (1,1) double
-        options.option (1,1) int8 {mustBeInRange(options.option, 1, 7)} = 7
+        options.option (1,1) int8 {mustBeInRange(options.option, 1, 9)} = 7
         options.A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
         options.deltaTv_cout_min (1,1) double {mustBePositive} = 2;
         options.Tmin (1,1) double = 25;
