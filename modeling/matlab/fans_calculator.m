@@ -67,7 +67,7 @@ A_SC=parameters.condenser_A; %19.59;  %% Calculado por Patricia ->> Hay que pasa
 % mc=24;    %% Lo fijamos a este valor en principio (m3/h)
 model_type = options.model_type;
 tm=1; % por defecto modelo basado en datos
-if model_type ~= 'data_based'
+if model_type ~= "data"
     tm=2;
 end;
 
