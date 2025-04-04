@@ -1,14 +1,7 @@
-# import os
-# MR = "/home/patomareao/MATLAB/R2024b"
-# os.environ['LD_LIBRARY_PATH'] = f"{MR}/runtime/glnxa64:\
-# {MR}/bin/glnxa64:\
-# {MR}/sys/os/glnxa64:\
-# {MR}/extern/bin/glnxa64:\
-# /lib/x86_64-linux-gnu:"
-
 import copy
 from typing import Literal
 from pathlib import Path
+from collections import deque
 from dataclasses import asdict
 import numpy as np
 import pandas as pd
@@ -16,243 +9,263 @@ from loguru import logger
 import pygmo as pg
 import datetime
 import time
+import argparse
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from tqdm import tqdm
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint
+from solhycool_optimization.utils.evaluation import optimize
 from solhycool_evaluation.utils.serialization import export_evaluation_results
 
 logger.disable("phd_visualizations")
-
-# Paths
-# Assuming the working directory is the package root (project_fld/simulation/)
-base_path = Path("/workspaces/SOLhycool")
-
-data_path: Path = base_path / "data"
-env_path: Path = data_path / "datasets/environment_data_20220101_20241231.h5"
-base_output_path: Path = base_path / "simulation/results"
-date_span: tuple[str, str] = ("20220117", "20221231")#"20221233")
-date_span_str: str = f"{date_span[0]}_{date_span[1]}"
-
-# Parameters
-problem_id: Literal["dc", "wct", "cc"] = "dc"
-save_algo_logs: bool = False
-reduce_load: bool = True
-params_per_problem: dict = {
-    "dc": dict(
-        initial_pop_size = 400,
-        log_verbosity = 5,
-        algo_id = "sea",
-        use_mbh = False,
-        use_cstrs = True,
-        n_trials = 3,
-        wrapper_algo_iters=10,
-        max_iter=80,
-    )
-}
-params = params_per_problem[problem_id]
-
-# Import problem definition based on problem_id
-if problem_id == "dc":
-    from solhycool_optimization.problems.static import DryCoolerProblem as Problem
-elif problem_id == "wct":
-    from solhycool_optimization.problems.static import WetCoolerProblem as Problem
-elif problem_id == "cc":
-    from solhycool_optimization.problems.static import CombinedCoolerProblem as Problem
-else:
-    raise ValueError(f"Invalid problem_id: {problem_id}")
-
-# if algo_id == "mbh":
-#     assert inner_algo_id is not None, "If wrapper algorithm is used, a inner_algo_id needs to be specified"
 np.set_printoptions(precision=2)
-metadata: dict = {
-    "date_span": date_span,
-    "problem_id": problem_id,
-    **params,
-    # "initial_pop_size": initial_pop_size,
-    # "algo_id": algo_id,
-    # "algo_params": algo_params,
+multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
+
+params_per_problem = {
+    "dc": {
+        "algo_params": dict(
+            initial_pop_size=400,
+            log_verbosity=0,
+            algo_id="sea",
+            use_mbh=False,
+            use_cstrs=True,
+            n_trials=1,
+            wrapper_algo_iters=10,
+            max_iter=80,
+        ),
+        "reduce_load": True,
+        "load_factor": 0.5,
+    },
+    "wct": {
+        "algo_params": dict(
+            initial_pop_size=400,
+            log_verbosity=0,
+            algo_id="sea",
+            use_mbh=False,
+            use_cstrs=True,
+            n_trials=1,
+            wrapper_algo_iters=10,
+            max_iter=80,
+        ),
+        "reduce_load": False,
+        "load_factor": 0.5,
+    },
+    "cc": {
+        "algo_params": dict(
+            initial_pop_size=1000,
+            log_verbosity=0,
+            algo_id="sea",
+            use_mbh=False,
+            use_cstrs=True,
+            n_trials=1,
+            wrapper_algo_iters=50,
+            max_iter=100,
+        ),
+    },
+    "med_wct_only": {
+        "evaluate_optimization": False,
+        "location": "egypt",
+        "decision_variables": {
+            "qc": 18.0,
+            "Rp": 1,
+            "Rs": 0.,
+        },
+    },
+    "med_75_parallel": {
+        "evaluate_optimization": False,
+        "location": "egypt",
+        "decision_variables": {
+            "qc": 18.0,
+            "Rp": 0.75,
+            "Rs": 0.,
+        },
+    },
+    "med_50_parallel": {
+        "evaluate_optimization": False,
+        "location": "egypt",
+        "decision_variables": {
+            "qc": 18.0,
+            "Rp": 0.5,
+            "Rs": 0.,
+        },
+    },
+    "med_100_series": {
+        "evaluate_optimization": False,
+        "location": "egypt",
+        "decision_variables": {
+            "qc": 18.0,
+            "Rp": 0.,
+            "Rs": 1.,
+        },
+    }
 }
-file_id = f"eval_at_{datetime.datetime.now():%Y%m%dT%H%M}"
 
-output_path = base_output_path / date_span_str
-if not output_path.exists():
-    output_path.mkdir(parents=True)
-   
-start_date = datetime.datetime.strptime(date_span[0], "%Y%m%d").replace(hour=0, minute=0, second=0)
-end_date = datetime.datetime.strptime(date_span[1], "%Y%m%d").replace(hour=23, minute=0, second=0)
+def evaluate_day(single_date, df_day, params, problem_cls: object):
+    date_str = single_date.strftime("%Y%m%d")
+    logger.info(f"Evaluating day: {date_str}")
+    start_time = time.time()
 
-def process_entry(args) -> tuple[pd.DatetimeIndex, OperationPoint]:
-    x, dt, ds = args
-
-    logger.info(f"Evaluting {dt}")
+    results = []
+    x_list = []
+    fitness_list = []
+    pop0 = deque(maxlen=10)
+    Vavail = df_day.iloc[0]["Vavail_m3"] # Vavail0
+    active_idxs = np.where(df_day["Q_kW"] > 0)[0].tolist()
     
-    env_vars = EnvironmentVariables.from_series(ds)
-    if reduce_load:
-        env_vars.reduce_load(0.5)
-    
-    # print(x)
-    result = Problem(env_vars=env_vars).evaluate(x)
-    
-    logger.info(f"Completed evaluation for {dt}")
-    return dt, result
-
-def simulate(df_env: pd.DataFrame, solutions: list[np.ndarray[float]], df: pd.DataFrame = None, parallel: bool = True) -> pd.DataFrame:
-    
-    assert len(df_env) == len(solutions), "The number of solutions must match the dimension of the environment"
-    
-    if parallel:
-        with multiprocessing.Pool() as pool:
-            results = pool.map(process_entry, [(x, dt, ds) for x, (dt, ds) in zip(solutions, df_env.iterrows())])
-    else:
-        results = [process_entry((x, dt, ds)) for x, (dt, ds) in zip(solutions, df_env.iterrows())]
-    
-    df_ = pd.DataFrame([asdict(r[1]) for r in results], index=[r[0] for r in results])
-    
-    # ops = []
-    # for idx, (dt, ds) in enumerate(df_env.iterrows()):
-    #     env_vars = EnvironmentVariables.from_series(ds)
-    #     env_vars.Q = env_vars.Q/2
-    #     env_vars.mv = env_vars.mv / 2
+    for idx, (dt, ds) in enumerate(df_day.iterrows()):
+        logger.info(f"Step {idx+1}/{len(df_day)}: {dt}")
         
-    #     ops.append( Problem(env_vars=env_vars).evaluate(solutions[idx]) )
-    
-    # df_ = pd.DataFrame([asdict(op) for op in ops], index=df_env.index)
-    
-    if df is None:
-        df = df_
-    else:
-        df = pd.concat([df, df_])    
-    return df
-
-def main() -> None:
-   
-    # 1. Setup environment
-    df_env = pd.read_hdf(env_path).loc[date_span[0]:date_span[1]]
-    
-    # # Evaluate just simulate function
-    # df_ = df_env.loc[df_env.index[0].strftime("%Y%m%d")]
-
-    # env_vars = EnvironmentVariables.from_series(df_.iloc[0])
-    # env_vars.reduce_load(0.5)
-
-    # problem = Problem(env_vars=env_vars, debug_mode=False)
-    # solutions = [pg.random_decision_vector(pg.problem(problem))] * len(df_)
-     
-    # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
-    # print(df_sim)
-
-    # archi = pg.archipelago()
-    # pg._cleanup()
-    # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
-    # print(df_sim)
-    
-    # archi = pg.archipelago()
-    # df_sim = simulate(df_env=df_, solutions=solutions, df=None)
-    # print(df_sim)
-    
-    # if algo_id == "mbh":
-    #     inner_algo = pg.algorithm(getattr(pg, inner_algo_id)(**algo_params))
-    #     inner_algo.set_verbosity(log_verbosity) 
-    #     algo = pg.algorithm(pg.mbh(inner_algo))
-    # else:
-    #     algo = pg.algorithm(getattr(pg, algo_id)(**algo_params))
-    # algo.set_verbosity(log_verbosity) 
-    
-    current_month = start_date.month
-    results_dict: dict = {}
-    df_sim: pd.DataFrame = None
-    df_opt: pd.DataFrame = None
-    n_days = (end_date-start_date).days + 1
-    for n_day, single_date in enumerate(pd.date_range(start=start_date, end=end_date, freq='D', tz='UTC')):
-        date_str = single_date.strftime("%Y%m%d")
+        # Initialize environment
+        env_vars = EnvironmentVariables.from_series(ds, location=params.get("location", "morocco"))
+        env_vars.Vavail = Vavail
+        if params.get("reduce_load", False):
+            env_vars.reduce_load(params.get("load_factor", 0.5))
         
-        logger.info(f"[{n_day:03d}/{n_days:03d}] Evaluating {date_str}")
+        # No operation
+        if idx not in active_idxs:
+            results.append( asdict(OperationPoint.initialize_null(env_vars=env_vars)) )
+            continue
         
-        # 2. Setup problems for the day
-        problems = []
-        # pop0 = []
-        archi = pg.archipelago()
-        for idx, (dt, ds) in enumerate(df_env.loc[date_str].iterrows()):
-            
-            env_vars = EnvironmentVariables.from_series(ds)
-            env_vars.reduce_load(0.5) # With only one component we can only get to half of the nominal power
-            problems.append(Problem(env_vars=env_vars, store_fitness=False))
-            
-            logger.info(f"Problem {idx+1:02d} created for {dt}")
-            
-            # pop0.append( pg.population(problems[-1], size=initial_pop_size) )
-            archi.push_back(
-                # Setting use_pool=True results in ever-growing memory footprint for the sub-processes
-                # https://github.com/esa/pygmo2/discussions/168#discussioncomment-10269386
-                # udi=pg.mp_island(use_pool=False), 
-                pg.island(algo=algo, prob=pg.problem(problems[-1]), size = initial_pop_size)
+        # Else
+        problem = problem_cls(env_vars=env_vars)
+        
+        if params.get("evaluate_optimization", True):
+            operation_points, _, pop_list, fitness_list_, _ = optimize(
+                problem,
+                **params["algo_params"],
+                evaluate_global_with_local=False,
+                extra_outputs=True,
+                pop0=pop0 if len(pop0) > 0 else None,
             )
+            best_idx = np.argmin(fitness_list_[:, 0])
+            pop0.append(pop_list[best_idx].champion_x)
+            x_list.append(pop_list[best_idx].champion_x)
+            fitness_list.append(fitness_list_[best_idx])
+        else:
+            best_idx = 0
+            operation_points = [problem.evaluate(**params["decision_variables"])]
+            x_list.append(params["decision_variables"])
+            fitness_list.append(operation_points[best_idx].J)
+            
+        # Update environment
+        Vavail = env_vars.update_available_water(operation_points[best_idx].Cw_s1)
         
-        results_dict[date_str] = {
-            # "x0": [pop.champion_x for pop in pop0],
-            # "fitness0": [pop.champion_f for pop in pop0],
-        }
-        
-        archi.evolve()
-        print(archi)
-        
-        start_time = time.time()
-        while archi.status == pg.evolve_status.busy:
-            time.sleep(5)
-            logger.info(f"Elapsed time: {time.time() - start_time:.0f}")
-            # logger.info(f"Current evolution results | Best fitness: {pop_current.champion_f[0]}, \nbest decision vector: {pop_current.champion_x}")
-        evaluation_time = int(time.time() - start_time)
-        logger.info(f"[{n_day:03d}/{n_days:03d}] Completed evolution for {date_str}! Took {evaluation_time:.0f} seconds") 
-        
-        # 7. Process results
-        # Extract evolved populations and algorithm logs
-        x_values = []
-        fitness_values = []
-        algo_logs = []
-        fitness_history = []
+        # Store results
+        results.append( asdict(operation_points[best_idx]) )
 
-        for isl in archi:
-            population = isl.get_population()
-            algorithm = isl.get_algorithm()
-            problem = population.problem.extract(object)
-            
-            x_values.append(population.champion_x)
-            fitness_values.append(population.champion_f)
-            algo_logs.append(algorithm.extract(getattr(pg, algo_id)).get_log())
-            fitness_history.append( problem.fitness_history )
+    evaluation_time = int(time.time() - start_time)
+    logger.info(f"Completed day {date_str} in {evaluation_time:.0f} sec")
 
-        results_dict[date_str].update({"x": x_values, "fitness": fitness_values})
-        
-        pg._cleanup()
-        
-        # Simulate the best operation points
-        # This is where we would have the opportunity to make use of a different
-        # environment in the simulation to account for forecast uncertainties
-        df_sim = simulate(df_env=df_env.loc[date_str], solutions=results_dict[date_str]["x"], df=df_sim, parallel=False)
-            
-        # Evaluate the best operation points
-        # With exactly the same environment as the original problem
-        # df_opt = simulate(df_env=df_env.loc[date_str], solutions=results_dict[date_str]["x"], df=df_opt, parallel=False)
-        
-        # 8. Export results. Once per month
-        # if (single_date + pd.Timedelta(days=1)).month != current_month or single_date == end_date:
-        #     current_month = (single_date + pd.Timedelta(days=1)).month
-        export_evaluation_results(
-            results_dict=results_dict,
-            metadata=metadata,
-            df_opt=df_opt,
-            df_sim=df_sim,
-            algo_logs=algo_logs if save_algo_logs else None,
-            algo_table_ids=[f"{date_str}T{hour:02d}" for hour in range(24)],
-            output_path=output_path,
-            file_id = file_id,
-            fitness_history=fitness_history
-        )
-        results_dict = {}
-        df_sim = None
-        df_opt = None
-        del x_values, fitness_values, archi, population, algorithm, problem # Free memory
-            
+    df_sim = pd.DataFrame(results, index=df_day.index)
+    return date_str, df_sim, x_list, fitness_list, evaluation_time
+
+def main(problem_id: str, evaluation_id: str, n_parallel_evals: int, base_path: Path, env_path: Path, date_span: tuple[str, str]):
+    if problem_id == "dc":
+        from solhycool_optimization.problems.static import DryCoolerProblem as Problem
+    elif problem_id == "wct":
+        from solhycool_optimization.problems.static import WetCoolerProblem as Problem
+    elif problem_id == "cc":
+        from solhycool_optimization.problems.static import CombinedCoolerProblem as Problem
+    elif problem_id in ["med_50_parallel", "med_75_parallel", "med_wct_only", "med_100_series"]:
+        from solhycool_modeling.med import MedProblem as Problem
+    else:
+        raise ValueError(f"Invalid problem_id: {problem_id}")
+
+    env_path = base_path / env_path
+    base_output_path = base_path / "simulation/results"
+    date_span_str = f"{date_span[0]}_{date_span[1]}"
+    output_path = base_output_path / date_span_str / f"{problem_id}_static"
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    params = params_per_problem[problem_id]
+    metadata = {
+        "date_span": date_span,
+        "problem_id": problem_id,
+        **params,
+    }
+    file_id = f"eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{evaluation_id}"
+
+    start_date = datetime.datetime.strptime(date_span[0], "%Y%m%d").replace(hour=0)
+    end_date = datetime.datetime.strptime(date_span[1], "%Y%m%d").replace(hour=23)
+
+    df_env = pd.read_hdf(env_path).loc[date_span[0]:date_span[1]]
+    all_dates = list(pd.date_range(start=start_date, end=end_date, freq='D', tz='UTC'))
+
+    # df_sim_all = []
+    start_time = time.time()
+    batch_size = n_parallel_evals
+
+    with tqdm(total=len(all_dates), desc="Evaluating days", unit="day", leave=True, ) as pbar:
+        for i in range(0, len(all_dates), batch_size):
+            batch_dates = all_dates[i:i + batch_size]
+            futures = {}
+
+            with ProcessPoolExecutor(max_workers=len(batch_dates)) as executor:
+                for date in batch_dates:
+                    df_day = df_env.loc[date.strftime("%Y%m%d")]
+                    future = executor.submit(evaluate_day, date, df_day, params, Problem)
+                    futures[future] = date.strftime("%Y%m%d")
+
+                for future in as_completed(futures):
+                    date_str = futures[future]
+                    try:
+                        date_str, df_sim, x_list, fitness_list, eval_time = future.result()
+                        logger.info(f"[{date_str}] Evaluation complete, saving results")
+
+                        results_dict = {
+                            date_str: {
+                                "x": x_list,
+                                "fitness": fitness_list,
+                                "evaluation_time_sec": eval_time,
+                            }
+                        }
+
+                        # df_sim_all.append(df_sim)
+
+                        export_evaluation_results(
+                            results_dict=results_dict,
+                            metadata=metadata,
+                            df_opt=None,
+                            df_sim=df_sim,
+                            algo_logs=None,
+                            algo_table_ids=[f"{date_str}T{hour:02d}" for hour in range(24)],
+                            output_path=output_path,
+                            file_id=file_id,
+                            fitness_history=None,
+                        )
+                    except Exception as e:
+                        logger.error(f"[{date_str}] Failed to process: {e}")
+                    pbar.update(1)
+
+    # final_df_sim = pd.concat(df_sim_all).sort_index()
+    # final_df_sim.to_hdf(output_path / f"simulation_results_{file_id}.h5", key="df_sim")
+    # Process final results
+    output_path = output_path / f"df_sim_{file_id}.h5"
+    df = pd.read_hdf(output_path)
+    for var_id in ["Tv", "Tc_in", "Tc_out"]: # TODO: This should be provided directly by OperationPoint.null
+        df.loc[df[var_id] < 5, var_id] = None
+    df.to_hdf(output_path, key="simulation_data", format="table", complib="zlib", complevel=9, mode="w")
+    logger.info(f"All evaluations completed. Results saved to {output_path / file_id}. Total time: {int(time.time() - start_time)/3600} hours")
+
 if __name__ == "__main__":
-    main()
-        
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--problem_id', type=str, required=True)
+    parser.add_argument('--evaluation_id', type=str, default="")
+    parser.add_argument('--n_parallel_evals', type=int, default=16)
+    parser.add_argument('--base_path', type=str, default="/workspaces/SOLhycool")
+    parser.add_argument('--env_path', type=str, default="data/datasets/environment_data_20220101_20241231.h5")
+    parser.add_argument('--date_span', nargs=2, default=["20220101", "20221231"])
+
+    args = parser.parse_args()
+    
+    assert args.problem_id in params_per_problem, f"{args.problem_id} not in available problems, options are: {list(params_per_problem.keys())}"
+
+    main(
+        problem_id=args.problem_id,
+        evaluation_id=args.evaluation_id,
+        n_parallel_evals=args.n_parallel_evals,
+        base_path=Path(args.base_path),
+        env_path=Path(args.env_path),
+        date_span=tuple(args.date_span),
+    )
