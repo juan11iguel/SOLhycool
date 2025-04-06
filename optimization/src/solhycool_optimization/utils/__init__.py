@@ -4,6 +4,11 @@ import numpy as np
 from enum import Enum
 from dataclasses import is_dataclass, asdict
 
+
+#TODO: Move this to phd_utils
+def extract_prefix(text: str) -> str:
+    return "_".join(text.split("_pop")[0].split("_"))
+
 #TODO: Move this to phd_utils
 class CustomEncoder(json.JSONEncoder):
     """ Custom JSON encoder supporting NumPy arrays and Enums

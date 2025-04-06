@@ -15,14 +15,49 @@
             "args": ["2022", "2024"]
         },
         {
-            "name": "Run yearly simulation (static)",
+            "name": "Run yearly simulation (static) - dc",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/yearly_simulation_static2.py",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "python": "/miniconda3/envs/conda-env/bin/python",
-            "args": ["--problem_id", "dc"]
+            "args": ["--problem_id", "dc", "--evaluation_id", "debug"]
+        },
+        {
+            "name": "Run yearly simulation (static) - wct",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": ["--problem_id", "wct", "--evaluation_id", "debug"]
+        },
+        {
+            "name": "Run yearly simulation (static) - cc",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": ["--problem_id", "cc", "--evaluation_id", "debug"]
+        },
+        {
+            "name": "Run yearly simulation (static) - med",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": [
+                "--problem_id", "med_wct_only", 
+                "--evaluation_id", "debug",
+                "--env_path", "data/datasets/environment_data_med_20220101_20241231.h5",
+                "--n_parallel_evals", "1",
+            ]
         },
         {
             "name": "Test",

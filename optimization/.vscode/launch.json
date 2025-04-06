@@ -5,14 +5,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "evaluate ops",
+            "name": "cc horizon optimization - evaluate paretos",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/cc_horizon_pareto_generation.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": [
+                "--values_per_decision_variable", "3",
+                "--repeat_for_each_month"
+            ]
+        },
+        {
+            "name": "cc horizon optimization - complete",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/cc_horizon_optimization.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "python": "/miniconda3/envs/conda-env/bin/python",
-            "args": ["--values_per_decision_variable", "3"]
+            "args": [
+                "--values_per_decision_variable", "2",
+                "--date_span", "20220101", "20220105",
+                "--evaluation_id", "debug",
+            ]
+        },
+        {
+            "name": "cc horizon optimization - path finder",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/cc_horizon_algo_comparison.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
         }
     ]
 }

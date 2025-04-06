@@ -9,7 +9,7 @@ from solhycool_modeling import OperationPoint
 
 plot_metadata = {
     "costs": {
-        "title":{"text": "Costs", "variants":{"absolute": "€/h", "specific": "€/kW<sub>th</sub>"}},
+        "title":{"text": "Costs"}, # , "variants":{"absolute": "€/h", "specific": "€/kW<sub>th</sub>"}},
         "labels": ["pumping", "DC", "WCT", "water source 1", "water source 2"],
         "var_ids": {"base": "J" , "components": ["Je_c", "Je_dc", "Je_wct", "Jw_s1", "Jw_s2"]},
         "colors": [CC.ELECTRICITY.value, CC.ELECTRICITY.value, CC.ELECTRICITY.value, CC.WATER.value, CC.WATER.value],

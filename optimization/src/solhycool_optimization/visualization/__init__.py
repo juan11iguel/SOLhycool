@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from phd_visualizations.constants import plt_colors, dash_types
+import warnings
+
 
 def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str = "kWe", **kwargs) -> go.Figure:
     # Create a histogram of the fitness_list
@@ -23,6 +25,7 @@ def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str
     return fig
 
 def plot_obj_scape_comp_1d(fitness_history_list: list[np.ndarray[float]], algo_ids: list[str], **kwargs) -> go.Figure:
+    warnings.warn("plot_obj_scape_comp_1d is deprecated, use the one from phd_visualizations instead", DeprecationWarning)
     
     assert len(fitness_history_list) == len(algo_ids), "fitness_history_list and algo_ids should have the same length"
     
@@ -42,7 +45,7 @@ def plot_obj_scape_comp_1d(fitness_history_list: list[np.ndarray[float]], algo_i
 
 
 def plot_algo_comparison(results: list[dict], **kwargs) -> go.Figure:
-
+        
     rows, cols = len(results), 2
 
     # Create the subplot layout

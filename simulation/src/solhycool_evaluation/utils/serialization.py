@@ -6,14 +6,17 @@ import pandas as pd
 from loguru import logger
 from enum import Enum
 
-
+# TODO: Move to phd_utils
 class CustomEncoder(json.JSONEncoder):
-    """ Custom JSON encoder supporting NumPy arrays and Enums
-        Example usage: json.dumps(array, cls=NumpyEncoder)
-    """
+    """ Custom JSON encoder supporting NumPy arrays, pandas objects, and Enums """
+    
     def default(self, obj):
         if isinstance(obj, np.ndarray):  # Handle NumPy arrays
             return obj.tolist()
+        elif isinstance(obj, pd.Series):  # Handle pandas Series (keep index)
+            return obj.to_dict()
+        elif isinstance(obj, pd.DataFrame):  # Handle pandas DataFrame
+            return obj.to_dict(orient="records")
         elif isinstance(obj, Enum):  # Handle Enums
             return obj.value
         return super().default(obj)
@@ -22,7 +25,7 @@ class AlgoLogColumns(Enum):
     """Enum for the algorithm logs columns."""
     
     GACO = ["Gen", "Fevals", "Best", "Kernel", "Oracle", "dx", "dp"]
-    SGA = ["Gen", "Fevals", "Best", "Improvement", "Mutations"]
+    SGA = ["Gen", "Fevals", "Best", "Improvement"]
     NSGA2 = ["Gen", "Fevals", "ideal_point"]
     SIMULATED_ANNEALING = ["Fevals", "Best", "Current", "Mean range", "Temperature"]
     DE = ["Gen", "Fevals", "Best", "dx", "df"]
@@ -33,6 +36,7 @@ class AlgoLogColumns(Enum):
     IPOPT = ["objevals","objval","violated","viol. norm", "valid"]
     COMPASS_SEARCH = ["objevals","objval","violated","viol. norm", "valid"]
     MBH = ["objevals","objval","violated","viol. norm", "valid"]
+    IHS= ["Fevals", "ppar", "bw", "dx", "df", "Violated", "Viol. Norm", "ideal1"] 
     
     @property
     def columns(self) -> list[str]:
@@ -55,6 +59,37 @@ class FilenamesMapping(Enum):
     
 def step_idx_to_step_id(step_idx: int) -> str:
     return f"step_{step_idx:03d}"
+
+def get_fitness_history(algo_id: str, algo_log: pd.DataFrame |  list[tuple[int|float]], possible_fitness_keys: list[str] = ["Best", "gbest", "objval", "ideal1"]) -> pd.Series:
+    """
+    Extracts the fitness history from the algorithm log.
+    
+    Args:
+        algo_log (pd.DataFrame | list[tuple[int|float]]): Algorithm log, either as a DataFrame or a list of tuples.
+        possible_fitness_keys (list[str]): List of possible fitness keys to look for in the log.
+        
+    Returns:
+        pd.Series: Series containing the fitness history with number of objective function evaluations as the index.
+    """
+    if not isinstance(algo_log, pd.DataFrame):
+        try:
+            algo_log = pd.DataFrame(algo_log, columns=AlgoLogColumns[algo_id.upper()].columns)
+        except ValueError as e:
+            raise ValueError(f"Invalid algo_log format for {algo_id}: {e}")
+    # Extract fitness history
+    fitness_value = None
+    for key in possible_fitness_keys:
+        if key in algo_log.columns:
+            fitness_value = algo_log[key].values
+            break
+    if fitness_value is None:
+        raise KeyError(f"None of the possible fitness keys {possible_fitness_keys} found in case study")
+    
+    # Create a Series with the number of objective function evaluations as the index
+    fitness_history = pd.Series(fitness_value, index=algo_log["Fevals"].values)
+    
+    return fitness_history
+    
 
 def export_evaluation_results(results_dict: dict, metadata:dict,
                               output_path: Path, 
