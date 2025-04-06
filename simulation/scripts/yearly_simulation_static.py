@@ -1,15 +1,13 @@
-import copy
-from typing import Literal
 from pathlib import Path
 from collections import deque
 from dataclasses import asdict
 import numpy as np
 import pandas as pd
 from loguru import logger
-import pygmo as pg
 import datetime
 import time
 import argparse
+import threading
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
@@ -100,6 +98,19 @@ params_per_problem = {
         },
     }
 }
+
+def update_bar_every(pbar: tqdm, interval=0.5):
+    """ Updates progress bar every `interval` seconds """
+    while True:
+        time.sleep(interval)
+        pbar.refresh()
+
+# def clear_screen_every(interval=10):
+#     """Clears the screen every `interval` seconds to avoid clutter from progress bars."""
+#     while True:
+#         time.sleep(interval)
+#         os.system("clear")
+
 
 def evaluate_day(single_date, df_day, params, problem_cls: object):
     date_str = single_date.strftime("%Y%m%d")
@@ -197,6 +208,10 @@ def main(problem_id: str, evaluation_id: str, n_parallel_evals: int, base_path: 
     batch_size = n_parallel_evals
 
     with tqdm(total=len(all_dates), desc="Evaluating days", unit="day", leave=True, ) as pbar:
+        # Start the parallel thread
+        status_update_thread = threading.Thread(target=update_bar_every, args=[pbar], daemon=True)
+        status_update_thread.start()
+
         for i in range(0, len(all_dates), batch_size):
             batch_dates = all_dates[i:i + batch_size]
             futures = {}
