@@ -1,6 +1,4 @@
 import time
-import math
-from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -17,55 +15,12 @@ import argparse
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint
-from solhycool_optimization import DecisionVariables, ValuesDecisionVariables
+from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, DayResults
 from solhycool_optimization.utils import pareto_front_indices
-from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem
+from solhycool_optimization.utils.serialization import export_results_day
+from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem, AlgoParams
 
 multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
-
-@dataclass
-class AlgoParams:
-    algo_id: str = "sga"
-    max_n_obj_fun_evals: int = 20_000
-    max_n_logs: int = 300
-    pop_size: int = 80
-    # Vavail0: list[float] = None
-    
-    params_dict: dict = None
-    log_verbosity: int = None
-    gen: int = None
-
-    def __post_init__(self, ):
-
-        if self.algo_id in ["gaco", "sga", "pso_gen"]:
-            self.gen = self.max_n_obj_fun_evals // self.pop_size
-            self.params_dict = {
-                "gen": self.gen,
-            }
-        elif self.algo_id == "simulated_annealing":
-            self.gen = self.max_n_obj_fun_evals // self.pop_size
-            self.params_dict = {
-                "bin_size": self.pop_size,
-                "n_T_adj": self.gen
-            }
-        else:
-            self.pop_size = 1
-            self.gen = self.max_n_obj_fun_evals
-            self.params_dict = { self.max_n_obj_fun_evals // self.pop_size }
-        
-        if self.log_verbosity is None:
-            self.log_verbosity = math.ceil( self.gen / self.max_n_logs)
-    # def add_water_available_from_env(self, df_env: pd.DataFrame) -> None:
-    #     self.Vavail0 = [df_env.loc[date_str].iloc[0]["Vavail_m3"] for date_str in self.date_strs]
-
-@dataclass
-class DayResults:
-    index: pd.DatetimeIndex # Index of the results
-    df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
-    consumption_arrays: list[np.ndarray[float]] # Array with the consumption values for the candidate operation points
-    pareto_idxs: list[int] # Path of indices of the pareto fronts from the dataset of candidate operation points
-    selected_pareto_idxs: list[int] # Path of indices of the selected pareto fronts
-    df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts
 
 def update_bar_every(pbar: tqdm, interval=0.5) -> None:
     """ Updates progress bar every `interval` seconds """
@@ -96,10 +51,10 @@ def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: Val
                         Ce_kWe, Cw_lh, d, valid = cc_model.evaluate_operation(
                             ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, ev_m.Tv, nargout=4
                         )
-                        if valid:
-                            dv_list.append(DecisionVariables(qc=d["qc"], Rp=d["Rp"], Rs=d["Rs"], wdc=d["wdc"], wwct=d["wwct"]))
-                            consumption_list[0].append(Cw_lh)
-                            consumption_list[1].append(Ce_kWe)
+                        # if valid:
+                        dv_list.append(DecisionVariables(qc=d["qc"], Rp=d["Rp"], Rs=d["Rs"], wdc=d["wdc"], wwct=d["wwct"]))
+                        consumption_list[0].append(Cw_lh)
+                        consumption_list[1].append(Ce_kWe)
                         
             pbar.update(len(dv_values.Rp) * len(dv_values.Rs) * len(dv_values.wdc))
             pbar.set_postfix(valid_candidates=len(dv_list))                        
@@ -113,7 +68,7 @@ def get_pareto_front(dv_list: list[DecisionVariables], consumption_array: np.nda
     cc_model = combined_cooler.initialize()
     
     pareto_idxs = pareto_front_indices(consumption_array, objective="minimize")
-    logger.info(f"{df_day.index[0].strftime("%Y%m%d")} | Pareto front indices: {pareto_idxs}")
+    logger.debug(f"{df_day.index[0].strftime("%Y%m%dT%H%M")} | Pareto front indices: {pareto_idxs}")
         
     # Generate operation points for the Pareto front
     ev = EnvironmentVariables.from_series(df_day.iloc[step_idx]).constrain_to_model()
@@ -178,13 +133,19 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
             pareto_idxs_list.append(pareto_idxs)
     
     # Sort the pareto fronts and consumption arrays by time
-    df_paretos.sort(key=lambda df: df["time"].min()) 
-    consumption_array.sort(key=lambda df: df["time"].min())# This will probably not work
-    pareto_idxs_list.sort(key=lambda df: df["time"].min())
+    # Step 1: Get the time keys for sorting
+    time_keys = [df["time"].min() for df in df_paretos]
+    # Step 2: Get the sorted indices based on the time keys
+    sorted_indices = sorted(range(len(time_keys)), key=lambda i: time_keys[i])
+    # Step 3: Apply sorted indices to all parallel lists
+    df_paretos = [df_paretos[i] for i in sorted_indices]
+    consumption_arrays = [consumption_arrays[i] for i in sorted_indices]
+    pareto_idxs_list = [pareto_idxs_list[i] for i in sorted_indices]
     
     # 3. Select points in the pareto fronts
     problem = CombinedCoolerPathFinderProblem(df_paretos=df_paretos, Vavail0=df_day.iloc[0]["Vavail_m3"])
-    selected_pareto_idxs = path_selector(df_paretos, path_selector_params, problem)
+    logger.info(f"{date_str} | Started evaluation of best path of pareto front points")
+    selected_pareto_idxs = path_selector(path_selector_params, problem)
     logger.info(f"{date_str} | Selected pareto front indices: {selected_pareto_idxs}")
     
     # 4. Generate results dataframe for the day
@@ -205,35 +166,6 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
         selected_pareto_idxs=selected_pareto_idxs,
         df_results=df_results
     )
-    
-def export_results_day(day_results: DayResults, output_path: Path) -> None:
-    with pd.HDFStore(output_path, mode='a') as store:
-        for dt, df_pareto, consumption_array in zip(
-            day_results.index, day_results.df_paretos, day_results.consumption_arrays
-        ):
-            table_key = dt.strftime("%Y%m%dT%H%M")
-
-            # Save pareto front for this timestep
-            store.put(f"/pareto/{table_key}", df_pareto)
-
-            # Save consumption array for this timestep
-            df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
-            store.put(f"/consumption/{table_key}", df_consumption)
-
-        # Append df_results (path of selected solutions)
-        if "/results" in store:
-            existing = store["/results"]
-            combined = pd.concat([existing, day_results.df_results])
-            combined = combined.sort_index()
-            store.put("/results", combined)
-        else:
-            store.put("/results", day_results.df_results.sort_index())
-
-        # Save  paths
-        store.put("/paths/pareto_idxs", pd.Series(day_results.pareto_idxs, index=day_results.index))
-        store.put("/paths/selected_pareto_idxs", pd.Series(day_results.selected_pareto_idxs, index=day_results.index))
-
-    logger.info(f"Results saved to {output_path}")
 
 def clear_screen_every(interval=10):
     """Clears the screen every `interval` seconds to avoid clutter from progress bars."""

@@ -1,9 +1,10 @@
 from typing import Literal
 from inspect import signature
+from pathlib import Path
 from dataclasses import dataclass, asdict, field
 import numpy as np
 from loguru import logger
-
+import pandas as pd
 from solhycool_modeling import ModelInputsRange
 
 # Always import combined_cooler before importing matlab
@@ -86,3 +87,12 @@ class ValuesDecisionVariables:
             name: np.linspace(getattr(inputs_range, name)[0], getattr(inputs_range, name)[1], n_values) 
             for name, n_values in asdict(self).items()
         })
+        
+@dataclass
+class DayResults:
+    index: pd.DatetimeIndex # Index of the results
+    df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
+    consumption_arrays: list[np.ndarray[float]] # Array with the consumption values for the candidate operation points
+    pareto_idxs: list[int] # Path of indices of the pareto fronts from the dataset of candidate operation points
+    selected_pareto_idxs: list[int] # Path of indices of the selected pareto fronts
+    df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts

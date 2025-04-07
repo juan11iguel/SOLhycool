@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 import copy
-from dataclasses import asdict
+import math
+from dataclasses import dataclass, asdict
 import time
 import pygmo as pg
 import numpy as np
@@ -336,3 +337,40 @@ class CombinedCoolerPathFinderProblem:
         # assert Vavail >= 0, f"Vavail < 0: {Vavail} m³"
             
         return [self.evaluate(ops)]
+    
+    
+
+@dataclass
+class AlgoParams:
+    algo_id: str = "sga"
+    max_n_obj_fun_evals: int = 20_000
+    max_n_logs: int = 300
+    pop_size: int = 80
+    # Vavail0: list[float] = None
+    
+    params_dict: dict = None
+    log_verbosity: int = None
+    gen: int = None
+
+    def __post_init__(self, ):
+
+        if self.algo_id in ["gaco", "sga", "pso_gen"]:
+            self.gen = self.max_n_obj_fun_evals // self.pop_size
+            self.params_dict = {
+                "gen": self.gen,
+            }
+        elif self.algo_id == "simulated_annealing":
+            self.gen = self.max_n_obj_fun_evals // self.pop_size
+            self.params_dict = {
+                "bin_size": self.pop_size,
+                "n_T_adj": self.gen
+            }
+        else:
+            self.pop_size = 1
+            self.gen = self.max_n_obj_fun_evals
+            self.params_dict = { self.max_n_obj_fun_evals // self.pop_size }
+        
+        if self.log_verbosity is None:
+            self.log_verbosity = math.ceil( self.gen / self.max_n_logs)
+    # def add_water_available_from_env(self, df_env: pd.DataFrame) -> None:
+    #     self.Vavail0 = [df_env.loc[date_str].iloc[0]["Vavail_m3"] for date_str in self.date_strs]
