@@ -17,7 +17,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from solhycool_modeling import EnvironmentVariables, OperationPoint
 from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, DayResults
 from solhycool_optimization.utils import pareto_front_indices
-from solhycool_optimization.utils.serialization import export_results_day
+from solhycool_optimization.utils.serialization import export_results_day, get_fitness_history
 from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem, AlgoParams
 
 multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
@@ -28,6 +28,11 @@ def update_bar_every(pbar: tqdm, interval=0.5) -> None:
         time.sleep(interval)
         pbar.refresh()
 
+@retry(
+    stop=stop_after_attempt(3),  # Retry up to 3 times
+    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
+    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
+)
 def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: ValuesDecisionVariables, total_num_evals: int, date_str: str) -> tuple[list[DecisionVariables], list[list[float], list[float]]]:
     """Evaluates decision variables for a given step."""
     
@@ -51,10 +56,10 @@ def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: Val
                         Ce_kWe, Cw_lh, d, valid = cc_model.evaluate_operation(
                             ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, ev_m.Tv, nargout=4
                         )
-                        # if valid:
-                        dv_list.append(DecisionVariables(qc=d["qc"], Rp=d["Rp"], Rs=d["Rs"], wdc=d["wdc"], wwct=d["wwct"]))
-                        consumption_list[0].append(Cw_lh)
-                        consumption_list[1].append(Ce_kWe)
+                        if valid:
+                            dv_list.append(DecisionVariables(qc=d["qc"], Rp=d["Rp"], Rs=d["Rs"], wdc=d["wdc"], wwct=d["wwct"]))
+                            consumption_list[0].append(Cw_lh)
+                            consumption_list[1].append(Ce_kWe)
                         
             pbar.update(len(dv_values.Rp) * len(dv_values.Rs) * len(dv_values.wdc))
             pbar.set_postfix(valid_candidates=len(dv_list))                        
@@ -85,7 +90,7 @@ def get_pareto_front(dv_list: list[DecisionVariables], consumption_array: np.nda
     
     return pareto_idxs, df_paretos
 
-def path_selector(params: AlgoParams, problem: CombinedCoolerPathFinderProblem) -> list[int]:
+def path_selector(params: AlgoParams, problem: CombinedCoolerPathFinderProblem) -> tuple[list[int], pd.Series]:
     """ Select points in the pareto fronts """
     
     # Initialize problem instance
@@ -99,14 +104,12 @@ def path_selector(params: AlgoParams, problem: CombinedCoolerPathFinderProblem) 
     
     pop = algo.evolve(pop)
     
-    return pop.champion_x.astype(int)
+    x = pop.champion_x.astype(int).tolist()
+    fitness_history = get_fitness_history(params.algo_id, algo)
+    
+    return x, fitness_history
 
 # Evaluate combinations of decision variables
-@retry(
-    stop=stop_after_attempt(1),  # Retry up to 3 times
-    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
-    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
-)
 def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame, 
                  dv_values: ValuesDecisionVariables, 
                  total_num_evals: int, path_selector_params: AlgoParams,):
@@ -124,6 +127,9 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
         for future in as_completed(futures):
             step_idx = futures[future]
             dv_list, consumption_list = future.result()
+            
+            # TODO: Validate at least one point is found, otherwise fallback
+            # to static optimization to have at least a point
             
             # 2. Generate pareto front
             consumption_array = np.array(consumption_list).transpose()
@@ -145,9 +151,9 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
     # 3. Select points in the pareto fronts
     problem = CombinedCoolerPathFinderProblem(df_paretos=df_paretos, Vavail0=df_day.iloc[0]["Vavail_m3"])
     logger.info(f"{date_str} | Started evaluation of best path of pareto front points")
-    selected_pareto_idxs = path_selector(path_selector_params, problem)
+    selected_pareto_idxs, fitness_history = path_selector(path_selector_params, problem)
     logger.info(f"{date_str} | Selected pareto front indices: {selected_pareto_idxs}")
-    
+
     # 4. Generate results dataframe for the day
     _, ops = problem.evaluate(
         [OperationPoint(
@@ -163,6 +169,7 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
         df_paretos=df_paretos,
         consumption_arrays=consumption_arrays,
         pareto_idxs=pareto_idxs_list,
+        fitness_history=fitness_history,
         selected_pareto_idxs=selected_pareto_idxs,
         df_results=df_results
     )
@@ -173,7 +180,7 @@ def clear_screen_every(interval=10):
         time.sleep(interval)
         os.system("clear")
 
-def main(date_span: tuple[str, str], n_parallel_evals: int, base_path: Path, env_path: Path, values_per_decision_variable: int, power_threshold: float, file_id: str):
+def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, base_path: Path, env_path: Path, values_per_decision_variable: int, power_threshold: float, file_id: str):
     # # Start the screen clearing thread
     # clear_thread = threading.Thread(target=clear_screen_every, daemon=True)
     # clear_thread.start()
@@ -196,7 +203,7 @@ def main(date_span: tuple[str, str], n_parallel_evals: int, base_path: Path, env
 
     # df_sim_all = []
     start_time = time.time()
-    batch_size = n_parallel_evals
+    batch_size = n_parallel_days
 
     # Evaluate all days
     with tqdm(total=len(all_dates), desc="Evaluating days", unit="day", leave=True, ) as pbar:
@@ -216,7 +223,7 @@ def main(date_span: tuple[str, str], n_parallel_evals: int, base_path: Path, env
                     # Only evaluate steps where power is above some thresholds, otherwise just DC is used
                     df_day = df_day[df_day["Q_kW"] > power_threshold]
                     
-                    future = executor.submit(evaluate_day, 5, df_day, dv_values, total_num_evals, AlgoParams())
+                    future = executor.submit(evaluate_day, n_parallel_steps, df_day, dv_values, total_num_evals, AlgoParams())
                     futures[future] = date_str
 
                 for future in as_completed(futures):
@@ -230,9 +237,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--date_span', nargs=2, default=["20220101", "20221231"], help="Date span for evaluation in YYYYMMDD format")
     parser.add_argument('--evaluation_id', type=str, default="")
-    parser.add_argument('--n_parallel_evals', type=int, default=20, help="Number of parallel evaluations")
+    parser.add_argument('--n_parallel_days', type=int, default=5, help="Number of parallel day evaluations")
+    parser.add_argument('--n_parallel_steps', type=int, default=24, help="Number of parallel step in day evaluations")
     parser.add_argument('--base_path', type=str, default="/workspaces/SOLhycool", help="Base path for the project")
-    parser.add_argument('--env_path', type=str, default="data/datasets/environment_data_20220101_20241231.h5", help="Path to the environment data file")
+    parser.add_argument('--env_path', type=str, default="data/datasets/environment_data_psa_20220101_20241231.h5", help="Path to the environment data file")
     parser.add_argument('--values_per_decision_variable', type=int, default=10, help="Number of values per decision variable")
     parser.add_argument('--power_threshold', type=float, default=0, help="Thermal load power to cool below which only the Dry Cooler is used")
 
@@ -244,7 +252,8 @@ if __name__ == "__main__":
     # Call the main function with the parsed arguments
     main(
         date_span=args.date_span,
-        n_parallel_evals=args.n_parallel_evals,
+        n_parallel_days=args.n_parallel_days,
+        n_parallel_steps=args.n_parallel_steps,        
         base_path=Path(args.base_path),
         env_path=Path(args.env_path),
         values_per_decision_variable=args.values_per_decision_variable,

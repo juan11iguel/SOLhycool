@@ -93,6 +93,7 @@ class DayResults:
     index: pd.DatetimeIndex # Index of the results
     df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
     consumption_arrays: list[np.ndarray[float]] # Array with the consumption values for the candidate operation points
+    fitness_history: pd.Series # Series with the fitness history of the path selection optimization
     pareto_idxs: list[int] # Path of indices of the pareto fronts from the dataset of candidate operation points
     selected_pareto_idxs: list[int] # Path of indices of the selected pareto fronts
     df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts

@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from phd_visualizations.constants import plt_colors, dash_types
-import warnings
+from loguru import logger
 
 
 def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str = "kWe", **kwargs) -> go.Figure:
@@ -25,7 +25,7 @@ def visualize_solutions_distribution(fitness_list: Iterable,  fitness_units: str
     return fig
 
 def plot_obj_scape_comp_1d(fitness_history_list: list[np.ndarray[float]], algo_ids: list[str], **kwargs) -> go.Figure:
-    warnings.warn("plot_obj_scape_comp_1d is deprecated, use the one from phd_visualizations instead", DeprecationWarning)
+    logger.warning("plot_obj_scape_comp_1d is deprecated, use the one from phd_visualizations instead")
     
     assert len(fitness_history_list) == len(algo_ids), "fitness_history_list and algo_ids should have the same length"
     
@@ -155,7 +155,7 @@ def plot_obj_space_1d_no_animation(fitness_history: list[np.ndarray[float]], alg
     generation = np.arange(len(fitness_history))
 
     additional_scatters = []
-    if isinstance(fitness_history[0], Iterable):
+    if isinstance(np.asarray(fitness_history)[0], Iterable):
         min_fitness = [np.min(x) for x in fitness_history]
         max_fitness = [np.max(x) for x in fitness_history]
         median_fitness = [np.median(x) for x in fitness_history]

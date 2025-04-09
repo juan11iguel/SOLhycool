@@ -3,86 +3,114 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from typing import Literal
+import string
 
 from phd_visualizations.test_timeseries import experimental_results_plot
-
+from solhycool_optimization import DayResults
 from solhycool_visualization import ComponentColors
 from solhycool_visualization.optimization import plot_pareto_front
 
 
-def plot_hydraulic_distribution(qc: np.ndarray, Rp: np.ndarray, Rs: np.ndarray, x: np.ndarray = None) -> go.Figure:
-    qdc = qc * (1 - Rp)
-    qwct_p = qc * Rp
-    qwct_s = qdc * Rs
-    qdc_only = qdc-qwct_s
-    x = np.arange(len(qc)) if x is None else x
+def plot_hydraulic_distribution(
+    qc: list[np.ndarray] | np.ndarray, 
+    Rp: list[np.ndarray] | np.ndarray, 
+    Rs: list[np.ndarray] | np.ndarray, 
+    x: np.ndarray = None,
+    labels: list[str] = None
+) -> go.Figure:
     
-    # print(f"{qc=}, \n{qwct_p=}, \n{qdc=}, \n{qwct_s=}")
+    if isinstance(qc, np.ndarray):
+        qc = [qc]
+        Rp = [Rp]
+        Rs = [Rs]
+    
+    n_series = len(qc)
+    assert all(len(lst) == n_series for lst in [Rp, Rs]), "All input lists must have the same length"
+    n_points = len(qc[0])
+    assert all(len(q) == n_points for q in qc), "Each series must have the same number of points"
+    
+    if x is None:
+        x = np.arange(n_points)
+    if labels is None:
+        labels = list(string.ascii_uppercase[:n_series])
 
     fig = go.Figure()
 
-    # Add stacked bars for qdc and qwct_p
-    fig.add_trace(go.Bar(
-        x=x,
-        y=qdc_only,
-        name='DC //',
-        marker=dict(color=ComponentColors.DC.value)
-    ))
-    
-    fig.add_trace(go.Bar(
-        x=x,
-        y=qwct_s,
-        name='DC 🠒 WCT',
-        marker=dict(
-            color=ComponentColors.DC.value, 
-            pattern=dict(shape="/", 
-                         fgcolor=ComponentColors.WCT.value, 
-                         size=15,
-                         fgopacity=1,
-                         solidity=0.5)
+    for i, (qc_, Rp_, Rs_, label) in enumerate(zip(qc, Rp, Rs, labels)):
+        qdc = qc_ * (1 - Rp_)
+        qwct_p = qc_ * Rp_
+        qwct_s = qdc * Rs_
+        qdc_only = qdc - qwct_s
+
+        fig.add_trace(go.Bar(
+            x=x,
+            y=qdc_only,
+            showlegend=True if i == 0 else False,
+            name='DC //',
+            offsetgroup=label,
+            marker=dict(color=ComponentColors.DC.value),
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=x,
+            y=qwct_s,
+            name='DC 🠒 WCT',
+            showlegend=True if i == 0 else False,
+            offsetgroup=label,
+            base=qdc_only,
+            marker=dict(
+                color=ComponentColors.DC.value,
+                pattern=dict(
+                    shape="/",
+                    fgcolor=ComponentColors.WCT.value,
+                    size=15,
+                    fgopacity=1,
+                    solidity=0.5,
+                ),
             ),
-        # marker_pattern_shape
-    ))
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=x,
+            y=qwct_p,
+            name='WCT //',
+            showlegend=True if i == 0 else False,
+            offsetgroup=label,
+            base=qdc_only + qwct_s,
+            marker=dict(color=ComponentColors.WCT.value),
+            
+            text=[label] + [None]* n_points if n_series > 1 else [None]* n_points,
+            # textfont_size=12, textangle=0, textposition="outside", cliponaxis=False),
+            textposition='outside',
+            textangle=-90,
+            outsidetextfont=dict(size=11),  # Increase text size
+            # textfont=dict(size=20),  # Increase text size
+            cliponaxis=False         # Prevent text from being clipped
+        ))
 
-    fig.add_trace(go.Bar(
-        x=x,
-        y=qwct_p,
-        name='WCT //',
-        marker=dict(color=ComponentColors.WCT.value)
-    ))
-    
-    # Determine a reasonable x offset for bar width
-    if len(x) > 1:
-        dx = 0.8* np.min(np.diff(x)) / 2  # Use half the minimum spacing between x-values
+    if n_series == 1:
+        title = dict(text='<b>Hydraulic Distribution</b> of combined cooler',)
     else:
-        dx = 0.4  # Default offset if only one x value exists
-
-
-    # Add shape for qwct_s starting from the end of qdc
-    # for i in range(len(qc)):
-    #     # print(f"{qc[i]=:.0f}, {qdc[i]=:.0f}, {qwct_p[i]=:.0f}, {qwct_s[i]=:.0f}, {Rp[i]=}, {Rs[i]=}")
-    #     fig.add_shape(
-    #         type="rect",
-    #         xref="x",
-    #         yref="y",
-    #         x0=x[i] - dx, x1=x[i] + dx,  # Dynamically computed x-range
-    #         y0=qdc[i] - qwct_s[i], y1=qdc[i],
-    #         line=dict(color=ComponentColors.WCT.value, width=5),
-    #         # fillcolor="red",
-    #         opacity=1,
-    #         layer="above",
-    #         name="DC 🠒 WCT",
-    #         showlegend=True if i == 0 else False,
-    #     )
+        title = dict(text='<b>Hydraulic Distribution</b> of combined cooler', subtitle_text=f"comparison between {', '.join(label for label in labels) if labels is not None else n_series} alternatives")
 
     fig.update_layout(
-        barmode='stack', 
-        title=dict(text='<b>Hydraulic Distribution</b>', subtitle_text="of combined cooler"),
+        barmode='group',
+        title=title,
         yaxis_title='Flow rate (m³/h)',
+        xaxis_title='Index',
         template='plotly_white',
-        yaxis_range=[0, max(qc) * 1.1], # So it can be used when integrating in other figures
+        xaxis=dict(
+            # type='category',
+            tickvals=x,  # Specify your custom ticks
+            tickformat="%H:%M",  # Format as Hour:Minute (e.g., 00:00, 06:00)
+            showticklabels=True,  # Ensure the labels are shown
+            tickangle=90  # Optionally rotate labels for better readability
+        ) if len(x) < 24 and not isinstance(x[0], int) else None,
+        yaxis_range=[0, max(q.max() for q in qc) * 1.1],
+        uniformtext_minsize=12, 
+        uniformtext_mode='show'
     )
-    
+
     return fig
 
 
@@ -136,10 +164,15 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
     return fig_out
 
 
-def plot_results(plot_config: dict, df: pd.DataFrame, df_comp: pd.DataFrame = None,
-                 df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
+def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFrame = None,
+                 day_results: DayResults = None,) -> go.Figure:
+                #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
     supported_transplants = ["hydraulic_distribution", "paretos"]
+    assert df is not None or day_results is not None, "Either `df` Dataframe or a `DayResults` instance must be provided"
+    
+    if df is None:
+        df = day_results.df_results
     
     fig = experimental_results_plot(plot_config, df=df, df_comp=df_comp, resample=False)
     
@@ -156,24 +189,31 @@ def plot_results(plot_config: dict, df: pd.DataFrame, df_comp: pd.DataFrame = No
         
         # Join hydraulic distribution plot
         if plot_id == "hydraulic_distribution":
+            
+            qc = df["qc"].values if df_comp is None else [df["qc"].values, df_comp["qc"].values]
+            Rp = df["Rp"].values if df_comp is None else [df["Rp"].values, df_comp["Rp"].values]
+            Rs = df["Rs"].values if df_comp is None else [df["Rs"].values, df_comp["Rs"].values]
+            
             fig = organ_transplant(
                 fig=fig, 
-                fig_aux = plot_hydraulic_distribution(df["qc"].values, df["Rp"].values, df["Rs"].values, x=df.index), 
+                fig_aux = plot_hydraulic_distribution(qc, Rp, Rs, x=df.index), 
                 plot_id=plot_id
             )
             
         # Join paretos plot
         if plot_id == "paretos":
-            assert df_paretos is not None, "Pareto front dataframes must be provided"
-            assert pareto_idxs is not None, "Pareto front indices must be provided"
+            # TODO: For some reason the pareto plot breaks when a discontinuous optimization is provided
+            # assert df_paretos is not None, "Pareto front dataframes must be provided"
+            # assert pareto_idxs is not None, "Pareto front indices must be provided"
+            assert day_results is not None, "DayResults object must be provided"
             
             fig = organ_transplant(
                 fig=fig,
                 fig_aux=plot_pareto_front(
-                    ops_list=df_paretos,
+                    ops_list=day_results.df_paretos,
                     objective_keys=('Cw', 'Ce'),
                     mode="side_by_side",
-                    selected_idxs=pareto_idxs,
+                    selected_idxs=day_results.selected_pareto_idxs,
                     showlegend=False
                 ),
                 plot_id=plot_id,

@@ -2,6 +2,7 @@
 from typing import Literal
 import pandas as pd
 import numpy as np
+import copy
 import plotly.graph_objects as go
 from dataclasses import asdict, fields
 
@@ -46,6 +47,7 @@ def plot_pareto_front(
     """
     Plots Pareto fronts either overlapping or side by side, with optional connecting lines.
     """
+    
     fig = go.Figure()
     x_offset = 100 if mode == "side_by_side" else 0  # Adjust for side-by-side spacing
     x0_values_list = [ops_list[0].iloc[0][objective_keys[0]]]
@@ -95,12 +97,26 @@ def plot_pareto_front(
             marker=dict(size=10, color=color, opacity=opacity, symbol=symbols[pareto_idx]),
         ))
     
+    #TODO: We should support highlighting selected points in the pareto front 
+    # not only in side_by_side mode but also in overlap mode. I think I already
+    # had this impemented in a solhycool-optimization repo
+    
     # Add connecting lines for selected indices
     # print(f"{len(ops_list)=}, {len(x0_values_list)=}")
     if selected_idxs is not None and mode == "side_by_side":
         # for idx in selected_idxs:
-        if not isinstance(selected_idxs, list):
-            selected_idxs = [selected_idxs]
+        if not isinstance(selected_idxs[0], list):
+            selected_idxs = copy.deepcopy(selected_idxs)
+            # selected_idxs = [copy.deepcopy(selected_idxs)]
+            
+            # Automatically split potential discontinuities in the static optimization
+            if "time" in ops_list[0].columns:
+                index = [ops.iloc[0]["time"] for ops in ops_list] 
+                boundaries = [0] + (
+                    np.where(np.diff(index) > np.mean(np.diff(index)))[0] + 1
+                    ).tolist() + [len(selected_idxs)]
+                
+                selected_idxs = [selected_idxs[boundaries[i]:boundaries[i+1]] for i in range(len(boundaries) - 1)]
         
         p_idx0 = 0
         for s_idxs in selected_idxs:
@@ -112,7 +128,7 @@ def plot_pareto_front(
             # print(f"{len(ops_list_)=}, {len(s_idxs)=}, {len(x0_values_list_)=}")
             # print(f"{x_vals=}")
             # print(f"{y_vals=}")
-            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines+markers', line=dict(color='black', width=2), name=f'Selected path, x0={x0_values_list[p_idx0+1]}'))
+            fig.add_trace(go.Scatter(x=np.array(x_vals), y=np.array(y_vals), mode='lines+markers', line=dict(color='black', width=2), name=f'Selected path, x0={x0_values_list[p_idx0+1]}'))
 
             p_idx0 += len(s_idxs)
             
@@ -121,37 +137,38 @@ def plot_pareto_front(
     # without the offset
 
     # Compute x-ticks positions
-    major_xticks = []
-    major_xtick_labels = []
-    minor_xticks = []
+    if mode == "side_by_side":
+        major_xticks = []
+        major_xtick_labels = []
+        minor_xticks = []
 
-    for pareto_idx, ops in enumerate(ops_list):
-        x_values = ops[objective_keys[0]].values + x0_values_list[pareto_idx] - ops[objective_keys[0]].values[0]
-        x_mid = (x_values[0] + x_values[-1]) / 2  # Midpoint of Pareto front
-        
-        # Major ticks: at the midpoint of each Pareto set
-        major_xticks.append(x_mid)
-        if "time" in ops.columns:
-            major_xtick_labels.append(ops.iloc[0]["time"].strftime("%H"))
-        else:
-            major_xtick_labels.append(f"P{pareto_idx+1}")  # Fallback label
-        
-        # Minor ticks: first and last points of each Pareto front
-        minor_xticks.extend([x_values[0], x_values[-1]])
+        for pareto_idx, ops in enumerate(ops_list):
+            x_values = ops[objective_keys[0]].values + x0_values_list[pareto_idx] - ops[objective_keys[0]].values[0]
+            x_mid = (x_values[0] + x_values[-1]) / 2  # Midpoint of Pareto front
+            
+            # Major ticks: at the midpoint of each Pareto set
+            major_xticks.append(x_mid)
+            if "time" in ops.columns:
+                major_xtick_labels.append(ops.iloc[0]["time"].strftime("%H"))
+            else:
+                major_xtick_labels.append(f"P{pareto_idx+1}")  # Fallback label
+            
+            # Minor ticks: first and last points of each Pareto front
+            minor_xticks.extend([x_values[0], x_values[-1]])
 
-    # Update x-axis with major ticks
-    fig.update_xaxes(
-        tickvals=major_xticks, 
-        ticktext=major_xtick_labels,
-        tickmode="array",
-        # tickangle=90,
-        # title_side="top",
-        minor=dict(
-            tickvals=minor_xticks, 
-            # ticktext=minor_xtick_labels,
-            showgrid=True
-        ),
-    )
+        # Update x-axis with major ticks
+        fig.update_xaxes(
+            tickvals=major_xticks, 
+            ticktext=major_xtick_labels,
+            tickmode="array",
+            # tickangle=90,
+            # title_side="top",
+            minor=dict(
+                tickvals=minor_xticks, 
+                # ticktext=minor_xtick_labels,
+                showgrid=True
+            ),
+        )
             
     # Cloud of operation points
     if additional_pts is not None:
@@ -171,7 +188,7 @@ def plot_pareto_front(
         title_text=f"{objective_keys[0]} ({OPERATION_PT_FIELD_METADATA[objective_keys[0]].get('units', '')})", 
         title_font=dict(size=default_fontsize),
         zeroline=False,
-        range=(-x_offset, minor_xticks[-1]+x_offset) # So it's available when transplanting to other axis
+        range=(-x_offset, minor_xticks[-1]+x_offset) if mode=="side_by_side" else (0, max([ops[objective_keys[0]].max() for ops in ops_list])*1.05) # So it's available when transplanting to other axis
         )
     fig.update_yaxes(
         title_text=f"{objective_keys[1]} ({OPERATION_PT_FIELD_METADATA[objective_keys[1]].get('units', '')})", 
