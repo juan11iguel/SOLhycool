@@ -25,9 +25,8 @@ parameters.condenser_option = 9;
 
 
 % %% Validación con el conjunto de validación de Juanmi
-% % Nota:  no todos los puntos son comparables porque hay puntos paralelo
-% % serie que este modelo no los contempla y porque los serie con este modelo
-% % establece el variador a un valor fijo
+% % Nota:  solo para comprobar que no hay errores porque el A y el U no son
+% los mismos que en el conjunto de validación
 % 
 data = readtable("../assets/data.csv");
 N = height(data);

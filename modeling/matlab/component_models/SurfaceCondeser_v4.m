@@ -1,4 +1,4 @@
-function FF = SurfaceCondeser_v4(x, A, Tv, Q, mc)
+function FF = SurfaceCondeser_v4(x, A, Tv, Q, mc, options)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 % 
@@ -14,7 +14,8 @@ function FF = SurfaceCondeser_v4(x, A, Tv, Q, mc)
 
 mc_u=mc*1000/3600; % kg/s
 
-U=condenser_heat_transfer_coefficient(mc, x(1), Tv, 3);
+corr=options.parameters.condenser_option;
+U=condenser_heat_transfer_coefficient(mc, x(1), Tv, corr);
 
 landa=XSteam('hV_T',Tv)-XSteam('hL_T',Tv);
 Cp=XSteam('Cp_pT',2,(x(1)+x(2))/2);

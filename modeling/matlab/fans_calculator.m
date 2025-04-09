@@ -87,7 +87,7 @@ landa=XSteam('hV_T',Tv_C)-XSteam('hL_T',Tv_C);
 Q=ms_u*landa;
 
 % Poner fmincon con restricciones en Q, Tv_C
-fun = @(x) SurfaceCondeser_v4(x, A_SC, Tv_C, Q, qc_m3h); 
+fun = @(x) SurfaceCondeser_v4(x, A_SC, Tv_C, Q, qc_m3h, options); 
 options2 = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display',display_solver);
 lb=[10,10]; 
 ub=[Tv_C,Tv_C];
