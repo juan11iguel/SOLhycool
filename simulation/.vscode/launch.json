@@ -45,6 +45,21 @@
             "args": ["--problem_id", "cc", "--evaluation_id", "debug"]
         },
         {
+            "name": "Run yearly simulation (static) - cc-med",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_static.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": [
+                "--problem_id", "cc", 
+                "--evaluation_id", "debug_med", 
+                "--env_path", "data/datasets/environment_data_med_20220101_20241231.h5",
+                "--n_parallel_evals", "1",
+            ]
+        },
+        {
             "name": "Run yearly simulation (static) - med",
             "type": "debugpy",
             "request": "launch",
