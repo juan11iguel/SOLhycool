@@ -25,7 +25,6 @@ class ModelInputsRange:
     Tdc_in: tuple[float, float] = (33.16, 41.92)
     Twct_in: tuple[float, float] = (31.17, 40.94)
     
-    
 @dataclass
 class EnvironmentVariables:
     """
@@ -85,7 +84,7 @@ class EnvironmentVariables:
             self.mv = mv
             
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame, location: Literal["morocco", "egypt"] = "morocco") -> "EnvironmentVariables":
+    def from_dataframe(cls, df: pd.DataFrame) -> "EnvironmentVariables":
         """
         Create an EnvironmentVariables instance from a pandas dataframe
 
@@ -102,15 +101,15 @@ class EnvironmentVariables:
             Tv=np.asarray(df["Tv_C"]),
             mv=df["mv_kgh"] if "mv_kgh" in df else None, 
             Pe=np.asarray(df["Ce_spot_market_price_eur_kWh"]),
-            Pw=np.asarray(df[f"water_price_{location}_eur_l"]) if f"water_price_{location}_eur_l" in df else None,
-            Pw_s1=np.asarray(df[f"water_price_{location}_eur_l"]) if f"water_price_{location}_eur_l" in df else None,
-            Pw_s2=np.asarray(df[f"water_price_{location}_alternative_eur_l"]) if f"water_price_{location}_alternative_eur_l" in df else None,
+            Pw=np.asarray(df[f"water_price_eur_l"]) if f"water_price_eur_l" in df else None,
+            Pw_s1=np.asarray(df[f"water_price_eur_l"]) if f"water_price_eur_l" in df else None,
+            Pw_s2=np.asarray(df[f"water_price_alternative_eur_l"]) if f"water_price_alternative_eur_l" in df else None,
             Vavail=np.asarray(df["Vavail_m3"]) if "Vavail_m3" in df else None,
             deltaV=np.asarray(df["deltaV_m3_h"]) if "deltaV_m3_h" in df else None 
         )
 
     @classmethod
-    def from_series(cls, ds: pd.Series, location: Literal["morocco", "egypt"] = "morocco") -> "EnvironmentVariables":
+    def from_series(cls, ds: pd.Series) -> "EnvironmentVariables":
         """
         Create an EnvironmentVariables instance from a pandas Series
 
@@ -127,9 +126,9 @@ class EnvironmentVariables:
             Tv=ds["Tv_C"],
             mv=ds["mv_kgh"] if "mv_kgh" in ds else None, 
             Pe=ds["Ce_spot_market_price_eur_kWh"],
-            Pw=ds[f"water_price_{location}_eur_l"] if f"water_price_{location}_eur_l" in ds else None,
-            Pw_s1=ds[f"water_price_{location}_eur_l"] if f"water_price_{location}_eur_l" in ds else None,
-            Pw_s2=ds[f"water_price_{location}_alternative_eur_l"] if f"water_price_{location}_alternative_eur_l" in ds else None,
+            Pw=ds[f"water_price_eur_l"] if f"water_price_eur_l" in ds else None,
+            Pw_s1=ds[f"water_price_eur_l"] if f"water_price_eur_l" in ds else None,
+            Pw_s2=ds[f"water_price_alternative_eur_l"] if f"water_price_alternative_eur_l" in ds else None,
             Vavail=ds["Vavail_m3"] if "Vavail_m3" in ds else None,
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )

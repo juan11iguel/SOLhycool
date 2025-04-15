@@ -42,7 +42,12 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "python": "/miniconda3/envs/conda-env/bin/python",
-            "args": ["--problem_id", "cc", "--evaluation_id", "debug"]
+            "args": [
+                "--problem_id", "cc", 
+                "--evaluation_id", "debug",
+                "--env_path", "data/datasets/environment_data_psa_20220101_20241231.h5",
+                "--n_parallel_evals", "1",
+            ]
         },
         {
             "name": "Run yearly simulation (static) - cc-med",
@@ -55,8 +60,22 @@
             "args": [
                 "--problem_id", "cc", 
                 "--evaluation_id", "debug_med", 
-                "--env_path", "data/datasets/environment_data_med_20220101_20241231.h5",
+                "--env_path", "data/datasets/environment_data_med_eds_20220101_20241231.h5",
                 "--n_parallel_evals", "1",
+            ]
+        },
+        {
+            // TODO: Complete this after the script acually exists
+            "name": "Run yearly simulation (horizon)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/yearly_simulation_horizon.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "/miniconda3/envs/conda-env/bin/python",
+            "args": [
+                "--evaluation_id", "debug",
+                "--env_path", "data/datasets/environment_data_psa_20220101_20241231.h5",
             ]
         },
         {

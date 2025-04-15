@@ -27,9 +27,10 @@
             "python": "/miniconda3/envs/conda-env/bin/python",
             "args": [
                 "--values_per_decision_variable", "2",
-                "--date_span", "20220101", "20220101",
+                "--date_span", "20220616", "20220616",
                 "--evaluation_id", "debug",
-                "--n_parallel_evals", "1",
+                "--n_parallel_days", "1",
+                "--n_parallel_steps", "1",
                 "--power_threshold", "100", // To have less steps to evaluate
             ]
         },

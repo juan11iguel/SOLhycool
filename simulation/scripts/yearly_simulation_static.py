@@ -63,7 +63,6 @@ params_per_problem = {
     },
     "med_wct_only": {
         "evaluate_optimization": False,
-        "location": "egypt",
         "decision_variables": {
             "qc": 18.0,
             "Rp": 1,
@@ -72,7 +71,6 @@ params_per_problem = {
     },
     "med_75_parallel": {
         "evaluate_optimization": False,
-        "location": "egypt",
         "decision_variables": {
             "qc": 18.0,
             "Rp": 0.75,
@@ -81,7 +79,6 @@ params_per_problem = {
     },
     "med_50_parallel": {
         "evaluate_optimization": False,
-        "location": "egypt",
         "decision_variables": {
             "qc": 18.0,
             "Rp": 0.5,
@@ -90,7 +87,6 @@ params_per_problem = {
     },
     "med_100_series": {
         "evaluate_optimization": False,
-        "location": "egypt",
         "decision_variables": {
             "qc": 18.0,
             "Rp": 0.,
@@ -121,15 +117,14 @@ def evaluate_day(single_date, df_day, params, problem_cls: object):
     x_list = []
     fitness_list = []
     pop0 = deque(maxlen=10)
-    Vavail = df_day.iloc[0]["Vavail_m3"] # Vavail0
+    Vavail = None # df_day.iloc[0]["Vavail_m3"] # Vavail0
     active_idxs = np.where(df_day["Q_kW"] > 0)[0].tolist()
     
     for idx, (dt, ds) in enumerate(df_day.iterrows()):
         logger.info(f"Step {idx+1}/{len(df_day)}: {dt}")
         
         # Initialize environment
-        env_vars = EnvironmentVariables.from_series(ds, location=params.get("location", "morocco"))
-        env_vars.Vavail = Vavail
+        env_vars = EnvironmentVariables.from_series(ds)
         if params.get("reduce_load", False):
             env_vars.reduce_load(params.get("load_factor", 0.5))
         
@@ -137,6 +132,15 @@ def evaluate_day(single_date, df_day, params, problem_cls: object):
         if idx not in active_idxs:
             results.append( asdict(OperationPoint.initialize_null(env_vars=env_vars)) )
             continue
+        
+        # Check if this is the point when Vavail becomes available
+        if Vavail is None:
+            if ds["Vavail_m3"] > 0:
+                Vavail = ds["Vavail_m3"]
+                logger.info(f"Water becomes available at step {idx+1}: {Vavail:.2f} m³")
+        else:
+            # Vavail already initialized, set the current value in the envirnment
+            env_vars.Vavail = Vavail
         
         # Else
         problem = problem_cls(env_vars=env_vars)
@@ -160,7 +164,8 @@ def evaluate_day(single_date, df_day, params, problem_cls: object):
             fitness_list.append(operation_points[best_idx].J)
             
         # Update environment
-        Vavail = env_vars.update_available_water(operation_points[best_idx].Cw_s1)
+        if Vavail is not None:
+            Vavail = env_vars.update_available_water(operation_points[best_idx].Cw_s1)
         
         # Store results
         results.append( asdict(operation_points[best_idx]) )
