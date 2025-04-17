@@ -41,7 +41,6 @@
           color: "plotly_green",
           showlegend: true,
           width: 3,
-          // legend_id: 'global_legend',
         },
       ],
 
@@ -53,9 +52,6 @@
           color: "plotly_blue",
           width: 3,
           showlegend: true,
-          // legend_id: 'global_legend',
-          axis_arrow: true,
-          arrow_yrel_pos: -0.1,
         },
       ]
     },
@@ -80,9 +76,6 @@
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          // legend_id: 'global_legend',
-          axis_arrow: true,
-          arrow_yrel_pos: -0.1,
         },
       ],
       traces_right: [
@@ -146,8 +139,6 @@
             mode: "lines",
             color: "plotly_yellow",
             width: 3,
-            axis_arrow: true,
-            arrow_yrel_pos: -0.05,
             showlegend: true,
           },
         ],
@@ -159,8 +150,6 @@
             color: "turquesa",
             dash: "solid",
             width: 3,
-            axis_arrow: true,
-            arrow_yrel_pos: -0.12,
             showlegend: true,
           },
           {
@@ -268,8 +257,6 @@
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          axis_arrow: true,
-          arrow_yrel_pos: -0.25,
         },
         {
           var_id: "Qwct",
@@ -279,8 +266,6 @@
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          axis_arrow: true,
-          arrow_yrel_pos: -0.1,
         },
       ],
       traces_right: [
@@ -333,8 +318,6 @@
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          // axis_arrow: true,
-          // arrow_yrel_pos: -0.1,
         },
         {
           var_id: "Qdc",
@@ -344,8 +327,6 @@
           width: 3,
           fill: "tozeroy",
           showlegend: true,
-          axis_arrow: true,
-          arrow_yrel_pos: 1.05,
         },
       ],
       traces_right: [
