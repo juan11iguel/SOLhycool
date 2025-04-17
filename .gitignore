@@ -8,3 +8,4 @@ simulation/src/solhycool_evaluation/__pycache__/__init__.cpython-312.pyc
 modeling/src/solhycool_modeling/__pycache__/__init__.cpython-312.pyc
 output.log
 simulation/results/output.log
+modeling/matlab/component_models/physical
