@@ -13,12 +13,16 @@ from dataclasses import asdict
 from loguru import logger
 import argparse
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import gzip
+import shutil
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint
 from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, DayResults
 from solhycool_optimization.utils import pareto_front_indices
-from solhycool_optimization.utils.serialization import export_results_day, get_fitness_history
+from solhycool_optimization.utils.evaluation import optimize
+from solhycool_optimization.utils.serialization import get_fitness_history
 from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem, AlgoParams
+from solhycool_optimization.problems.static import CombinedCoolerProblem
 
 multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
 
@@ -38,6 +42,7 @@ def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: Val
     
     # logger.info(f"Starting evaluation for step {step_idx}")
     import combined_cooler
+    
     cc_model = combined_cooler.initialize()
     
     # Prepare environment variables
@@ -62,9 +67,33 @@ def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: Val
                             consumption_list[1].append(Ce_kWe)
                         
             pbar.update(len(dv_values.Rp) * len(dv_values.Rs) * len(dv_values.wdc))
-            pbar.set_postfix(valid_candidates=len(dv_list))                        
-
-    return dv_list, consumption_list, 
+            pbar.set_postfix(valid_candidates=len(dv_list))
+            
+    # At least one point should be found, otherwise fallback
+    # to static optimization
+    if len(dv_list) < 1:
+        problem = CombinedCoolerProblem(env_vars=ev)
+        logger.warning(f"{date_str} - step {step_idx:02d} | Not a single point was found during decision variables evaulation. Trying to find one by performing a static optimization")
+        # Parameters taken from simulation/scripts/yearly_simulation_static.py
+        operation_points, _, pop_list, fitness_list, _ = optimize(
+            problem,
+            initial_pop_size=1000,
+            log_verbosity=0,
+            algo_id="sea",
+            use_mbh=False, 
+            use_cstrs=True,
+            n_trials=1,
+            wrapper_algo_iters=50,
+            max_iter=100,
+            evaluate_global_with_local=False,
+            extra_outputs=True,
+        )
+        best_idx = np.argmin(fitness_list[:, 0])
+        dv_list.append(DecisionVariables(**{var_id: value for var_id, value in zip(problem.dec_var_ids, pop_list[best_idx].champion_x)}))
+        consumption_list[0].append(operation_points[best_idx].Cw)
+        consumption_list[1].append(operation_points[best_idx].Ce)
+        
+    return dv_list, consumption_list
 
 def get_pareto_front(dv_list: list[DecisionVariables], consumption_array: np.ndarray[float], df_day: pd.DataFrame, step_idx: int) -> tuple[list[int], pd.DataFrame]:
     """ Generate pareto front """
@@ -128,9 +157,6 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
             step_idx = futures[future]
             dv_list, consumption_list = future.result()
             
-            # TODO: Validate at least one point is found, otherwise fallback
-            # to static optimization to have at least a point
-            
             # 2. Generate pareto front
             consumption_array = np.array(consumption_list).transpose()
             pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_day, step_idx)
@@ -180,10 +206,11 @@ def clear_screen_every(interval=10):
         time.sleep(interval)
         os.system("clear")
 
-def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, base_path: Path, env_path: Path, values_per_decision_variable: int, power_threshold: float, file_id: str):
+def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, base_path: Path, env_path: Path, values_per_decision_variable: int, power_threshold: float, file_id: str, full_export: bool):
     # # Start the screen clearing thread
     # clear_thread = threading.Thread(target=clear_screen_every, daemon=True)
     # clear_thread.start()
+    logger.info(f"Evaluating Combined Cooler (CC) optimization with prediction horizon for date span {date_span[0]}-{date_span[-1]} with {n_parallel_days} parallel days and {n_parallel_steps} parallel steps")
 
     # Load environment into EnvironmentVariables for the episode
     df_env = pd.read_hdf(base_path / env_path).loc[date_span[0]:date_span[1]]
@@ -228,9 +255,16 @@ def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int
 
                 for future in as_completed(futures):
                     day_results = future.result()
-                    export_results_day(day_results, output_path)
+                    day_results.export(output_path, reduced=not full_export)
 
                     pbar.update(1)
+                    
+    # Finally, compress the resulting file using gzip
+    with open(output_path, 'rb') as f_in, gzip.open(output_path.with_suffix(".gz"), 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    output_path.unlink()  # Remove uncompressed .h5 file
+    logger.info(f"Results for {date_span[0]}-{date_span[-1]} compressed and saved to {output_path.with_suffix('.gz')}. Total evaluation time took {(time.time() - start_time)/3600:.1f} hours")
+
         
 if __name__ == "__main__":
     
@@ -238,14 +272,15 @@ if __name__ == "__main__":
     parser.add_argument('--date_span', nargs=2, default=["20220101", "20221231"], help="Date span for evaluation in YYYYMMDD format")
     parser.add_argument('--evaluation_id', type=str, default="")
     parser.add_argument('--n_parallel_days', type=int, default=5, help="Number of parallel day evaluations")
-    parser.add_argument('--n_parallel_steps', type=int, default=24, help="Number of parallel step in day evaluations")
+    parser.add_argument('--n_parallel_steps', type=int, default=25, help="Number of parallel step in day evaluations")
     parser.add_argument('--base_path', type=str, default="/workspaces/SOLhycool", help="Base path for the project")
     parser.add_argument('--env_path', type=str, default="data/datasets/environment_data_psa_20220101_20241231.h5", help="Path to the environment data file")
     parser.add_argument('--values_per_decision_variable', type=int, default=10, help="Number of values per decision variable")
     parser.add_argument('--power_threshold', type=float, default=0, help="Thermal load power to cool below which only the Dry Cooler is used")
+    parser.add_argument('--full_export', action='store_true', help="Export full version of the results (increases file size)")
 
     args = parser.parse_args()
-    
+        
     file_id = f"cc_horizon_optimization_eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{args.evaluation_id}"
     
 
@@ -258,5 +293,6 @@ if __name__ == "__main__":
         env_path=Path(args.env_path),
         values_per_decision_variable=args.values_per_decision_variable,
         power_threshold=args.power_threshold,
-        file_id=file_id
+        file_id=file_id,
+        full_export=args.full_export
     )

@@ -2,7 +2,6 @@ from enum import Enum
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from solhycool_optimization import DayResults  # adjust this import
 from loguru import logger
 import pygmo as pg
 import pandas.api.types as pandas_dtypes 
@@ -10,14 +9,6 @@ import warnings
 from tables.exceptions import NaturalNameWarning
 
 warnings.filterwarnings("ignore", category=NaturalNameWarning)
-
-def get_queryable_columns(df: pd.DataFrame) -> list[str]:
-    return [
-        col for col in df.columns
-        if (not pandas_dtypes.is_complex_dtype(df[col]) and (pandas_dtypes.is_numeric_dtype(df[col])
-                                                             or pandas_dtypes.is_string_dtype(df[col])
-                                                             or pandas_dtypes.is_datetime64_any_dtype(df[col])))
-    ]
 
 class AlgoLogColumns(Enum):
     """Enum for the algorithm logs columns."""
@@ -39,6 +30,14 @@ class AlgoLogColumns(Enum):
     @property
     def columns(self) -> list[str]:
         return self.value
+
+def get_queryable_columns(df: pd.DataFrame) -> list[str]:
+    return [
+        col for col in df.columns
+        if (not pandas_dtypes.is_complex_dtype(df[col]) and (pandas_dtypes.is_numeric_dtype(df[col])
+                                                             or pandas_dtypes.is_string_dtype(df[col])
+                                                             or pandas_dtypes.is_datetime64_any_dtype(df[col])))
+    ]
 
 def get_fitness_history(algo_id: str, algo_log: pg.algorithm | pd.DataFrame |  list[tuple[int|float]], possible_fitness_keys: list[str] = ["Best", "gbest", "objval", "ideal1"]) -> pd.Series:
     """
@@ -72,99 +71,3 @@ def get_fitness_history(algo_id: str, algo_log: pg.algorithm | pd.DataFrame |  l
     
     return fitness_history
 
-def export_results_day(day_results: DayResults, output_path: Path) -> None:
-    with pd.HDFStore(output_path, mode='a', complevel=9, complib='zlib') as store:
-        for dt, df_pareto, consumption_array in zip(
-            day_results.index, day_results.df_paretos, day_results.consumption_arrays
-        ):
-            table_key = dt.strftime("%Y%m%dT%H%M")
-
-            # Save pareto front for this timestep
-            store.put(
-                f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto))
-
-            # Save consumption array for this timestep
-            df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
-            store.put(f"/consumption/{table_key}", df_consumption, format="table", data_columns=True)
-
-            # Save path selection optimization fitness history
-            if day_results.fitness_history is not None:
-                store.put(f"/paths/fitness_history/{table_key}", day_results.fitness_history, format="table",)
-
-        # Append df_results (path of selected solutions)
-        if "/results" in store:
-            existing = store["/results"]
-            combined = pd.concat([existing, day_results.df_results])
-            combined = combined.sort_index()
-            store.put("/results", combined, format="table", data_columns=get_queryable_columns(combined))
-        else:
-            store.put("/results", 
-                      day_results.df_results.sort_index(), 
-                      format="table", 
-                      data_columns=get_queryable_columns(day_results.df_results))
-
-        # Save indices of points in the pareto front and the ones selected from it for each step
-        table_key = dt.strftime("%Y%m%d")
-        store.put(f"/paths/pareto_idxs/{table_key}", pd.Series(day_results.pareto_idxs))
-        store.put(f"/paths/selected_pareto_idxs/{table_key}", pd.Series(day_results.selected_pareto_idxs))
-
-    logger.info(f"Results saved to {output_path}")
-
-def import_results_day(input_path: Path, date_str: str) -> DayResults:
-    with pd.HDFStore(input_path, mode='r') as store:
-        # Find all pareto keys for the given date
-        all_keys = store.keys()
-        date_keys = [
-            key.split("/")[-1] for key in all_keys
-            if key.startswith("/pareto/") and key.split("/")[-1].startswith(date_str)
-        ]
-        
-        if not date_keys:
-            avail_dates = np.unique([key.split('/')[-1][:8] for key in all_keys if key.startswith("/pareto/")]).tolist()
-            raise ValueError(f"No pareto results found for date {date_str} in {input_path.stem}. Available dates are: {avail_dates}")
-        
-        # Extract and sort datetime index
-        time_index = sorted([
-            pd.to_datetime(key, format="%Y%m%dT%H%M").tz_localize("UTC")
-            for key in date_keys
-        ])
-
-        # Load data for the selected date
-        df_paretos = []
-        consumption_arrays = []
-
-        for dt in time_index:
-            key = dt.strftime("%Y%m%dT%H%M")
-            # print(dt, key)
-            
-            df_paretos.append(store[f"/pareto/{key}"])
-            df_consumption = store[f"/consumption/{key}"]
-            consumption_arrays.append(df_consumption.to_numpy())
-            fitness_history = store.get(f"/paths/fitness_history/{key}")
-
-        # Load df_results (subset for the day)
-        df_results = store["/results"]
-        df_results = df_results.loc[
-            (df_results.index >= time_index[0]) & (df_results.index <= time_index[-1])
-        ]
-
-        # Load indices of points in the pareto front and the ones selected from it for each step
-        table_key = time_index[0].strftime("%Y%m%d")
-        pareto_idxs = store[f"/paths/pareto_idxs/{table_key}"].to_list()
-        selected_pareto_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
-
-        # pareto_idxs = [pareto_idxs_series.loc[dt] for dt in time_index]
-        # selected_pareto_idxs = [selected_pareto_idxs_series.loc[dt] for dt in time_index]
-        # np.concatenate().tolist()
-
-    logger.info(f"DayResults loaded for {date_str} from {input_path}")
-
-    return DayResults(
-        index=time_index,
-        df_paretos=df_paretos,
-        consumption_arrays=consumption_arrays,
-        fitness_history=fitness_history,
-        df_results=df_results,
-        pareto_idxs=pareto_idxs,
-        selected_pareto_idxs=selected_pareto_idxs
-    )
