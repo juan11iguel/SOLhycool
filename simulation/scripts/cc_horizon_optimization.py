@@ -206,14 +206,14 @@ def clear_screen_every(interval=10):
         time.sleep(interval)
         os.system("clear")
 
-def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, base_path: Path, env_path: Path, values_per_decision_variable: int, power_threshold: float, file_id: str, full_export: bool):
+def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, env_path: Path, values_per_decision_variable: int, power_threshold: float, output_path: Path, full_export: bool):
     # # Start the screen clearing thread
     # clear_thread = threading.Thread(target=clear_screen_every, daemon=True)
     # clear_thread.start()
     logger.info(f"Evaluating Combined Cooler (CC) optimization with prediction horizon for date span {date_span[0]}-{date_span[-1]} with {n_parallel_days} parallel days and {n_parallel_steps} parallel steps")
 
     # Load environment into EnvironmentVariables for the episode
-    df_env = pd.read_hdf(base_path / env_path).loc[date_span[0]:date_span[1]]
+    df_env = pd.read_hdf(env_path).loc[date_span[0]:date_span[1]]
 
     # Generate decision variable arrays
     dv_values: ValuesDecisionVariables = ValuesDecisionVariables.initialize(values_per_decision_variable).generate_arrays()
@@ -224,9 +224,6 @@ def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int
     end_date = datetime.datetime.strptime(date_span[1], "%Y%m%d").replace(hour=23)
 
     all_dates = list(pd.date_range(start=start_date, end=end_date, freq='D', tz='UTC'))
-    
-    output_path = base_path / f"optimization/results/cc_horizon_optimization/{file_id}.h5"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # df_sim_all = []
     start_time = time.time()
@@ -263,7 +260,7 @@ def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int
     with open(output_path, 'rb') as f_in, gzip.open(output_path.with_suffix(".gz"), 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
     output_path.unlink()  # Remove uncompressed .h5 file
-    logger.info(f"Results for {date_span[0]}-{date_span[-1]} compressed and saved to {output_path.with_suffix('.gz')}. Total evaluation time took {(time.time() - start_time)/3600:.1f} hours")
+    logger.info(f"Results for {date_span[0]}-{date_span[-1]} compressed and saved to {output_path.with_suffix('.gz')}. Evaluation took {(time.time() - start_time)/3600:.1f} hours to complete")
 
         
 if __name__ == "__main__":
@@ -281,18 +278,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
         
-    file_id = f"cc_horizon_optimization_eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{args.evaluation_id}"
+    # Manage paths
+    file_id = f"results_eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{args.evaluation_id}"
+    output_path = args.base_path / "simulation/results" / f"{args.date_span[0]}_{args.date_span[1]}" / "cc_horizon" / f"{file_id}.h5"
+    output_path.mkdir(parents=True, exist_ok=True)
+    env_path = Path(args.base_path) / args.env_path
+    env_path = env_path.resolve()
+    if not env_path.exists():
+        raise FileNotFoundError(f"Environment file {env_path} does not exist.")
     
-
     # Call the main function with the parsed arguments
     main(
         date_span=args.date_span,
         n_parallel_days=args.n_parallel_days,
         n_parallel_steps=args.n_parallel_steps,        
-        base_path=Path(args.base_path),
         env_path=Path(args.env_path),
         values_per_decision_variable=args.values_per_decision_variable,
         power_threshold=args.power_threshold,
-        file_id=file_id,
+        output_path=output_path,
         full_export=args.full_export
     )
