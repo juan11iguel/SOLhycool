@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 from typing import Literal
 import string
+from loguru import logger
 
 from phd_visualizations.test_timeseries import experimental_results_plot
-from solhycool_optimization import DayResults
+from solhycool_optimization import DayResults, MultipleDayResults
 from solhycool_visualization import ComponentColors
 from solhycool_visualization.optimization import plot_pareto_front
 
@@ -165,7 +166,7 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
 
 
 def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFrame = None,
-                 day_results: DayResults = None,) -> go.Figure:
+                 day_results: DayResults | MultipleDayResults = None,) -> go.Figure:
                 #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
     supported_transplants = ["hydraulic_distribution", "paretos"]
@@ -206,6 +207,10 @@ def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFra
             # assert df_paretos is not None, "Pareto front dataframes must be provided"
             # assert pareto_idxs is not None, "Pareto front indices must be provided"
             assert day_results is not None, "DayResults object must be provided"
+            
+            if isinstance(day_results, MultipleDayResults):
+                logger.warning("currently not supported for multiple days")
+                continue
             
             fig = organ_transplant(
                 fig=fig,

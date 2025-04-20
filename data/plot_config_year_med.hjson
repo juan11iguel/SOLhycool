@@ -38,7 +38,7 @@
       traces_left: [
         {
           var_id: "Tamb",
-          name: "T<sub>amb</sub> (ºC) ❮", # "T<sub>amb,ts</sub>",
+          name: "T<sub>amb</sub> (ºC)", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_green",
           showlegend: true,
@@ -50,7 +50,7 @@
         // [
         {
           var_id: "HR",
-          name: "HR (%) ❯", # "T<sub>amb,ts</sub>",
+          name: "HR (%)", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_blue",
           width: 3,
@@ -82,7 +82,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>) ❮", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -93,7 +93,7 @@
       traces_right: [
         {
           var_id: "Tv",
-          name: "T<sub>v</sub> (ºC) ❯",
+          name: "T<sub>v</sub> (ºC)",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -101,7 +101,7 @@
         },
         {
           var_id: "Tc_in",
-          name: "T<sub>c,in</sub> (ºC) ❯",
+          name: "T<sub>c,in</sub> (ºC)",
           mode: "lines",
           color: "plotly_blue",
           dash: "dash",
@@ -110,7 +110,7 @@
         },
         {
           var_id: "Tc_out",
-          name: "T<sub>c,out</sub> (ºC) ❯",
+          name: "T<sub>c,out</sub> (ºC)",
           mode: "lines",
           color: "plotly_red",
           dash: "dot",
@@ -135,7 +135,7 @@
       traces_left: [
         {
           var_id: "Vavail",
-          name: "V<sub>available</sub> (m³) ❮",
+          name: "V<sub>available</sub> (m³)",
           mode: "lines",
           color: "plotly_cyan",
           width: 3,
@@ -147,7 +147,7 @@
         [
           {
             var_id: "Pe",
-            name: "Electricity price (€/kW<sub>e</sub>) ❯", # "T<sub>amb,ts</sub>",
+            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
             mode: "lines",
             color: "plotly_yellow",
             width: 3,
@@ -157,7 +157,7 @@
         [
           {
             var_id: "Pw_s1",
-            name: "Water price - source 1 (€/l) ❯❯",
+            name: "Water price - source 1 (€/l)",
             mode: "lines",
             color: "turquesa",
             dash: "solid",
@@ -166,7 +166,7 @@
           },
           {
             var_id: "Pw_s2",
-            name: "Water price - source 2 (€/l) ❯❯",
+            name: "Water price - source 2 (€/l)",
             mode: "lines",
             color: "turquesa",
             dash: "dash",
@@ -204,7 +204,7 @@
           // },
           {
             var_id: "Je_wct",
-            name: "J<sub>e,wct</sub> (€/h) ❮",
+            name: "J<sub>e,wct</sub> (€/h)",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -213,7 +213,7 @@
           },
           {
             var_id: "Je_dc",
-            name: "J<sub>e,dc</sub> (€/h) ❮",
+            name: "J<sub>e,dc</sub> (€/h)",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -222,7 +222,7 @@
           },
           {
             var_id: "Je_c",
-            name: "J<sub>e,c</sub> (€/h) ❮",
+            name: "J<sub>e,c</sub> (€/h)",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -231,7 +231,7 @@
           },
           {
             var_id: "Jw_s2",
-            name: "J<sub>w,s2</sub> (€/h) ❮",
+            name: "J<sub>w,s2</sub> (€/h)",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -240,7 +240,7 @@
           },
           {
             var_id: "Jw_s1",
-            name: "J<sub>w,s1</sub> (€/h) ❮",
+            name: "J<sub>w,s1</sub> (€/h)",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -251,7 +251,7 @@
         traces_right: [
           {
            var_id: "Pe",
-            name: "Electricity price (€/kW<sub>e</sub>) ❯", # "T<sub>amb,ts</sub>",
+            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
             mode: "lines",
             // color: "plotly_green",
             showlegend: true,
@@ -271,7 +271,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>) ❮", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -280,7 +280,7 @@
         },
         {
           var_id: "Qdc",
-          name: "Q<sub>dc</sub> (kW<sub>th</sub>) ❮",
+          name: "Q<sub>dc</sub> (kW<sub>th</sub>)",
           mode: "lines",
           color: "dc_green",
           width: 3,
@@ -290,7 +290,7 @@
         },
         {
           var_id: "Qwct",
-          name: "Q<sub>wct</sub> (kW<sub>th</sub>) ❮",
+          name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
           mode: "lines",
           color: "wct_purple",
           width: 3,
