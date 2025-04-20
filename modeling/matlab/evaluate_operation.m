@@ -74,6 +74,8 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
 
 
     % Calculations
+    valid = true;
+    
     % Unit conversion
     mc_kgs = qc_m3h / 3.6;
     mv_kgs = mv_kgh / 3600;
