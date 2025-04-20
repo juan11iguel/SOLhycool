@@ -100,7 +100,10 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     % print(Twct_out)
 
     % WCT
-    [wwct, valid] = wct_inverse_model_fun(Tamb_C, HR_pp, Twct_in, qwct, Twct_out);
+    [wwct, valid_] = wct_inverse_model_fun(Tamb_C, HR_pp, Twct_in, qwct, Twct_out);
+    if ~valid_ % No feasible fan speed found for the given inputs
+        valid = false;
+    end
 
     % With wwct, evaluate model
     [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options);
