@@ -35,7 +35,9 @@
 				"ms-python.debugpy",
 				"ms-toolsai.datawrangler",
 				"mechatroner.rainbow-csv",
-				"GitHub.copilot-chat"
+				"GitHub.copilot-chat",
+				"trietho.file-size-explorer",
+				"cyberBabushkin.filesize-hover-explorer",
 			],
 			"containerEnv": {
 				"ENVIRONMENT": "container",

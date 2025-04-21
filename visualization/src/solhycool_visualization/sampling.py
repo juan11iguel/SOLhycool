@@ -4,12 +4,15 @@ from plotly.colors import qualitative
 import pandas as pd
 
 
-def plot_samples(df: pd.DataFrame, var_ids: list[str], Ncols: int = 3) -> go.Figure:
+def plot_samples(df: pd.DataFrame, var_ids: list[str] = None, Ncols: int = 3) -> go.Figure:
     # Taken from github.com/juan11iguel/med-performance-evaluation/dev/med_performance_evaluation/notebooks/sensitivity_analysis.ipynb
     # TODO: Add hover support so that when one point in one scatter subplot is hovered, the corresponding point in the other subplots are highlighted
 
+    if var_ids is None:
+        var_ids = df.columns.tolist()
+
     # Create a subplot
-    Nrows = (len(var_ids) // Ncols + 1) * 2
+    Nrows = (len(var_ids) // Ncols) * 2
 
     max_n_samples = 1000
     sample_rate = len(df) // max_n_samples
@@ -17,6 +20,7 @@ def plot_samples(df: pd.DataFrame, var_ids: list[str], Ncols: int = 3) -> go.Fig
     # Create title for each subplot
     var_idx=0
     subplot_titles = []
+    # subplot_titles = var_ids
     for row_idx in range(0, Nrows, 2):
         for col_idx in range(1, Ncols+1):
             if var_idx >= len(var_ids):
@@ -26,7 +30,7 @@ def plot_samples(df: pd.DataFrame, var_ids: list[str], Ncols: int = 3) -> go.Fig
         subplot_titles.extend(['']*Ncols)
 
     fig = make_subplots(rows=Nrows, cols=Ncols,
-                        row_heights=[0.2, 0.5] * (len(var_ids) // Ncols + 1),
+                        row_heights=[0.2, 0.5] * (len(var_ids) // Ncols),
                         # vertical_spacing=0.01,
                         subplot_titles=subplot_titles,
                         # row_titles=[f"<b>{label}</b>" for label in ['Histogram', 'Scatter']] * (len(var_ids) // Ncols + 1),
@@ -82,12 +86,12 @@ def plot_samples(df: pd.DataFrame, var_ids: list[str], Ncols: int = 3) -> go.Fig
 
     fig.update_layout(
         title_text=f'<b>Samples distribution</b><br>Showing every {sample_rate}th sample (total {len(df)} samples)',
-        title_pad=dict(t=50),
-        height=200*Nrows,
+        # title_pad=dict(t=50),
+        height=200 * Nrows + 50,
         hoversubplots="axis",
         hovermode="x",
         showlegend=False,
-        # margin=dict(l=0, r=0, t=0, b=0,),
+        margin=dict(l=0, r=0, t=130, b=0,),
     )
 
     return fig

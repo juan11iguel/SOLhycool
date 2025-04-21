@@ -19,7 +19,7 @@ class ModelInputsRange:
     Rp: tuple[float, float] = (0., 1.)
     Rs: tuple[float, float] = (0., 1.)
     wdc: tuple[float, float] = (11.0, 99.1800)
-    wwct: tuple[float, float] = (0., 93.4161)
+    wwct: tuple[float, float] = (21., 93.4161)
     Tamb: tuple[float, float] = (9.06, 38.75)
     HR: tuple[float, float] = (10.33, 89.25)
     Tdc_in: tuple[float, float] = (33.16, 41.92)
