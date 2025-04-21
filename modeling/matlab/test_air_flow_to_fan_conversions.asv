@@ -1,0 +1,12 @@
+addpath(genpath("utils/"))
+addpath(genpath("component_models/"))
+
+wwct = linspace(21, 100, 10);
+ma = nan(1,length(wwct));
+wwct_computed = nan(1,length(wwct)); 
+for i=1:length(wwct)
+    [ma(i), valid] = fan_speed_to_air_mass_flow_rate_fit(wwct(i));
+    wwct_computed(i) = air_mass_flow_rate_to_fan_speed(ma(i));
+end
+
+[wwct' wwct_computed' ma]

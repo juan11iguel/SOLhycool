@@ -3,7 +3,7 @@
     <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.3.2</param.version>
+    <param.version>1.3.3</param.version>
     <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
     <param.email>lroca@psa.es</param.email>
     <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
@@ -120,6 +120,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/default_parameters.m</file>
       <file>${PROJECT_ROOT}/evaluate_operation.m</file>
       <file>${PROJECT_ROOT}/fans_calculator.m</file>
+      <file>${PROJECT_ROOT}/utils/air_mass_flow_rate_to_fan_speed.m</file>
       <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
       <file>${PROJECT_ROOT}/utils/fan_speed_to_air_mass_flow_rate_fit.m</file>
       <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
@@ -130,6 +131,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
     <fileset.classes>
       <entity.package name="">
         <entity.class name="Class1">
+          <file>${PROJECT_ROOT}/utils/air_mass_flow_rate_to_fan_speed.m</file>
           <file>${PROJECT_ROOT}/combined_cooler_model.m</file>
           <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
           <file>${PROJECT_ROOT}/component_models/condenser_heat_transfer_coefficient.m</file>
@@ -168,10 +170,10 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
     </fileset.resources>
     <fileset.depfun>
-      <file>/home/patomareao/Nextcloud/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
       <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
+      <file>${PROJECT_ROOT}/utils/xsteamPSA/XSteam.m</file>
     </fileset.depfun>
     <fileset.package>
       <file>${PROJECT_ROOT}/README.md</file>

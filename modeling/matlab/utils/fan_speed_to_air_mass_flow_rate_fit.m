@@ -6,5 +6,5 @@ function ma_kgs = fan_speed_to_air_mass_flow_rate_fit(w_pct)
     p2 = 0.1743;
     p3 = -0.7251;
 
-    ma_kgs = p1*(w_pct/2)^2 + p2*w_pct/2 + p3;
+    ma_kgs = p1.*(w_pct/2).^2 + p2.*w_pct./2 + p3;
 end
