@@ -264,7 +264,7 @@
       row_height: 1,
       bg_color: "bg_gray",
       ylabels_left: ["<b>Cooling power</b><br>kW<sub>th</sub>"],
-      ylims_left: 'manual',
+      ylims_left: [0, 300],
       showlegend: true,
       legend_position: "top",
 

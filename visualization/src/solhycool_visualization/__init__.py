@@ -21,3 +21,9 @@ def reorder_dict(d: dict, key_to_move: str, new_position: int) -> dict:
     items.insert(new_position, item)  # Insert it at the new position
     
     return dict(items)  # Convert back to dict
+
+
+def insert_key_in_dict_at(d: dict, key: str, value, index: int) -> dict:
+    items = list(d.items())
+    items.insert(index, (key, value))
+    return dict(items)

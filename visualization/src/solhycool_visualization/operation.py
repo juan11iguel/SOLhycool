@@ -50,6 +50,7 @@ def plot_hydraulic_distribution(
             name='DC //',
             offsetgroup=label,
             marker=dict(color=ComponentColors.DC.value),
+            hovertemplate = f'DC // ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
         ))
         
         fig.add_trace(go.Bar(
@@ -69,6 +70,7 @@ def plot_hydraulic_distribution(
                     solidity=0.5,
                 ),
             ),
+            hovertemplate = f'DC 🠒 WCT ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
         ))
         
         fig.add_trace(go.Bar(
@@ -86,7 +88,8 @@ def plot_hydraulic_distribution(
             textangle=-90,
             outsidetextfont=dict(size=11),  # Increase text size
             # textfont=dict(size=20),  # Increase text size
-            cliponaxis=False         # Prevent text from being clipped
+            cliponaxis=False,         # Prevent text from being clipped
+            hovertemplate = f'WCT // ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
         ))
 
     if n_series == 1:
@@ -109,7 +112,9 @@ def plot_hydraulic_distribution(
         ) if len(x) < 24 and not isinstance(x[0], int) else None,
         yaxis_range=[0, max(q.max() for q in qc) * 1.1],
         uniformtext_minsize=12, 
-        uniformtext_mode='show'
+        uniformtext_mode='show',
+        hovermode="x unified",
+        hoverlabel_align = 'right',
     )
 
     return fig
