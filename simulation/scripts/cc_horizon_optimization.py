@@ -32,17 +32,12 @@ def update_bar_every(pbar: tqdm, interval=0.5) -> None:
         time.sleep(interval)
         pbar.refresh()
 
-@retry(
-    stop=stop_after_attempt(3),  # Retry up to 3 times
-    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
-    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
-)
 def evaluate_decision_variables(step_idx: int, ds_env: pd.Series, dv_values: ValuesDecisionVariables, total_num_evals: int, date_str: str) -> tuple[list[DecisionVariables], list[list[float], list[float]]]:
     """Evaluates decision variables for a given step."""
     
     # logger.info(f"Starting evaluation for step {step_idx}")
-    import combined_cooler
     
+    import combined_cooler
     cc_model = combined_cooler.initialize()
     
     # Prepare environment variables
@@ -102,7 +97,7 @@ def get_pareto_front(dv_list: list[DecisionVariables], consumption_array: np.nda
     cc_model = combined_cooler.initialize()
     
     pareto_idxs = pareto_front_indices(consumption_array, objective="minimize")
-    logger.debug(f"{df_day.index[0].strftime("%Y%m%dT%H%M")} | Pareto front indices: {pareto_idxs}")
+    logger.debug(f"{df_day.index[step_idx].strftime("%Y%m%dT%H%M")} | Pareto front indices: {pareto_idxs}")
         
     # Generate operation points for the Pareto front
     ev = EnvironmentVariables.from_series(df_day.iloc[step_idx]).constrain_to_model()
@@ -139,6 +134,16 @@ def path_selector(params: AlgoParams, problem: CombinedCoolerPathFinderProblem) 
     return x, fitness_history
 
 # Evaluate combinations of decision variables
+"""
+SystemError: Could not access the MATLAB Runtime component cache. Details: fl:filesystem:PathNotFound
+Component cache root: '/root/.MathWorks/MatlabRuntimeCache/R2024b'
+Component name: 'combined_cooler'
+"""
+@retry(
+    stop=stop_after_attempt(3),  # Retry up to 3 times
+    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
+    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
+)
 def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame, 
                  dv_values: ValuesDecisionVariables, 
                  total_num_evals: int, path_selector_params: AlgoParams,):
@@ -182,9 +187,10 @@ def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame,
 
     # 4. Generate results dataframe for the day
     _, ops = problem.evaluate(
-        [OperationPoint(
-            **problem.df_paretos[step_idx].iloc[selected_idx]
-            ) for step_idx, selected_idx in enumerate(selected_pareto_idxs)],
+        [
+            OperationPoint(**problem.df_paretos[step_idx].iloc[selected_idx]) 
+            for step_idx, selected_idx in enumerate(selected_pareto_idxs)
+        ],
         update_operation_pts=True
     )
     df_results = pd.DataFrame([asdict(op) for op in ops],).set_index("time", drop=True)
@@ -205,12 +211,29 @@ def clear_screen_every(interval=10):
     while True:
         time.sleep(interval)
         os.system("clear")
+        
+def clear_and_initialize_matlab_runtime() -> None:
+    matlab_cache_path = Path("/root/.MathWorks/MatlabRuntimeCache/R2024b")
+    
+    # Check if it exists and is a directory
+    if matlab_cache_path.exists() and matlab_cache_path.is_dir():
+        shutil.rmtree(matlab_cache_path)
+    try:
+        import combined_cooler
+        _ = combined_cooler.initialize()  # load once
+        print(f"✅ Preloaded combined_cooler successfully. Matlab cache files: {[print(item) for item in matlab_cache_path.iterdir()]}")
+    except Exception as e:
+        raise Exception("⚠️ Failed to preload combined_cooler:", e)
+    
+    return None
 
 def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int, env_path: Path, values_per_decision_variable: int, power_threshold: float, output_path: Path, full_export: bool):
     # # Start the screen clearing thread
     # clear_thread = threading.Thread(target=clear_screen_every, daemon=True)
     # clear_thread.start()
     logger.info(f"Evaluating Combined Cooler (CC) optimization with prediction horizon for date span {date_span[0]}-{date_span[-1]} with {n_parallel_days} parallel days and {n_parallel_steps} parallel steps")
+
+    clear_and_initialize_matlab_runtime()
 
     # Load environment into EnvironmentVariables for the episode
     df_env = pd.read_hdf(env_path).loc[date_span[0]:date_span[1]]
@@ -262,7 +285,6 @@ def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int
     output_path.unlink()  # Remove uncompressed .h5 file
     logger.info(f"Results for {date_span[0]}-{date_span[-1]} compressed and saved to {output_path.with_suffix('.gz')}. Evaluation took {(time.time() - start_time)/3600:.1f} hours to complete")
 
-        
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
@@ -280,8 +302,8 @@ if __name__ == "__main__":
         
     # Manage paths
     file_id = f"results_eval_at_{datetime.datetime.now():%Y%m%dT%H%M}_{args.evaluation_id}"
-    output_path = args.base_path / "simulation/results" / f"{args.date_span[0]}_{args.date_span[1]}" / "cc_horizon" / f"{file_id}.h5"
-    output_path.mkdir(parents=True, exist_ok=True)
+    output_path = Path(args.base_path) / f"simulation/results/{args.date_span[0]}_{args.date_span[1]}/cc_horizon/{file_id}.h5"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     env_path = Path(args.base_path) / args.env_path
     env_path = env_path.resolve()
     if not env_path.exists():
@@ -292,7 +314,7 @@ if __name__ == "__main__":
         date_span=args.date_span,
         n_parallel_days=args.n_parallel_days,
         n_parallel_steps=args.n_parallel_steps,        
-        env_path=Path(args.env_path),
+        env_path=env_path,
         values_per_decision_variable=args.values_per_decision_variable,
         power_threshold=args.power_threshold,
         output_path=output_path,

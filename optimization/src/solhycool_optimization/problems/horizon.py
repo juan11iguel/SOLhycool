@@ -368,7 +368,7 @@ class AlgoParams:
         else:
             self.pop_size = 1
             self.gen = self.max_n_obj_fun_evals
-            self.params_dict = { self.max_n_obj_fun_evals // self.pop_size }
+            self.params_dict = { "gen": self.max_n_obj_fun_evals // self.pop_size }
         
         if self.log_verbosity is None:
             self.log_verbosity = math.ceil( self.gen / self.max_n_logs)
