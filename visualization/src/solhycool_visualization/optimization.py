@@ -42,6 +42,7 @@ def plot_pareto_front(
     highlight_idx: int = None,
     mode: Literal["overlap", "side_by_side"] = "overlap",
     selected_idxs: list[int] | list[list[int]] = None,
+    line_width: float =0.5,
     **kwargs,
 ) -> go.Figure:
     """
@@ -55,7 +56,7 @@ def plot_pareto_front(
         ops = ops.copy()
         ops.sort_values(by=objective_keys[0], inplace=True)
         op = ops.iloc[0]
-        opacity = 0.7 if highlight_idx is None or pareto_idx == highlight_idx else 0.3
+        opacity = 1 if highlight_idx is None or pareto_idx == highlight_idx else 0.3
         if highlight_idx is None:
             color = f'rgba({pareto_idx * 30 % 255}, {100 + pareto_idx * 20 % 155}, {200 - pareto_idx * 20 % 200}, 0.7)'
         else:
@@ -93,13 +94,26 @@ def plot_pareto_front(
             x=x_values, y=ops[objective_keys[1]],
             name=name,
             mode='lines+markers',
-            line=dict(width=0.5, color=color, dash='dot'),
+            line=dict(width=line_width, color=color, dash='dot'),
             marker=dict(size=10, color=color, opacity=opacity, symbol=symbols[pareto_idx]),
         ))
+        
+        #TODO: We should support highlighting selected points in the pareto front 
+        # not only in side_by_side mode but also in overlap mode. I think I already
+        # had this impemented in a solhycool-optimization repo
+        if selected_idxs is not None and mode == "overlap":
+            selected_idx = selected_idxs[pareto_idx]
+            if selected_idx is None:
+                continue
+            
+            fig.add_trace(go.Scatter(
+                x=[x_values[selected_idx]], y=[ops[objective_keys[1]][selected_idx]],
+                name=name,
+                mode='markers',
+                showlegend=False,
+                marker=dict(size=20, color=color, opacity=opacity, symbol=symbols_open[pareto_idx], line_width=3),
+            ))
     
-    #TODO: We should support highlighting selected points in the pareto front 
-    # not only in side_by_side mode but also in overlap mode. I think I already
-    # had this impemented in a solhycool-optimization repo
     
     # Add connecting lines for selected indices
     # print(f"{len(ops_list)=}, {len(x0_values_list)=}")
@@ -199,11 +213,11 @@ def plot_pareto_front(
     kwargs.setdefault("width", 1000)
     kwargs.setdefault("height", 450)
     kwargs.setdefault("showlegend", True)
+    kwargs.setdefault("font", dict(size=default_fontsize))
     
     fig.update_layout(
         legend=dict(bgcolor='rgba(255,255,255,0.9)'),
         margin=dict(l=20, r=20, t=20, b=20, pad=5),
-        font=dict(size=default_fontsize),
         newshape=newshape_style,
         **kwargs
     )
