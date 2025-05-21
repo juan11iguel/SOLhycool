@@ -2,6 +2,9 @@
 
 Combined cooling solutions...
 
+![](./data/assets/facility_diagram_simple.png)
+![](./modeling/assets/combined_cooler_pilot_plant.png)
+
 
 ## Project structure
 
