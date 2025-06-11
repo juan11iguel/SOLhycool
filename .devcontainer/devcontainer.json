@@ -38,6 +38,8 @@
 				"GitHub.copilot-chat",
 				"trietho.file-size-explorer",
 				"cyberBabushkin.filesize-hover-explorer",
+				"SimonSiefke.svg-preview",
+				"h5web.vscode-h5web"
 			],
 			"containerEnv": {
 				"ENVIRONMENT": "container",
