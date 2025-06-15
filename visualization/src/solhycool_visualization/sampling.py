@@ -15,7 +15,7 @@ def plot_samples(df: pd.DataFrame, var_ids: list[str] = None, Ncols: int = 3) ->
     Nrows = (len(var_ids) // Ncols) * 2
 
     max_n_samples = 1000
-    sample_rate = len(df) // max_n_samples
+    sample_rate = max(1, len(df) // max_n_samples)
 
     # Create title for each subplot
     var_idx=0

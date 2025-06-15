@@ -22,6 +22,7 @@
 				}
 			},
 			"extensions": [
+				"ms-toolsai.jupyter",
 				"mutantdino.resourcemonitor",
 				"tamasfe.even-better-toml",
 				"naumovs.color-highlight",
