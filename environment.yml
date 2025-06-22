@@ -16,6 +16,7 @@ dependencies:
   - pytables=3.10.2
   - h5py=3.12.1
   - pip
+  - airflow==3.0.2
   - pip:
       # WARNING: conda env update does not update git packages, see https://github.com/conda/conda/issues/6863
       # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
@@ -23,10 +24,8 @@ dependencies:
       # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
       - iapws @ git+https://github.com/jjgomera/iapws@16b4806d00aabd5c031452222387902f2b02d1db
       - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations
-      - ../modeling/matlab/exports/for_redistribution_files_only
-      - -e ../modeling
-      - -e ../visualization
-      - -e ../optimization
-      - -e ../simulation # We are also using this environment in the simulation sub-package
-# variables:
-#   LD_LIBRARY_PATH: "/home/patomareao/MATLAB/R2024b/runtime/glnxa64:/home/patomareao/MATLAB/R2024b/bin/glnxa64:/home/patomareao/MATLAB/R2024b/sys/os/glnxa64:/home/patomareao/MATLAB/R2024b/extern/bin/glnxa64:/lib/x86_64-linux-gnu:"
+      - ./modeling/matlab/exports/for_redistribution_files_only
+      - -e ./modeling
+      - -e ./visualization
+      - -e ./optimization
+      - -e ./simulation # We are also using this environment in the simulation sub-package

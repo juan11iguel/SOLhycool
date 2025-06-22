@@ -10,16 +10,20 @@ ENV WORKDIR=${WORKDIR:-/workspaces/SOLhycool}
 # Set matlab runtime environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV MATLAB_VERSION=R2024b
-ENV MR=/opt/matlabruntime/${MATLAB_VERSION}
+ENV MR=/opt/matlabruntime/$MATLAB_VERSION
 ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
 # https://es.mathworks.com/help/compiler/mcr-path-settings-for-run-time-deployment.html
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:\
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH-}:\
 $MR/runtime/glnxa64:\
 $MR/bin/glnxa64:\
 $MR/sys/os/glnxa64:\
 $MR/sys/extern/bin/glnxa64
+# Conda environment variables
+ENV CONDA_ENV_NAME=conda-env
+# Airflow environment variables
+ENV AIRFLOW_HOME=$WORKDIR/deployment
 
-WORKDIR ${WORKDIR}
+WORKDIR $WORKDIR
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
