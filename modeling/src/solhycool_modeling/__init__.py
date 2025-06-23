@@ -266,6 +266,10 @@ class OperationPoint:
     Jw_wct: Optional[float] = field(default=None, metadata={"description": "WCT water cost", "units": "€/h"})
     Jw_s1: Optional[float] = field(default=None, metadata={"description": "Water cost from source 1", "units": "€/h"})
     Jw_s2: Optional[float] = field(default=None, metadata={"description": "Water cost from source 2", "units": "€/h"})
+    dc_active: Optional[bool] = field(default=None, metadata={"description": "State of dry cooler (active=1, inactive=0)", "units": ""},)
+    dc_mode: Optional[int] = field(default=None, metadata={"description": "Operation mode of dry cooler (0=auto, 1=manual)", "units": ""},)
+    wct_active: Optional[bool] = field(default=None, metadata={"description": "State of wet cooler (active=1, inactive=0)", "units": ""},)
+    wct_mode: Optional[int] = field(default=None, metadata={"description": "Operation mode of wet cooler (0=auto, 1=manual)", "units": ""},)
     
     def __post_init__(self) -> None:
         
@@ -347,6 +351,21 @@ class OperationPoint:
         else:
             if self.Vavail is not None:
                 self.Vavail_s1 = self.Vavail
+                
+        # Set operation variables (active and mode)
+        if self.dc_active is None:
+            self.dc_active = self.Qdc > 0
+        if self.dc_mode is None:
+            # The inverted logic is used here:
+            # 0==auto if active, 1==manual if inactive
+            self.dc_mode = int(not self.dc_active)
+            
+        if self.wct_active is None:
+            self.wct_active = self.Qwct > 0
+        if self.wct_mode is None:
+            # The inverted logic is used here:
+            # 0==auto if active, 1==manual if inactive
+            self.wct_mode = int(not self.wct_active)
         
 
     @classmethod
