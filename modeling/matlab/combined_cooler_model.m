@@ -52,29 +52,32 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     model_type = options.model_type;
     silence_warnings = options.silence_warnings;
 
-    % Add utilities path
-    addpath(genpath('utils\'));
+    % Add dependencies path
+    addpath(genpath('utils'));
+    addpath(genpath('component_models'));
 
-    % Validate parameters
+    % Validate input parameters
     validate_struct(default_parameters(), parameters);
-    % if isnan(Rs)
-    %     Rs=0;
-    % end
-
-    % Define model functions to use
-    dc_model_fun = @dc_model;
-    wct_model_fun = @wct_model;
+    
+    % Assign function handles
     condenser_model_fun = @condenser_model;
-    mixer_model_fun = @mixer_model;
-    % dc_model_fun = function_handle(char(fullfile('.', 'component_models', model_type, 'dc_model.m')));
-    % wct_model_fun = function_handle(char(fullfile('.', 'component_models', model_type, 'wct_model.m')));
-    % condenser_model_fun = function_handle(char(fullfile('.', 'component_models', 'condenser_model.m')));
-    % mixer_model_fun = function_handle(char(fullfile('.', 'component_models', 'mixer_model.m')));
+    mixer_model_fun     = @mixer_model;
+
+    switch model_type
+        case "data"
+            dc_model_fun        = @dc_model_data;
+            wct_model_fun       = @wct_model_data;
+        case "physical"
+            dc_model_fun        = @dc_model_physical;
+            wct_model_fun       = @wct_model_physical;
+        otherwise
+            error("combined_cooler_model:invalid_option", ...
+                  "Invalid model_type '%s'. Options are: 'data', 'physical'", model_type);
+    end
 
     if silence_warnings
         warning('off','all') % disable all warnings
     end
-
 
     % Calculations
     % Unit conversion
@@ -102,30 +105,57 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
 
     % Get outputs 
     qcc = qc_m3h;
+
     % Condenser
     [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
     Tcc_in = Tc_out;
     % Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
+
     % DC
     Tdc_in = Tcc_in;
-    [Tdc_out, Ce_dc] = dc_model_fun(Tamb_C, Tdc_in, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
+    [Tdc_out, Ce_dc] = dc_model_fun( ...
+        Tamb_C, ...
+        Tdc_in, ...
+        qdc, ...
+        wdc, ...
+        model_data_path=parameters.dc_model_data_path, ...
+        silence_warnings=silence_warnings, ...
+        lb=parameters.dc_lb, ...
+        ub=parameters.dc_ub, ...
+        ce_coeffs=parameters.dc_ce_coeffs ...
+    );
+
     % Solve WCT input mixer
     [~, Twct_in] = mixer_model_fun(qwct_p, qwct_s, Tcc_in, Tdc_out);
+
     % WCT
-    [Twct_out, Ce_wct, Cw_wct] = wct_model_fun(Tamb_C, HR_pp, Twct_in, qwct, wwct, ...
-        model_data_path=parameters.wct_model_data_path, lb=parameters.wct_lb, ub=parameters.wct_ub, silence_warnings=silence_warnings);
+    [Twct_out, Ce_wct, Cw_wct] = wct_model_fun(...
+        Tamb_C, ...
+        HR_pp, ...
+        Twct_in, ...
+        qwct, ...
+        wwct, ...
+        model_data_path=parameters.wct_model_data_path, ...
+        lb=parameters.wct_lb, ...
+        ub=parameters.wct_ub, ...
+        silence_warnings=silence_warnings, ...
+        ce_coeffs=parameters.wct_ce_coeffs ...
+    );
+
     % Solve CC output mixer
     [~, Tcc_out] = mixer_model_fun(qdc, qwct, Tdc_out, Twct_out);
+
     % Validation
     if abs(Tcc_out - Tc_in) > 1 && ~silence_warnings
-        msg = sprintf("cooling system, no valid solution found, Tc_in: %.3f - %3.f", Tc_in, Tcc_out);
-        warning(msg)
+        warning("combined_cooler_model:solution_not_found", "cooling system, no valid solution found, Tc_in: %.3f - %3.f", Tc_in, Tcc_out)
         % throw(MException("combined_cooler_model:invalid_solution", msg))
     end
+    
     % Additional outputs
-    Ce_c = recirculation_pump_consumption(qc_m3h);
+    Ce_c = recirculation_pump_consumption(qc_m3h, parameters.recirculation_coeffs);
 
     % Validate consumptions
+    % UPDATE: Not needed anymore, as the functions already validate for non-negative values
     Ce_c = max(0, Ce_c);
     Ce_dc = max(0, Ce_dc); 
     Ce_wct = max(0, Ce_wct);
