@@ -45,7 +45,7 @@ function [Tout, Ce] = dc_model(Tamb, Tin, q, w_fan, options)
         load(options.model_data_path, "model");
     end
     
-    fprintf("wct model path: %s\n", options.model_data_path)
+    % fprintf("wct model path: %s\n", options.model_data_path)
 
     max_values = options.ub;
     min_values = options.lb;
