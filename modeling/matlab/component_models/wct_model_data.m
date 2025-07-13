@@ -48,6 +48,8 @@ function [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan, options)
     if isempty(model)
         load(options.model_data_path, "model");
     end
+
+    fprintf("wct model path: %s\n", options.model_data_path)
     
     max_values = options.ub;
     min_values = options.lb;

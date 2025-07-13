@@ -163,7 +163,9 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/condenser_heat_transfer_coefficient.m</file>
       <file>${PROJECT_ROOT}/component_models/condenser_heats_model.m</file>
       <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/dc_model_data.mat</file>
       <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/wct_model_data.mat</file>
       <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
       <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
       <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
