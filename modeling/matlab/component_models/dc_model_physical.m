@@ -48,7 +48,7 @@ for idx=1:length(vars)
             raise_error(var, value, min_values(idx), max_values(idx))
         else
             if ~options.silence_warnings
-                warning("%s outside limits (%.2f <! %s <! %.2f)", var, min_values(idx), value, max_values(idx))
+                warning("%s outside limits (%.2f <! %.2f <! %.2f)", var, min_values(idx), value, max_values(idx))
             end
             valid_inputs = false;
         end

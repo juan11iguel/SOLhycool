@@ -85,8 +85,8 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     mv_kgs = mv_kgh / 3600;
     % Get flows from ratios
     [qdc, qwct, qwct_p, qwct_s] = ratios_to_flows(qc_m3h, Rp, Rs);
-    mwct = qwct / 3.6;
-    mdc = qdc / 3.6;
+    mwct = qwct / 3.6; % m3/h -> kg/s
+    mdc = qdc / 3.6; % m3/h -> kg/s
     % Other
     Twct_min = parameters.wct_lb(3);
 

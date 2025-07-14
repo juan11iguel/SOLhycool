@@ -63,7 +63,7 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
                 raise_error(var, value, min_values(idx), max_values(idx))
             else
                 if ~options.silence_warnings
-                    warning("%s outside limits (%.2f <! %s <! %.2f)", var, min_values(idx), value, max_values(idx))
+                    warning("%s outside limits (%.2f <! %.2f <! %.2f)", var, min_values(idx), value, max_values(idx))
                 end
                 valid_inputs = false;
             end
