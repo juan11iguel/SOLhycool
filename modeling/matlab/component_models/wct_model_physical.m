@@ -27,8 +27,8 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
         w_fan (1,1) double
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
-        options.lb (1,5) double = [0.1    0.1     5.0    5.0       0];
-        options.ub (1,5) double = [50.0   99.99   53.0   24.8400   93.4161];
+        options.lb (1,5) double = [0.1    0.1     5.0    5.0       0.];
+        options.ub (1,5) double = [50.0   99.99   55.0   24.8400   95.];
         options.silence_warnings logical = false
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4];
         

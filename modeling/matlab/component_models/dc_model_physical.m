@@ -25,8 +25,8 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options)
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
         options.silence_warnings logical = false
-        options.lb (1,4) double = 0.9*[9.0600   33.1600, 5.2211, 11];
-        options.ub (1,4) double = 1.1*[38.7500   41.9200, 24.1543, 99.1800];
+        options.lb (1,4) double = 0.9*[5.0600   10.0, 5.2211, 11];
+        options.ub (1,4) double = 1.1*[50.7500   50.0, 24.1543, 99.1800];
         options.ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
     end
 
