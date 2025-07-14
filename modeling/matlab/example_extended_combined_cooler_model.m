@@ -10,10 +10,19 @@ wwct = 24.675237054315400; % Initialize wwct here
 Tv = 43.324458513828800;
 Tv_in = [];
 
+%% Data-driven
 params = default_parameters();
 params.wct_model_data_path = char("/home/patomareao/Downloads/wct_model_data.mat");
 
 options = struct('model_type', 'data', 'lb', Tv, 'ub', Tv, 'x0', nan, 'silence_warnings', true, 'parameters', params); % Default values
+options.parameters.condenser_option = 7;
+
+[Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_in, options);
+
+%% Physical
+params = default_parameters();
+
+options = struct('model_type', 'physical', 'lb', Tv, 'ub', Tv, 'x0', nan, 'silence_warnings', true, 'parameters', params); % Default values
 options.parameters.condenser_option = 7;
 
 [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_in, options);

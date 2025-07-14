@@ -92,6 +92,8 @@ regression_plot(data, rearrangeTable(data, results), [16, 13], output_vars_senso
 %% Combined model
 clc
 
+model_type = "physical";
+
 % Tv_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
@@ -102,7 +104,7 @@ for i=1:N
     [Ce_data(i), Cw_data(i), detailed] = combined_cooler_model( ...
         data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), ...
         data.wdc(i), data.wwct(i), data.Tv(i), ...
-        struct("model_type",'data', "silence_warnings", true, "parameters", parameters ,"lb", data.Tv(i), "ub", data.Tv(i)));
+        struct("model_type", model_type, "silence_warnings", true, "parameters", parameters ,"lb", data.Tv(i), "ub", data.Tv(i)));
 
     detailed_data = [detailed_data detailed];
 

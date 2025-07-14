@@ -1,4 +1,4 @@
-function [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan, options)
+function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
     % WCT_MODEL  Predicts outlet temperature, electrical and water consumption for the WASCOP wet cooling tower.
     % 
     % Inputs:
@@ -17,7 +17,7 @@ function [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan, options)
     % Outputs:
     %   Tout    - Outlet temperature (ºC)
     %   Ce      - Electrical consumption (kWe)
-    %   Cw      - Water consumption (m³/h)
+    %   Cw      - Water consumption (l/h)
     %
     % Notes:
     %   Uses a data-driven model that can be called with the predict function

@@ -1,9 +1,9 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="830139834" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
+  <configuration build-checksum="968609710" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
     <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>2.0.0</param.version>
+    <param.version>2.1.0</param.version>
     <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
     <param.email>lroca@psa.es</param.email>
     <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
@@ -175,6 +175,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
+      <file>${PROJECT_ROOT}/utils/psychrometrics/Psychrometricsnew.m</file>
       <file>${PROJECT_ROOT}/utils/xsteamPSA/XSteam.m</file>
     </fileset.depfun>
     <fileset.package>

@@ -1,4 +1,4 @@
-function [Tout, Ce] = dc_model(Tamb, Tin, q, w_fan, options)
+function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
     % DC_MODEL  Predicts outlet temperature and electrical consumption for the WASCOP dry cooler.
     %
     % Inputs:
