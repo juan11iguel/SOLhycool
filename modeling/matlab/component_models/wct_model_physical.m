@@ -72,6 +72,8 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
         Tout = Tin;
         Ce = 0;
         Cw = 0;
+
+        return;
     end
 
     % Else
