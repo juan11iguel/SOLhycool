@@ -108,6 +108,7 @@ NOTE: RMSE figures do not represent the actual accuracy (DC, WCT) since they als
 
 ![Python hydraulic distribution visualization](./assets/combined_cooler_hydraulic_distribution.svg)
 
+![Condenser model validation](./assets/condenser_model_regression.svg)
 
 ## Usage
 
