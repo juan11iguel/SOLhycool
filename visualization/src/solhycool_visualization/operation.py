@@ -2,7 +2,7 @@ import copy
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
-from typing import Literal
+from typing import Literal, Optional
 import string
 from loguru import logger
 
@@ -17,7 +17,8 @@ def plot_hydraulic_distribution(
     Rp: list[np.ndarray] | np.ndarray, 
     Rs: list[np.ndarray] | np.ndarray, 
     x: np.ndarray = None,
-    labels: list[str] = None
+    labels: list[str] = None,
+    legend_id: str = "hydraulic_distribution"
 ) -> go.Figure:
     
     if isinstance(qc, np.ndarray):
@@ -47,6 +48,7 @@ def plot_hydraulic_distribution(
             x=x,
             y=qdc_only,
             showlegend=True if i == 0 else False,
+            # legendgroup=legend_id,
             name='DC //',
             offsetgroup=label,
             marker=dict(color=ComponentColors.DC.value),
@@ -58,6 +60,7 @@ def plot_hydraulic_distribution(
             y=qwct_s,
             name='DC 🠒 WCT',
             showlegend=True if i == 0 else False,
+            # legendgroup=legend_id,
             offsetgroup=label,
             base=qdc_only,
             marker=dict(
@@ -78,6 +81,7 @@ def plot_hydraulic_distribution(
             y=qwct_p,
             name='WCT //',
             showlegend=True if i == 0 else False,
+            # legendgroup="hydraulic_distribution",
             offsetgroup=label,
             base=qdc_only + qwct_s,
             marker=dict(color=ComponentColors.WCT.value),
@@ -108,7 +112,11 @@ def plot_hydraulic_distribution(
             tickvals=x,  # Specify your custom ticks
             tickformat="%H:%M",  # Format as Hour:Minute (e.g., 00:00, 06:00)
             showticklabels=True,  # Ensure the labels are shown
-            tickangle=90  # Optionally rotate labels for better readability
+            tickangle=90,  # Optionally rotate labels for better readability
+            showgrid=False, # Hide grid lines, creates visual artifacts when coupled to other figures
+            minor=dict(
+                showgrid=False,  # Hide minor grid lines
+            ),
         ) if len(x) < 24 and not isinstance(x[0], int) else None,
         yaxis_range=[0, max(q.max() for q in qc) * 1.1],
         uniformtext_minsize=12, 
@@ -132,7 +140,7 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
         trace.yaxis = placeholder_trace.yaxis
         if not transplant_xaxis:
             trace.x = placeholder_trace.x
-        trace.showlegend = placeholder_trace.showlegend
+        # trace.showlegend = placeholder_trace.showlegend
         trace.legend = placeholder_trace.legend
         fig_out.add_trace(trace)
 
@@ -148,7 +156,10 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
 
     # Copy xaxis properties
     fig_out.layout[xaxis_long_id] = fig_out.layout[xaxis_long_id].update(
-        {name: value for name, value in fig_aux.layout.xaxis.to_plotly_json().items() if name not in xaxis_fields_to_not_copy}
+        {
+            name: value for name, value in fig_aux.layout.xaxis.to_plotly_json().items() 
+            if name not in xaxis_fields_to_not_copy
+        }
     )
 
     # Transfer shapes while correcting axis references
@@ -171,7 +182,7 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
 
 
 def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFrame = None,
-                 day_results: DayResults | MultipleDayResults = None,) -> go.Figure:
+                 day_results: DayResults | MultipleDayResults = None, template: Optional[str] = None) -> go.Figure:
                 #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
     supported_transplants = ["hydraulic_distribution", "paretos"]
@@ -180,12 +191,12 @@ def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFra
     if df is None:
         df = day_results.df_results
     
-    fig = experimental_results_plot(plot_config, df=df, df_comp=df_comp, resample=False)
+    fig = experimental_results_plot(plot_config, df=df, df_comp=df_comp, resample=False, template=template)
     
     # for plot_id in plot_config["plots"]:
     #     assert plot_id in supported_transplants, f"Supported plot types are: {supported_transplants}, not {plot_id}"
     
-    for plot_id in plot_config["plots"]:
+    for plot_idx, plot_id in enumerate(plot_config["plots"]):
         if plot_id not in supported_transplants:
             continue
         
@@ -199,13 +210,14 @@ def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFra
             qc = df["qc"].values if df_comp is None else [df["qc"].values, df_comp["qc"].values]
             Rp = df["Rp"].values if df_comp is None else [df["Rp"].values, df_comp["Rp"].values]
             Rs = df["Rs"].values if df_comp is None else [df["Rs"].values, df_comp["Rs"].values]
-            
+            # legend_id = f"legend{plot_idx if plot_idx > 0 else ''}"
+
             fig = organ_transplant(
-                fig=fig, 
-                fig_aux = plot_hydraulic_distribution(qc, Rp, Rs, x=df.index), 
+                fig=fig,
+                fig_aux=plot_hydraulic_distribution(qc, Rp, Rs, x=df.index), #, legend_id=legend_id),
                 plot_id=plot_id
             )
-            
+                    
         # Join paretos plot
         if plot_id == "paretos":
             # TODO: For some reason the pareto plot breaks when a discontinuous optimization is provided

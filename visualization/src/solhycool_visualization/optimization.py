@@ -55,6 +55,7 @@ def plot_pareto_front(
     mode: Literal["overlap", "side_by_side"] = "overlap",
     selected_idxs: list[int] | list[list[int]] = None,
     line_width: float =0.5,
+    showlegend: bool = True,
     **kwargs,
 ) -> go.Figure:
     """
@@ -108,7 +109,9 @@ def plot_pareto_front(
             mode='lines+markers',
             line=dict(width=line_width, color=color, dash='dot'),
             marker=dict(size=10, color=color, opacity=opacity, symbol=symbols[pareto_idx]),
-        ))
+            zorder=2 if highlight_idx is not None and pareto_idx == highlight_idx else 1,
+            showlegend=showlegend,
+        ), )
         
         #TODO: We should support highlighting selected points in the pareto front 
         # not only in side_by_side mode but also in overlap mode. I think I already
@@ -154,7 +157,16 @@ def plot_pareto_front(
             # print(f"{len(ops_list_)=}, {len(s_idxs)=}, {len(x0_values_list_)=}")
             # print(f"{x_vals=}")
             # print(f"{y_vals=}")
-            fig.add_trace(go.Scatter(x=np.array(x_vals), y=np.array(y_vals), mode='lines+markers', line=dict(color='black', width=2), name=f'Selected path, x0={x0_values_list[p_idx0+1]}'))
+            fig.add_trace(
+                go.Scatter(
+                    x=np.array(x_vals), 
+                    y=np.array(y_vals), 
+                    mode='lines+markers', 
+                    line=dict(color='black', width=2), 
+                    name=f'Selected path, x0={x0_values_list[p_idx0+1]}',
+                    showlegend=showlegend,
+                )
+            )
 
             p_idx0 += len(s_idxs)
             
@@ -226,10 +238,10 @@ def plot_pareto_front(
     kwargs.setdefault("height", 450)
     kwargs.setdefault("showlegend", True)
     kwargs.setdefault("font", dict(size=default_fontsize))
+    kwargs.setdefault("margin", dict(l=20, r=20, t=20, b=20, pad=5))
     
     fig.update_layout(
         legend=dict(bgcolor='rgba(255,255,255,0.9)'),
-        margin=dict(l=20, r=20, t=20, b=20, pad=5),
         newshape=newshape_style,
         **kwargs
     )

@@ -11,16 +11,16 @@
   width: 1000,
   margin: {
     l:20,
-    r:100,
+    r:20,
     t:150,
     b:20,
     pad:5
   },
   vertical_spacing: 0.05,
-  xdomain: [0, 0.85],
+  xdomain: [0, 0.9],
+  // yaxis_right_pos
   xminor: true,
-  arrow_xrel_pos: 60, # seconds
-  // show_night_day_cycle: true, // TODO: Implement this feature 
+  xaxis_nticks: 24,
 
   # Individual plot attributes
   # First specify the plot attributes
@@ -29,9 +29,9 @@
     environment: {
       title: "<b>Environment</b>",
       row_height: 0.5,
-      bg_color: "steelblue",
-      ylabels_left: ["<b>Weather conditions</b><br>ºC"],
-      ylabels_right: ["Relative humidity (%)"], # As many as n_yaxis-1
+      // bg_color: "steelblue",
+      ylabels_left: ["<b>Weather<br>conditions</b><br>ºC"],
+      ylabels_right: ["Relative<br>humidity (%)"], # As many as n_yaxis-1
       ylims_left: 'manual',
       showlegend: true,
       legend_position: "top", // "top" (horizontal) or "side" (vertical)
@@ -62,9 +62,9 @@
     load_conditions: {
       // title: "<b>Environment</b>",
       row_height: 1,
-      bg_color: "steelblue",
+      // bg_color: "steelblue",
       ylabels_right: ["ºC"],
-      ylabels_left: ["<b>Load conditions</b><br>kW<sub>th</sub>"],
+      ylabels_left: ["<b>Load<br>conditions</b><br>kW<sub>th</sub>"],
       ylims_right: 'manual',
       ylims_left: [0, 250],
       showlegend: true,
@@ -114,8 +114,8 @@
     costs_context: {
       // title: "<b>Environment</b>",
       row_height: 1,
-      bg_color: "steelblue",
-      ylabels_left: ["<b>Resources context</b><br>m<sup>3</sup>"],
+      // bg_color: "steelblue",
+      ylabels_left: ["<b>Resources<br>context</b><br>m<sup>3</sup>"],
       ylabels_right: ["€/kW<sub>e</sub>", "€/l"],
       // ylims_left: [0, 5000],
       ylims_left: 'manual_from_zero',
@@ -171,7 +171,7 @@
     paretos: {
       title: "<b>Results</b>",
       row_height: 1,
-      bg_color: "bg_gray",
+      // bg_color: "bg_gray",
       ylabels_left: ["<b>Pareto fronts</b><br>C<sub>e</sub> (KW<sub>e</sub>)"],
       xaxis_title_text: "C<sub>w</sub> (l/h)",
       xaxis_title_standoff: 0,
@@ -182,8 +182,8 @@
 
     operational_costs: {
       row_height: 1,
-      bg_color: "bg_gray",
-      ylabels_left: ["<b>Operational costs</b><br>€/h"],
+      // bg_color: "bg_gray",
+      ylabels_left: ["<b>Operational<br>costs</b><br>€/h"],
       ylims_left: 'manual',
       showlegend: true,
 
@@ -255,8 +255,8 @@
     wct: {
       title: "<b>Components</b>",
       row_height: 1,
-      bg_color: "bg_gray",
-      ylabels_left: ["<b>Wet Cooler (WCT)</b><br>kW<sub>th</sub>"],
+      // bg_color: "bg_gray",
+      ylabels_left: ["<b>Wet Cooler<br>(WCT)</b><br>kW<sub>th</sub>"],
       ylabels_right: ["ºC", "%"],
       ylims_left: 'manual_from_zero',
       showlegend: true,
@@ -316,8 +316,8 @@
     
     dc: {
       row_height: 1,
-      bg_color: "bg_gray",
-      ylabels_left: ["<b>Dry Cooler (DC)</b><br>kW<sub>th</sub>"],
+      // bg_color: "bg_gray",
+      ylabels_left: ["<b>Dry Cooler<br>(DC)</b><br>kW<sub>th</sub>"],
       ylabels_right: ["ºC", "%"],
       ylims_left: 'manual_from_zero',
       showlegend: true,
@@ -377,12 +377,13 @@
 
     hydraulic_distribution: {
       row_height: 1,
-      bg_color: "bg_gray",
-      ylabels_left: ["<b>Hydraulic distribution</b><br>m<sup>3</sup>/h"],
+      // bg_color: "bg_gray",
+      ylabels_left: ["<b>Hydraulic<br>distribution</b><br>m<sup>3</sup>/h"],
       showlegend: true,
       legend_position: "top",
       traces_left: [],
       independent_xaxis: true,
+      xminor: false, # To override the global xminor setting
     },
 
   }
