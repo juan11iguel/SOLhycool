@@ -248,7 +248,7 @@ class DayResults:
             store.put("/results", results_df.sort_index(), format="table", data_columns=get_queryable_columns(results_df), complib="zlib", complevel=9,)
 
             # Save indices of points in the pareto front and the ones selected from it for each step
-            table_key = dt.strftime("%Y%m%d")
+            table_key = self.index[0].strftime("%Y%m%d")
             store.put(f"/paths/selected_pareto_idxs/{table_key}", pd.Series(self.selected_pareto_idxs))
             
             if self.pareto_idxs is not None:

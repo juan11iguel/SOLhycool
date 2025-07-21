@@ -144,9 +144,13 @@ Component name: 'combined_cooler'
     wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
     retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
 )
-def evaluate_day(n_parallel_evals: int, df_day: pd.DataFrame, 
-                 dv_values: ValuesDecisionVariables, 
-                 total_num_evals: int, path_selector_params: AlgoParams,):
+def evaluate_day(
+    n_parallel_evals: int, 
+    df_day: pd.DataFrame, 
+    dv_values: ValuesDecisionVariables, 
+    total_num_evals: int, 
+    path_selector_params: AlgoParams,
+) -> DayResults:
     """ Evaluate optimization for a given day """
     
     date_str = df_day.index[0].strftime("%Y%m%d")
