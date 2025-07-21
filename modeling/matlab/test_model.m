@@ -5,7 +5,7 @@ clc
 addpath(genpath("utils/"))
 addpath(genpath("component_models/"))
 
-data = readtable("../assets/data.csv");
+data = readtable("../assets/cc_out_exp.csv");
 % To update/modify data, load the new data, modify it, and finally export it
 % writetable(data, "assets/data.csv")
 
@@ -42,21 +42,29 @@ fprintf("qdc from ratios: \t%s\n", strjoin(string(qdc), ', '));
 fprintf("qwct from ratios: \t%s\n", strjoin(string(qwct), ', '));
 
 %% DC
+clc
 
 % Data based
-model_id = "dc_model.m";
-model_type = "data";
-model_fun_data = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
+% model_id = "dc_model.m";
+% model_type = "data";
+% model_fun_data = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 % First principles
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
+model_fun = @dc_model_physical;
+
 % [Tout, Pe] = model_dc(Tamb, Tin, w_fan, q)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
+% inactive_idxs = [];
 for i=1:N
-    [Tout_data(i), Ce_data(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.qdc(i), data.wdc(i));
+    fprintf("Evaluating step %d\n", i)
+    [Tout_data(i), Ce_data(i)] = model_fun(data.Tamb(i), data.Tdc_in(i), data.qdc(i), data.wdc(i));
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
+    if Ce_data(i) < 1e-3
+        % inactive_idxs = [inactive_idxs, i];
+    end
 end
 % print out model performance
 fprintf("DC model Tdc_out RMSE (ºC) \t| Data based = %.2f / Physical = %.2f\n", rmse(data.Tdc_out', Tout_data), nan)
@@ -64,21 +72,24 @@ results = array2table([Tout_data', Ce_data'], "VariableNames", ["Tdc_out", "Ce"]
 regression_plot(data, rearrangeTable(data, results), [15], output_vars_sensor_types=repmat("pt100", 1, 1));
 
 %% WCT
-
+clc
 % Data based
-model_id = "wct_model.m";
-model_type = "data";
-model_fun_data = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
+% model_id = "wct_model.m";
+% model_type = "data";
+% model_fun_data = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 % First principle
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
+
+model_fun = @wct_model_physical;
 
 % [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
 for i=1:N
-    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun_data(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i));
+    fprintf("Evaluating step %d\n", i)
+    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i));
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
 end
 % print out model performance
@@ -94,17 +105,29 @@ clc
 
 model_type = "physical";
 
+params = default_parameters();
+if strcmp(model_type, "physical")
+    % DC               "Tamb",    "Tin",   "q", "w_fan"
+    params.dc_lb = 0.9*[5.0600   10.0, 5.2211, 11];
+    params.dc_ub = 1.1*[50.7500   50.0, 24.1543, 99.1800];
+
+    % WCT               "Tamb",     "HR",    "Tin",      "q",     "w_fan"
+    params.wct_lb = [0.1    0.1     5.0    5.0       0.];
+    params.wct_ub = [50.0   99.99   55.0   24.8400   95.];
+end
+
 % Tv_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
 detailed_data = [];
-parameters = default_parameters();
 % parameters.condenser_option = 3;
 for i=1:N
+    fprintf("Evaluating step %d\n", i)
+
     [Ce_data(i), Cw_data(i), detailed] = combined_cooler_model( ...
         data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), ...
         data.wdc(i), data.wwct(i), data.Tv(i), ...
-        struct("model_type", model_type, "silence_warnings", true, "parameters", parameters ,"lb", data.Tv(i), "ub", data.Tv(i)));
+        struct("model_type", model_type, "silence_warnings", false, "parameters", params ,"lb", nan, "ub", nan));
 
     detailed_data = [detailed_data detailed];
 
@@ -139,6 +162,12 @@ results = struct2table(detailed_data);
 % 
 % % Display the resulting table
 % disp(tableData);
+%%
+regression_plot(data, rearrangeTable(data, results), ...
+    [2, 6, 10, 11, 12, 13, 15, 16, 20], ...
+    output_vars_sensor_types=repmat("pt100", 1, 9));
+fontsize(16, "points")
+
 
 %% Visualization of results
 
