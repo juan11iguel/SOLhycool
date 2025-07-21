@@ -5,17 +5,29 @@ import numpy as np
 import copy
 import plotly.graph_objects as go
 from dataclasses import asdict, fields
+import plotly
 
 from solhycool_modeling import OperationPoint
-from plotly.validators.scatter.marker import SymbolValidator
 from phd_visualizations.constants import color_palette, plt_colors, default_fontsize, newshape_style
 import plotly.graph_objects as go
 
+from packaging import version
+
+if version.parse(plotly.__version__) >= version.parse("6.0.0"):
+    # Plotly 6+
+    from plotly.validator_cache import ValidatorCache
+    SymbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
+    symbols = SymbolValidator.values
+else:
+    # Plotly 5.x and below
+    from plotly.validators.scatter.marker import SymbolValidator
+    symbols = SymbolValidator().values  # May need filtering depending on internal format
+
 # TODO: Esta función tiene que unirse y hacerse compatible con la del módulo de optimización
 
-symbols = SymbolValidator().values[2::12]
-symbols_open = SymbolValidator().values[3::12]
-symbols_filled = SymbolValidator().values[4::12]
+symbols = copy.deepcopy(symbols)[2::12]
+symbols_open = copy.deepcopy(symbols)[3::12]
+symbols_filled = copy.deepcopy(symbols)[4::12]
 
 # Precompute field metadata lookup dictionary
 OPERATION_PT_FIELD_METADATA = {fld.name: fld.metadata for fld in fields(OperationPoint)}
