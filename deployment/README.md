@@ -46,6 +46,12 @@ docker compose up airflow-init
 docker compose up -d
 ```
 
+After initializing the container, the passwords can be consulted by running the following command:
+
+```bash
+docker exec solhycool-airflow cat /app/airflow/simple_auth_manager_passwords.json.generated
+```
+
 # To start from schratch
 [Source](https://airflow.apache.org/docs/apache-airflow/stable/tutorial/pipeline.html)
 

@@ -1,0 +1,21 @@
+name: solhycool-deployment
+
+services:
+  airflow:
+    container_name: solhycool-airflow
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    # command: tail -f /dev/null
+    working_dir: ${AIRFLOW_HOME}
+    command: airflow standalone
+    volumes:
+      - ./deployment/config:${AIRFLOW_HOME}/config
+      - ./deployment/dags:${AIRFLOW_HOME}/dags
+      - ./deployment/logs:${AIRFLOW_HOME}/logs
+      - ./deployment/plugins:${AIRFLOW_HOME}/plugins
+      - ./data:${AIRFLOW_HOME}/data:ro
+    ports:
+      - "8080:8080"
