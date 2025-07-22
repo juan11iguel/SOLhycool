@@ -345,7 +345,7 @@ class CombinedCoolerPathFinderProblem:
             
             Cw_s1 = min( Cw_lh*elapsed_time, Vavail*1e3 ) / elapsed_time
             Cw_s2 = Cw_lh - Cw_s1
-            Vavail = Vavail-Cw_s1*1e-3*elapsed_time
+            Vavail = Vavail-(Cw_s1*1e-3*elapsed_time)
 
             J += Ce_kWe * op.Pe + Cw_s1 * op.Pw_s1 + Cw_s2 * op.Pw_s2
             

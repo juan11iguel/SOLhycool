@@ -1,6 +1,5 @@
 from typing import Optional
 from urllib.parse import urlparse
-import numpy as np
 import pandas as pd
 
 def get_data(data_url: str) -> pd.DataFrame:

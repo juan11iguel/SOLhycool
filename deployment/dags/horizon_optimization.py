@@ -101,7 +101,7 @@ def horizon_optimization(
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp_file:
             temp_path = Path(tmp_file.name)
-            day_results.export(temp_path, reduced=True,)
+            day_results.export(temp_path, reduced=True, single_day=False)
 
         # return {"total_order_value": str(temp_path), "date_str": day_results.date_str}
         return str(temp_path)
@@ -164,11 +164,11 @@ def horizon_optimization(
             temp_dir_path = Path(temp_dir)
 
             # Load and generate
-            day_results = DayResults.initialize(Path(export_path))
+            day_results = DayResults.initialize(Path(export_path), date_str="all")
             generate_visualizations(day_results=day_results, output_path=temp_dir_path)
 
             # Save the day results
-            day_results_path = temp_dir_path / "day_results.h5"
+            day_results_path = temp_dir_path / "results.h5"
             day_results.export(day_results_path, reduced=True)
 
             # Create archive directly

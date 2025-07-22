@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import warnings
 import copy
+import datetime
 from tables.exceptions import NaturalNameWarning
 
 # Always import combined_cooler before importing matlab
@@ -115,109 +116,135 @@ class DayResults:
         #     raise ValueError("Length of index and df_paretos must be the same")
             
 
+
     @classmethod
     def initialize(cls, input_path: Path, date_str: Optional[str] = None, log: bool = True) -> "DayResults":
+        temp_path = input_path
         if input_path.suffix == ".gz":
-            # Uncompress the gzip file into a temporary .h5 file
-            with gzip.open(input_path, 'rb') as f_in:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                    temp_path = Path(f_out.name)
-        else:
-            temp_path = input_path
-            
-        try:
-            with pd.HDFStore(temp_path, mode='r') as store:
-                # Access the results dataframe
-                df_results = store["/results"].sort_index()
-                
-                if date_str is None:
-                    available_dates = sorted(set(idx.date() for idx in df_results.index))
-                    date_str = available_dates[0].strftime("%Y%m%d")
+            with gzip.open(input_path, 'rb') as f_in, tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+                temp_path = Path(f_out.name)
 
-                # Ensure the index is datetime and in UTC
-                if not isinstance(df_results.index, pd.DatetimeIndex):
-                    raise TypeError(f"The index of '/results' is not a DatetimeIndex, got {type(df_results.index)}")
+        with pd.HDFStore(temp_path, mode='r') as store:
+            df_results_all = store["/results"].sort_index()
+            if not isinstance(df_results_all.index, pd.DatetimeIndex):
+                raise TypeError(f"The index of '/results' is not a DatetimeIndex, got {type(df_results_all.index)}")
 
-                # Filter by date_str (assumed to be in "YYYYMMDD" format)
-                date_prefix = pd.to_datetime(date_str, format="%Y%m%d").date()
-                filtered_index = df_results.index[df_results.index.date == date_prefix]
-
-                if filtered_index.empty:
-                    available_dates = sorted(set(idx.date().isoformat() for idx in df_results.index))
-                    raise ValueError(f"No results found for date {date_str} in {input_path.stem}. "
-                                    f"Available dates are: {available_dates}")
-
-                # Load data for the selected date
-                df_paretos = []
-                consumption_arrays = []
-
+            if date_str is None:
+                # Flat structure: use the entire index, no date-specific keys
+                filtered_index = df_results_all.index
+                df_paretos, consumption_arrays = [], []
                 for dt in filtered_index:
                     key = dt.strftime("%Y%m%dT%H%M")
-                    # print(dt, key)
-                    table_key = f"/pareto/{key}"
-                    if table_key in store:
-                        df_paretos.append(store[table_key])
-                    
-                    table_key = f"/pareto/{key}"
-                    if table_key in store:
-                        fitness_history = store.get(f"/paths/fitness_history/{key}")
-                    else:
-                        fitness_history = None
-                    
-                    table_key = f"/consumption/{key}"
-                    if table_key in store:
-                        df_consumption = store[table_key]
-                        consumption_arrays.append(df_consumption.to_numpy())
+                    for name, target in [
+                        (f"/pareto/{key}", df_paretos),
+                        (f"/consumption/{key}", consumption_arrays),
+                    ]:
+                        if name in store:
+                            value = store[name]
+                            target.append(value.to_numpy() if name.startswith("/consumption/") else value)
 
-                # Load df_results (subset for the day)
-                df_results = df_results.loc[filtered_index]
-                # df_results = df_results.loc[
-                #     (df_results.index >= filtered_index[0]) & (df_results.index <= filtered_index[-1])
-                # ]
-
-                # Load indices of points in the pareto front and the ones selected from it for each step
-                table_key = filtered_index[0].strftime("%Y%m%d")
-                # pareto_idxs = store[f"/paths/pareto_idxs/{table_key}"].to_list()
-                selected_pareto_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
-                
-                table_key_ = f"/paths/pareto_idxs/{table_key}"
-                if table_key_ in store:
-                    pareto_idxs = store[table_key_].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
+                key = "/paths/fitness_history"
+                if key in store:
+                    fitness_history = store[key]
                 else:
-                    pareto_idxs = None
+                    fitness_history = None
 
-                # pareto_idxs = [pareto_idxs_series.loc[dt] for dt in filtered_index]
-                # selected_pareto_idxs = [selected_pareto_idxs_series.loc[dt] for dt in filtered_index]
-                # np.concatenate().tolist()
+                if "/paths/selected_pareto_idxs" in store:
+                    selected_idxs = store["/paths/selected_pareto_idxs"].to_list()
+                else:
+                    selected_idxs = []
 
-            day_results = cls(
-                index=filtered_index,
-                df_paretos=df_paretos,
-                consumption_arrays=consumption_arrays,
-                fitness_history=fitness_history,
-                df_results=df_results,
-                pareto_idxs=pareto_idxs,
-                selected_pareto_idxs=selected_pareto_idxs
-            )
-            
+                pareto_key = "/paths/pareto_idxs"
+                pareto_idxs = (
+                    store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
+                    if pareto_key in store else None
+                )
+
+                day_data = {
+                    "index": filtered_index,
+                    "df_results": df_results_all,
+                    "df_paretos": df_paretos,
+                    "consumption_arrays": consumption_arrays,
+                    "fitness_history": fitness_history,
+                    "selected_pareto_idxs": selected_idxs,
+                    "pareto_idxs": pareto_idxs
+                }
+
+                date_str = f'{filtered_index[0].strftime("%Y%m%dT%H%M")}-{filtered_index[-1].strftime("%Y%m%dT%H%M")}'
+
+            else:
+                # Date-specific structure
+                target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
+                filtered_index = df_results_all.index[df_results_all.index.date == target_date]
+                if filtered_index.empty:
+                    available_dates = sorted(set(idx.date() for idx in df_results_all.index))
+                    available_dates_str = sorted(d.isoformat() for d in available_dates)
+                    raise ValueError(f"No results for date {date_str} in {input_path.stem}. "
+                                    f"Available: {available_dates_str}")
+
+                df_paretos, consumption_arrays = [], []
+                for dt in filtered_index:
+                    key = dt.strftime("%Y%m%dT%H%M")
+                    for name, target in [
+                        (f"/pareto/{key}", df_paretos),
+                        (f"/consumption/{key}", consumption_arrays),
+                    ]:
+                        if name in store:
+                            value = store[name]
+                            target.append(value.to_numpy() if name.startswith("/consumption/") else value)
+
+                table_key = date_str
+                
+                fh_key = f"/paths/fitness_history/{table_key}"
+                if fh_key in store:
+                    fitness_history = store[fh_key]
+                else:
+                    fitness_history = None
+
+                if f"/paths/selected_pareto_idxs/{table_key}" in store:
+                    selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
+                else:
+                    selected_idxs = []
+
+                pareto_key = f"/paths/pareto_idxs/{table_key}"
+                pareto_idxs = (
+                    store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
+                    if pareto_key in store else None
+                )
+
+                day_data = {
+                    "index": filtered_index,
+                    "df_results": df_results_all.loc[filtered_index],
+                    "df_paretos": df_paretos,
+                    "consumption_arrays": consumption_arrays,
+                    "fitness_history": fitness_history,
+                    "selected_pareto_idxs": selected_idxs,
+                    "pareto_idxs": pareto_idxs
+                }
+
+            day_results = cls(**day_data, date_str=date_str)
             if log:
                 logger.info(f"DayResults loaded for {date_str} from {input_path}")
-            
-        finally:
-            if input_path.suffix == ".gz":
-                temp_path.unlink()  # Clean up temp .h5 file
-        
+
+
+        if input_path.suffix == ".gz":
+            temp_path.unlink()
+
         return day_results
         
-    def export(self, output_path: Path, reduced: bool = False) -> None:
+    def export(self, output_path: Path, reduced: bool = False, single_day: bool = True, overwrite: bool = False) -> None:
         """ Export results to a file. """
+        
+        self = copy.deepcopy(self) # To avoid modifying the original object
         
         if not output_path.exists():
             output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if single_day:
+            self.date_str = f'{self.index[0].strftime("%Y%m%dT%H%M")}-{self.index[-1].strftime("%Y%m%dT%H%M")}'
             
         if reduced:
-            self = copy.deepcopy(self) # To avoid modifying the original object
             self.consumption_arrays = None
             self.pareto_idxs = None 
             
@@ -232,19 +259,20 @@ class DayResults:
 
                 # Save pareto front for this timestep
                 store.put(
-                    f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto))
+                    f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
+                )
 
                 # Save consumption array for this timestep
                 if consumption_array is not None:
                     df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
                     store.put(f"/consumption/{table_key}", df_consumption, format="table", data_columns=True)
 
-                # Save path selection optimization fitness history
-                if self.fitness_history is not None:
-                    store.put(f"/paths/fitness_history/{table_key}", self.fitness_history, format="table",)
+            # Save path selection optimization fitness history
+            if self.fitness_history is not None:
+                store.put("/paths/fitness_history", self.fitness_history, format="table",)
 
             # Append df_results (path of selected solutions)
-            if "/results" in store:
+            if "/results" in store and not overwrite:
                 existing = store["/results"]
                 results_df = pd.concat([existing, self.df_results])
             else:
@@ -253,7 +281,10 @@ class DayResults:
 
             # Save indices of points in the pareto front and the ones selected from it for each step
             table_key = self.index[0].strftime("%Y%m%d")
-            store.put(f"/paths/selected_pareto_idxs/{table_key}", pd.Series(self.selected_pareto_idxs))
+            store.put(
+                f"/paths/selected_pareto_idxs/{table_key}" if single_day else "/paths/selected_pareto_idxs", 
+                pd.Series(self.selected_pareto_idxs)
+            )
             
             if self.pareto_idxs is not None:
                 # store.put(f"/paths/pareto_idxs/{table_key}", pd.Series(self.pareto_idxs))
@@ -261,7 +292,7 @@ class DayResults:
                 max_len = max(len(lst) for lst in lists)
                 padded_pareto_idxs_df = pd.DataFrame([lst + [np.nan] * (max_len - len(lst)) for lst in lists])
                 store.put(
-                    f"/paths/pareto_idxs/{table_key}",
+                    f"/paths/pareto_idxs/{table_key}" if single_day else "/paths/pareto_idxs",
                     padded_pareto_idxs_df,
                     format="table",
                     complib="zlib",
