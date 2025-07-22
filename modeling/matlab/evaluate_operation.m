@@ -53,25 +53,32 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     model_type = options.model_type;
     silence_warnings = options.silence_warnings;
 
-    % Add utilities path
-    addpath(genpath('utils\'));
+    % Add dependencies path
+    addpath(genpath('utils'));
+    addpath(genpath('component_models'));
 
-    % Validate parameters
+    % Validate input parameters
     validate_struct(default_parameters(), parameters);
-    % if isnan(Rs)
-    %     Rs=0;
-    % end
-
-    % Define model functions to use
-    dc_model_fun = @dc_model;
-    wct_inverse_model_fun = @wct_inverse_model;
+    
+    % Assign function handles
     condenser_model_fun = @condenser_model;
-    mixer_model_fun = @mixer_model;
+    mixer_model_fun     = @mixer_model;
+
+    switch model_type
+        case "data"
+            dc_model_fun                = @dc_model_data;
+            wct_inverse_model_fun       = @wct_inverse_model_data;
+        case "physical"
+            dc_model_fun                = @dc_model_physical;
+            wct_inverse_model_fun       = @wct_inverse_model_physical;
+        otherwise
+            error("combined_cooler_model:invalid_option", ...
+                  "Invalid model_type '%s'. Options are: 'data', 'physical'", model_type);
+    end
 
     if silence_warnings
         warning('off','all') % disable all warnings
     end
-
 
     % Calculations
     valid = true;
@@ -94,7 +101,17 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
 
     % DC
     Tdc_in = Tcc_in;
-    Tdc_out = dc_model_fun(Tamb_C, Tdc_in, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
+    Tdc_out = dc_model_fun( ...
+        Tamb_C, ...
+        Tdc_in, ...
+        qdc, ...
+        wdc, ...
+        model_data_path=parameters.dc_model_data_path, ...
+        silence_warnings=silence_warnings, ...
+        lb=parameters.dc_lb, ...
+        ub=parameters.dc_ub, ...
+        ce_coeffs=parameters.dc_ce_coeffs ...
+    );
     
     % Solve WCT input mixer
     [~, Twct_in] = mixer_model_fun(qwct_p, qwct_s, Tcc_in, Tdc_out);
@@ -102,7 +119,18 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     % print(Twct_out)
 
     % WCT
-    [wwct, valid_] = wct_inverse_model_fun(Tamb_C, HR_pp, Twct_in, qwct, Twct_out);
+    [wwct, valid_] = wct_inverse_model_fun(...
+        Tamb_C, ...
+        HR_pp, ...
+        Twct_in, ...
+        qwct, ...
+        Twct_out, ...
+        model_data_path=parameters.wct_model_data_path, ...
+        lb=parameters.wct_lb, ...
+        ub=parameters.wct_ub, ...
+        silence_warnings=silence_warnings, ...
+        ce_coeffs=parameters.wct_ce_coeffs ...
+    );
     if ~valid_ % No feasible fan speed found for the given inputs
         valid = false;
     end

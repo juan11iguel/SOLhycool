@@ -1,4 +1,4 @@
-function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options)
+function [wwct, valid] = wct_inverse_model_data(Tamb, HR, Tin, q, Tout, options)
     % WCT_INVERSE_MODEL  Solves for WCT fan speed to achieve a target outlet temperature.
     %
     % Inputs:
@@ -26,14 +26,14 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options)
         Tin (1,1) double
         q (1,1) double
         Tout (1,1) double
-        options.lb (1,1) double = 0;
-        options.ub (1,1) double = 93.4161;
+        options.lb_x (1,1) double = 0;
+        options.ub_x (1,1) double = 93.4161;
         options.silence_warnings logical = false
         options.tolerance (1,1) double = 1e-3
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4];
-        options.lb_wct (1,5) double = 0.9*[9.0600   10.3300   31.1700    5.7049         0];
-        options.ub_wct (1,5) double = 1.1*[38.7500   89.2500   40.9400   24.8400   93.4161];
+        options.lb (1,5) double = 0.9*[9.0600   10.3300   31.1700    5.7049         0];
+        options.ub (1,5) double = 1.1*[38.7500   89.2500   40.9400   24.8400   93.4161];
         options.raise_error_on_invalid_inputs (1,1) logical = false
     end
 
@@ -57,15 +57,15 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options)
     
     % Run optimization
     % (options.lb+options.ub)/2
-    [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), options.lb, [], [], [], [], options.lb, options.ub, [], opt);
+    [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), options.lb_x, [], [], [], [], options.lb_x, options.ub_x, [], opt);
     valid = (fval <= options.tolerance) && (exitflag > 0);
 
     function residual = inner_model(wwct)
         % Compute the output temperature using the WCT model
         Twct_out = wct_model_data(Tamb, HR, Tin, q, wwct, ...
             model_data_path=options.model_data_path, ...
-            lb=options.lb_wct, ...
-            ub=options.ub_wct, ...
+            lb=options.lb, ...
+            ub=options.ub, ...
             silence_warnings=options.silence_warnings, ...
             ce_coeffs=options.ce_coeffs, ...
             raise_error_on_invalid_inputs=options.raise_error_on_invalid_inputs ...
