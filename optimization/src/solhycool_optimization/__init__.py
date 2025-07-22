@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from inspect import signature
 from pathlib import Path
 from dataclasses import dataclass, asdict
@@ -100,11 +100,11 @@ class ValuesDecisionVariables:
 class DayResults:
     index: pd.DatetimeIndex # Index of the results
     df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
-    fitness_history: pd.Series # Series with the fitness history of the path selection optimization
     selected_pareto_idxs: list[int] # Path of indices of the selected pareto fronts
     df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts
-    consumption_arrays: list[np.ndarray[float]] = None # Array with the consumption values for the candidate operation points
-    pareto_idxs: list[int] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
+    fitness_history: Optional[pd.Series] = None # Series with the fitness history of the path selection optimization
+    consumption_arrays: Optional[list[np.ndarray[float]]] = None # Array with the consumption values for the candidate operation points
+    pareto_idxs: Optional[list[int]] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
     
     date_str: str = None
 
@@ -116,7 +116,7 @@ class DayResults:
             
 
     @classmethod
-    def initialize(cls, input_path: Path, date_str: str, log: bool = True) -> "DayResults":
+    def initialize(cls, input_path: Path, date_str: Optional[str] = None, log: bool = True) -> "DayResults":
         if input_path.suffix == ".gz":
             # Uncompress the gzip file into a temporary .h5 file
             with gzip.open(input_path, 'rb') as f_in:
@@ -130,6 +130,10 @@ class DayResults:
             with pd.HDFStore(temp_path, mode='r') as store:
                 # Access the results dataframe
                 df_results = store["/results"].sort_index()
+                
+                if date_str is None:
+                    available_dates = sorted(set(idx.date() for idx in df_results.index))
+                    date_str = available_dates[0].strftime("%Y%m%d")
 
                 # Ensure the index is datetime and in UTC
                 if not isinstance(df_results.index, pd.DatetimeIndex):

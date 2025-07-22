@@ -1,8 +1,8 @@
+from typing import Optional
 from collections.abc import Iterable
 import copy
 import math
 from dataclasses import dataclass, asdict
-import time
 import pygmo as pg
 import numpy as np
 from loguru import logger
@@ -39,7 +39,6 @@ class CombinedCoolerProblem:
     use_constraints: bool # 
     x_evaluated: list[list[float]]  # Decision variables vector evaluated (i.e. sent to the fitness function)
     fitness_history: list[float]  # Fitness record of decision variables sent to the fitness function
-    sample_time: float  # Sample time, hours
     Vavail0: float  # Available volume of the cheaper water source
     n_evals: int  # Number of evaluations in the prediction horizon
     size_dec_vector: int  # Size of the decision vector
@@ -280,16 +279,50 @@ class CombinedCoolerProblem:
 
 
 class CombinedCoolerPathFinderProblem:
-    df_paretos: list[pd.DataFrame]
-    Vavail0: float
-    sample_time_h: int = 1
-    n_steps: int = None
+    """ Combined cooler problem with two sources of water: a cheaper and a
+    more expensive one, with volume restriction on the cheaper one
     
-    def __init__(self, df_paretos: list[pd.DataFrame], Vavail0: float, sample_time_h: int = 1):
-        self.df_paretos = df_paretos
+    Two initialization options are available:
+    1. A list of DataFrames, each containing the pareto front for a given time 
+    step. Then a sample time must be provided and it is assumed that the time 
+    steps are evenly spaced.
+    2. A pandas Series with a DatetimeIndex, where each value is a DataFrame 
+    containing the pareto front for that date. The time dependent components 
+    are calculated based on the time between each date in the index, i.e. a variable 
+    elapsed time between each step is permitted.
+    
+    Optimization problem type: receding horizon optimization
+    x: decision vector.
+    - shape: ( n steps, )
+    - structure:
+        X = [x[step0], x[step1], ..., x[stepN]]
+    - Decision vector components: index of the pareto front to select for each step
+    """
+    df_paretos: list[pd.DataFrame]  # Pareto fronts for each step
+    Vavail0: float
+    n_steps: int = None
+    elapsed_time_between_steps: Iterable[float] = None  # Elapsed time between each step in hours
+    
+    def __init__(self, df_paretos: list[pd.DataFrame] | pd.Series, Vavail0: float, sample_time_h: Optional[int] = None) -> None:
         self.Vavail0 = Vavail0
-        self.sample_time_h = sample_time_h
         self.n_steps = len(df_paretos)
+        
+        if isinstance(df_paretos, pd.Series):
+            # must be datetime index
+            assert isinstance(df_paretos.index, pd.DatetimeIndex), "The index of the pareto front series must be a DatetimeIndex."
+            assert df_paretos.index.is_monotonic_increasing, "The index of the pareto front series must be monotonic increasing."
+            
+            # Calculate elapsed time between steps
+            self.elapsed_time_between_steps = pd.Series(np.diff(df_paretos.index)).dt.total_seconds().div(3600).tolist()
+            # Add the last step duration with the same as the previous one
+            self.elapsed_time_between_steps.append(self.elapsed_time_between_steps[-1])
+        else:
+            assert sample_time_h is not None, "If df_paretos is a list of DataFrames, sample_time_h must be provided."
+        
+            self.elapsed_time_between_steps = [sample_time_h] * (self.n_steps)
+        
+        # No need for the series index in this case, just the dataframes
+        self.df_paretos = df_paretos if not isinstance(df_paretos, pd.Series) else df_paretos.tolist()
         
     def get_nc(self) -> int:
         return 0
@@ -304,14 +337,15 @@ class CombinedCoolerPathFinderProblem:
         J = 0
         Vavail = self.Vavail0  # m³
         for op_idx, op in enumerate(ops):
+            elapsed_time = self.elapsed_time_between_steps[op_idx]
 
             # Ce_kWe, Cw_lh, _ = self.cc_model.combined_cooler_model(op.Tamb, op.HR, op.mv, op.qc, op.Rp, op.Rs, op.wdc, op.wwct, op.Tv, nargout=3)
             
             Ce_kWe, Cw_lh = op.Ce, op.Cw
             
-            Cw_s1 = min( Cw_lh*self.sample_time_h, Vavail*1e3 ) / self.sample_time_h
+            Cw_s1 = min( Cw_lh*elapsed_time, Vavail*1e3 ) / elapsed_time
             Cw_s2 = Cw_lh - Cw_s1
-            Vavail = Vavail-Cw_s1*1e-3*self.sample_time_h
+            Vavail = Vavail-Cw_s1*1e-3*elapsed_time
 
             J += Ce_kWe * op.Pe + Cw_s1 * op.Pw_s1 + Cw_s2 * op.Pw_s2
             
