@@ -18,6 +18,13 @@ Within the devcontainer, just run the following command to start up Airflow:
 airflow standalone
 ```
 
+If it fails, it an issue with some configuration parameter missing in some airflow version!
+
+Add:
+`socket_cleanup_timeout = 30`
+
+Under `[workers]` section in the airflow.cfg. See [pull 52705](https://github.com/apache/airflow/pull/52705)
+
 In order for it to persist even when exiting the devcontainer, run the following command on the host:
 ```bash
 docker exec -d CONTAINER_NAME bash -c "source /miniconda3/bin/activate conda-env && airflow standalone"
