@@ -78,7 +78,7 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
         % Predict for the second variable
         [out(:,2), ~, ~] = predict(model{2}, [inputs, out(:,1)]);
         [Tout, Cw] = deal(out(1), out(2));
-        Ce = power_consumption(w_fan); %+ ConsumoElectrico_P7(SC_pump_wct); % kWe
+        Ce = power_consumption(w_fan) * 1e-3; % kW %+ ConsumoElectrico_P7(SC_pump_wct); % kWe
         % Pth = q/3.6*(Tin - Tout)*4.186; % Mwct: m³/h -> kg/s; kWth
     else
         % Skip wet cooler
@@ -87,9 +87,9 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
         Cw = 0;
     end
 
-    function P_fan = power_consumption(w_fan)
+    function P_fan_W = power_consumption(w_fan)
         % Use polyval for fan power calculation
-        P_fan = max(0, polyval(options.ce_coeffs, w_fan)); % kW
+        P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
     end
 
     function raise_error(variable, value, lower_limit, upper_limit)

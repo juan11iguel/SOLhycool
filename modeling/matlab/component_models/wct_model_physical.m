@@ -40,9 +40,9 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     end
 
     arguments (Output)
-        Tout (1,1) double
-        Ce (1,1) double
-        Cw (1,1) double
+        Tout (1,1) double % ºC
+        Ce (1,1) double % kW
+        Cw (1,1) double % l/h
     end
 
 
@@ -119,12 +119,12 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     Cw = M_lost_wct;
 
     % Consumo eléctrico
-    Ce = power_consumption(w_fan);
+    Ce = power_consumption(w_fan) * 1e-3; % kW
 
     %% NESTED FUNCTIONS
-    function P_fan = power_consumption(w_fan)
+    function P_fan_W = power_consumption(w_fan)
         % Use polyval for fan power calculation
-        P_fan = max(0, polyval(options.ce_coeffs, w_fan)); % kW
+        P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
     end
 end
 

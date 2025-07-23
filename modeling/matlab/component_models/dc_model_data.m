@@ -35,8 +35,8 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
     end
 
     arguments (Output)
-        Tout (1,1) double
-        Ce (1,1) double
+        Tout (1,1) double % ºC
+        Ce (1,1) double % kW
     end
 
     persistent model
@@ -68,14 +68,14 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
 
     if valid_inputs
         [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q]);
-        Ce = power_consumption(w_fan);
+        Ce = power_consumption(w_fan) * 1e-3; % kW
     else
         Tout = Tin;
         Ce = 0;
     end
 
-    function P_fan = power_consumption(w_fan)
-        P_fan = max(0, polyval(options.ce_coeffs, w_fan)); % kW
+    function P_fan_W = power_consumption(w_fan)
+        P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
     end
 
     function raise_error(variable, value, lower_limit, upper_limit)

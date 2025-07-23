@@ -1,4 +1,4 @@
-function Ce_c = recirculation_pump_consumption(qc, coeffs)
+function Ce_c_kW = recirculation_pump_consumption(qc_m3h, coeffs)
     % RECIRCULATION_PUMP_CONSUMPTION  Calculates pump electrical consumption from flow rate.
     %
     % Inputs:
@@ -12,9 +12,9 @@ function Ce_c = recirculation_pump_consumption(qc, coeffs)
     % TODO: Should be qc (m³/h), Rp, Rs -> Ce_c (kW)
 
     arguments
-        qc (1,1) double {mustBeNonnegative}
+        qc_m3h (1,1) double {mustBeNonnegative}
         coeffs (1,:) double = [0.1461, 5.763, -38.32, 227.8]
     end
 
-    Ce_c = max(polyval(coeffs, qc) * 1e-3, 0); % kW
+    Ce_c_kW = max(polyval(coeffs, qc_m3h) * 1e-3, 0); % kW
 end

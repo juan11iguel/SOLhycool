@@ -226,7 +226,7 @@ end
 % T_air_o;   % Temperatura de salida del aire (ºC)
 % Q_law;     % Calor intercambiado (W)
 
-Ce = power_consumption(w_fan);
+Ce = power_consumption(w_fan) * 1e-3; % kW
 Tout = Tout_DC;
 
 % END OF MAIN FUNCTION ----------------------------------------------------
@@ -293,8 +293,8 @@ function FT = calculo_FT(Tin_DC,Tout_DC,T_amb,T_air_o)
     end
 end
 
-function P_fan = power_consumption(w_fan)
-    P_fan = max(0, polyval(options.ce_coeffs, w_fan)); % kW
+function P_fan_W = power_consumption(w_fan)
+    P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
 end
 
 function raise_error(variable, value, lower_limit, upper_limit)
