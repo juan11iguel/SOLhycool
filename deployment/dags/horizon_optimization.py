@@ -29,9 +29,10 @@ def horizon_optimization(
     out_file_id: str = "optimization_results",
     n_parallel_steps: int = 24,
     values_per_decision_variable: int = 10,
+    plt_config_path: str = "./data/plot_config_day_horizon.hjson"
 ):
     """
-    ### Basic ETL DAG
+    ### Experimental evaluation of Horizon Optimization DAG
     This is a simple data pipeline test DAG that reads data from a Nextcloud 
     public link, extracts it
     
@@ -71,7 +72,7 @@ def horizon_optimization(
         df_env: pd.DataFrame,
         n_parallel_steps: int,
         values_per_decision_variable: int,
-        algo_params: AlgoParams = AlgoParams()
+        algo_params: AlgoParams = AlgoParams(),
     ) -> str:
         """
         #### Transform task
@@ -155,7 +156,7 @@ def horizon_optimization(
             logger.error(f"Upload failed: {response.status_code} - {response.text}")
     
     @task()
-    def create_results_report(export_path: str) -> str:
+    def create_results_report(export_path: str, plt_config_path: str) -> str:
         """
         Creates visualization figures and packages everything into a compressed file.
         Returns the path to the compressed temp file.
@@ -164,8 +165,12 @@ def horizon_optimization(
             temp_dir_path = Path(temp_dir)
 
             # Load and generate
-            day_results = DayResults.initialize(Path(export_path), date_str="all")
-            generate_visualizations(day_results=day_results, output_path=temp_dir_path)
+            day_results = DayResults.initialize(Path(export_path))
+            generate_visualizations(
+                day_results=day_results, 
+                output_path=temp_dir_path,
+                plt_config_path=Path(plt_config_path),
+            )
 
             # Save the day results
             day_results_path = temp_dir_path / "results.h5"
@@ -242,7 +247,7 @@ def horizon_optimization(
     
     load_task = write_optimization_results(data_url, out_file_id, export_path)
     
-    archive_path = create_results_report(export_path)
+    archive_path = create_results_report(export_path, plt_config_path=plt_config_path)
     load_package_task = write_results_report(data_url, archive_path)
 
     # Set cleanup dependency on both parallel branches
