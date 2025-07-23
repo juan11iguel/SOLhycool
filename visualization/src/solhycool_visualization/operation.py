@@ -18,7 +18,8 @@ def plot_hydraulic_distribution(
     Rs: list[np.ndarray] | np.ndarray, 
     x: np.ndarray = None,
     labels: list[str] = None,
-    legend_id: str = "hydraulic_distribution"
+    legend_id: str = "hydraulic_distribution",
+    showticklabels: bool = True,
 ) -> go.Figure:
     
     if isinstance(qc, np.ndarray):
@@ -110,8 +111,8 @@ def plot_hydraulic_distribution(
         xaxis=dict(
             # type='category',
             tickvals=x,  # Specify your custom ticks
-            tickformat="%H:%M",  # Format as Hour:Minute (e.g., 00:00, 06:00)
-            showticklabels=True,  # Ensure the labels are shown
+            tickformat="%H:%M",  # Format as YYYYMMDD Hour:Minute (e.g., 00:00, 06:00) %Y%m%d 
+            showticklabels=showticklabels,  # Ensure the labels are shown
             tickangle=90,  # Optionally rotate labels for better readability
             showgrid=False, # Hide grid lines, creates visual artifacts when coupled to other figures
             minor=dict(
@@ -214,7 +215,7 @@ def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFra
 
             fig = organ_transplant(
                 fig=fig,
-                fig_aux=plot_hydraulic_distribution(qc, Rp, Rs, x=df.index), #, legend_id=legend_id),
+                fig_aux=plot_hydraulic_distribution(qc, Rp, Rs, x=df.index, showticklabels=False), #, legend_id=legend_id),
                 plot_id=plot_id
             )
                     

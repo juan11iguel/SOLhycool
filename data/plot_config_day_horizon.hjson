@@ -172,7 +172,7 @@
       title: "<b>Results</b>",
       row_height: 1,
       // bg_color: "bg_gray",
-      ylabels_left: ["<b>Pareto fronts</b><br>C<sub>e</sub> (KW<sub>e</sub>)"],
+      ylabels_left: ["<b>Pareto<br>fronts</b><br>C<sub>e</sub> (KW<sub>e</sub>)"],
       xaxis_title_text: "C<sub>w</sub> (l/h)",
       xaxis_title_standoff: 0,
       showlegend: false,
@@ -250,6 +250,17 @@
             showlegend: true
           },
         ],
+    },
+
+    hydraulic_distribution: {
+      row_height: 1,
+      // bg_color: "bg_gray",
+      ylabels_left: ["<b>Hydraulic<br>distribution</b><br>m<sup>3</sup>/h"],
+      showlegend: true,
+      legend_position: "top",
+      traces_left: [],
+      independent_xaxis: true,
+      xminor: false, # To override the global xminor setting
     },
 
     wct: {
@@ -373,18 +384,7 @@
           },
         ]
       ],
-    },
-
-    hydraulic_distribution: {
-      row_height: 1,
-      // bg_color: "bg_gray",
-      ylabels_left: ["<b>Hydraulic<br>distribution</b><br>m<sup>3</sup>/h"],
-      showlegend: true,
-      legend_position: "top",
-      traces_left: [],
-      independent_xaxis: true,
-      xminor: false, # To override the global xminor setting
-    },
+    }
 
   }
 }
