@@ -16,7 +16,8 @@ dependencies:
   - pytables=3.10.2
   - h5py=3.12.1
   - pip
-  - airflow==3.0.2
+  - airflow==3.0.3
+  - billiard>=4.2.1
   - pip:
       # WARNING: conda env update does not update git packages, see https://github.com/conda/conda/issues/6863
       # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
@@ -29,3 +30,4 @@ dependencies:
       - -e ./visualization
       - -e ./optimization
       - -e ./simulation # We are also using this environment in the simulation sub-package
+      - -e ./deployment

@@ -18,6 +18,13 @@ Within the devcontainer, just run the following command to start up Airflow:
 airflow standalone
 ```
 
+If it fails, it an issue with some configuration parameter missing in some airflow version!
+
+Add:
+`socket_cleanup_timeout = 30`
+
+Under `[workers]` section in the airflow.cfg. See [pull 52705](https://github.com/apache/airflow/pull/52705)
+
 In order for it to persist even when exiting the devcontainer, run the following command on the host:
 ```bash
 docker exec -d CONTAINER_NAME bash -c "source /miniconda3/bin/activate conda-env && airflow standalone"
@@ -37,6 +44,12 @@ docker compose up airflow-init
 2. Start up all services
 ```bash
 docker compose up -d
+```
+
+After initializing the container, the passwords can be consulted by running the following command:
+
+```bash
+docker exec solhycool-airflow cat /app/airflow/simple_auth_manager_passwords.json.generated
 ```
 
 # To start from schratch

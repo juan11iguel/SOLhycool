@@ -31,7 +31,7 @@ def get_data(data_url: str) -> pd.DataFrame:
     Function to download data from a public URL and return it as a pandas DataFrame.
     """
     # Read the CSV file from the URL
-    df = pd.read_csv(data_url)
+    df = pd.read_csv(data_url, index_col=0)
     return df
 
 def extract_url_components(url: str) -> tuple[str, str]:
@@ -101,7 +101,7 @@ def create_mock_day_results(date_str: str, template_path: Path, template_date_st
 def generate_visualizations(
     day_results: DayResults, 
     output_path: Path,
-    plot_config_path = Path("../../data/plot_config_day_horizon.hjson")
+    plot_config_path = Path("/workspaces/SOLhycool/data/plot_config_day_horizon.hjson")
 ) -> None:
     
     # Load plot configuration
@@ -116,14 +116,14 @@ def generate_visualizations(
     # Generate all visualization figures
     visualizer.generate_all(
         output_path=output_path,
-        formats=["png"]
+        formats=["png", "html"]
     )
 
 @dag(
     schedule=None,
     # start_date=datetime.datetime(2021, 1, 1, tz="UTC"),
     catchup=False,
-    tags=["tests"],
+    tags=["tests", "solhycool"],
 )
 def basic_etl(
     data_url: str = "https://collab.psa.es/s/WR6MxyJsnZWi9xH",
@@ -150,7 +150,7 @@ def basic_etl(
         
     """
     @task()
-    def extract(url: str, file_id: str) -> pd.DataFrame:
+    def read_environment(url: str, file_id: str) -> pd.DataFrame:
         """
         #### Extract task
         A simple Extract task to get data ready for the rest of the data
@@ -168,7 +168,7 @@ def basic_etl(
         return get_data(request_url)
         
     @task() # multiple_outputs=True
-    def transform(df_env: pd.DataFrame) -> str:
+    def evaluate_optimization(df_env: pd.DataFrame, date_str: str) -> str:
         """
         #### Transform task
         In theory this task should call the horizon optimization and then return the results.
@@ -176,11 +176,12 @@ def basic_etl(
         Initializes DayResults and writes it to a temporary file.
         Returns the path to the temp file.
         """
-        date_str = df_env.index[0].strftime("%Y%m%d") 
+        # df_env.index = pd.to_datetime(df_env.index)
+        # date_str = df_env.index[0].strftime("%Y%m%d")
         
         # Manipulate dates in results to match the date_str
         template_date_str: str = "20220501"
-        template_path: Path = Path("./results_eval_at_20250421T1741_psa_partial.gz")
+        template_path: Path = Path("/workspaces/SOLhycool/deployment/dags/results_eval_at_20250421T1741_psa_partial.gz")
         
         mock_day_results = create_mock_day_results(
             date_str=date_str,
@@ -196,13 +197,18 @@ def basic_etl(
         return str(temp_path)
     
     @task()
-    def load(url: str, file_id: str, export_path: str, date_str: str) -> None:
+    def write_optimization_results(url: str, file_id: str, export_path: str, date_str: str) -> None:
         """
         #### Load task
         A simple Load task which takes in the result of the Transform task and
         instead of saving it to end user review, just logger.infos it out.
         
         Reads DayResults from the given file and uploads results as CSV.
+        
+        WARNING: Using the local file system for temporary storage. 
+        This is not recommended for production use.
+        Instead, we should be using a distributed file system or object storage.
+        See: https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html#communication
 
         """
         domain, share_id = extract_url_components(url)
@@ -222,7 +228,7 @@ def basic_etl(
         # Upload results csv file
         # Convert DataFrame to CSV in-memory
         csv_buffer = StringIO()
-        day_results.df_results.to_csv(csv_buffer, index=False)
+        day_results.df_results.to_csv(csv_buffer, index=True)
         csv_buffer.seek(0)  # rewind to beginning
         
         # Upload using HTTP PUT
@@ -239,42 +245,35 @@ def basic_etl(
             logger.error(f"Upload failed: {response.status_code} - {response.text}")
     
     @task()
-    def create_visualization_package(export_path: str, date_str: str) -> str:
+    def create_results_report(export_path: str, date_str: str) -> str:
         """
-        #### Visualization task
         Creates visualization figures and packages everything into a compressed file.
         Returns the path to the compressed temp file.
         """
-        # Create a temporary directory for all outputs
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
-            
-            # Load day results
+
+            # Load and generate
             day_results = DayResults.initialize(Path(export_path), date_str=date_str)
-            
-            # Generate visualizations
             generate_visualizations(day_results=day_results, output_path=temp_dir_path)
-            
-            # Export DayResults object to the same directory
+
+            # Save the day results
             day_results_path = temp_dir_path / "day_results.h5"
             day_results.export(day_results_path, reduced=True)
-            
-            # Create compressed archive
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".tar.gz") as tmp_archive:
-                archive_path = Path(tmp_archive.name)
-                
-            # Create the tar.gz archive
-            shutil.make_archive(
-                str(archive_path.with_suffix('')), 
-                'gztar', 
-                temp_dir
+
+            # Create archive directly
+            archive_base = Path(tempfile.mktemp(suffix=""))  # Don't add .tar.gz manually
+            archive_path = shutil.make_archive(
+                str(archive_base),
+                format='gztar',
+                root_dir=temp_dir
             )
-            
+
             logger.info(f"Created visualization package: {archive_path}")
             return str(archive_path)
     
     @task()
-    def load_package(url: str, archive_path: str, date_str: str) -> None:
+    def write_results_report(url: str, archive_path: str) -> None:
         """
         #### Load package task
         Uploads the compressed visualization package to the webdav server.
@@ -283,7 +282,7 @@ def basic_etl(
         
         # Create filename with timestamp
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        file_id = f"optimization_results_{current_time}"
+        file_id = f"optimization_results_eval_at_{current_time}"
         
         request_url = build_file_url(            
             domain=domain,
@@ -305,39 +304,34 @@ def basic_etl(
         else:
             logger.info(f"Package upload failed: {response.status_code} - {response.text}")
             
-        # Clean up archive file
-        try:
-            unlink(archive_path)
-            logger.info(f"Deleted temporary archive: {archive_path}")
-        except Exception as e:
-            logger.error(f"Warning: failed to delete temp archive {archive_path}: {e}")
     
     @task()
-    def cleanup(export_path: str) -> None:
+    def cleanup(paths: list[str]) -> None:
         """
         #### Cleanup task
         Removes the temporary file created by the transform task.
         This runs after both load and visualization tasks are complete.
         """
-        try:
-            unlink(export_path)
-            logger.info(f"Deleted temporary file: {export_path}")
-        except Exception as e:
-            logger.error(f"Warning: failed to delete temp file {export_path}: {e}")
+        for path_ in paths:
+            p = Path(path_)
+            if not p.exists():
+                logger.warning(f"Cleanup: {p} does not exist, skipping deletion.")
+                continue
+                        
+            # Clean up archive file
+            unlink(p)            
+            logger.info(f"Cleanup: Deleting temporary file {p}")
+            
+    # Pipeline logic
+    df_env = read_environment(data_url, env_file_id)
+    export_path = evaluate_optimization(df_env, date_str)
     
-    # DAG tasks execution flow
-    df_env = extract(url=data_url, file_id=env_file_id)
-    export_path = transform(df_env=df_env)
+    load_task = write_optimization_results(data_url, out_file_id, export_path, date_str)
     
-    # Parallel tasks after transform
-    load_task = load(url=data_url, file_id=out_file_id, export_path=export_path, date_str=date_str)
-    archive_path = create_visualization_package(export_path=export_path, date_str=date_str)
-    load_package_task = load_package(url=data_url, archive_path=archive_path, date_str=date_str)
-    cleanup_task = cleanup(export_path=export_path)
-    
-    # Set dependencies
-    df_env >> export_path >> [load_task, archive_path >> load_package_task] >> cleanup_task
-    load_task >> cleanup(export_path=export_path)
-    load_package_task >> cleanup(export_path=export_path)
+    archive_path = create_results_report(export_path, date_str)
+    load_package_task = write_results_report(data_url, archive_path)
+
+    # Set cleanup dependency on both parallel branches
+    [load_task, load_package_task] >> cleanup( [archive_path, export_path] )
 
 basic_etl()
