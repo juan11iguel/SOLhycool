@@ -169,7 +169,7 @@ def horizon_optimization(
             generate_visualizations(
                 day_results=day_results, 
                 output_path=temp_dir_path,
-                plt_config_path=Path(plt_config_path),
+                plot_config_path=Path(plt_config_path),
             )
 
             # Save the day results
@@ -217,7 +217,7 @@ def horizon_optimization(
         if response.status_code == 201 or response.status_code == 204:
             logger.info(f"Package upload successful: {file_id}.tar.gz")
         else:
-            logger.info(f"Package upload failed: {response.status_code} - {response.text}")
+            logger.error(f"Package upload failed: {response.status_code} - {response.text}")
             
     
     @task()
