@@ -18,7 +18,6 @@
   },
   vertical_spacing: 0.05,
   xdomain: [0, 0.85],
-  arrow_xrel_pos: 60, # seconds
   // show_night_day_cycle: true, // TODO: Implement this feature 
 
   # Individual plot attributes
