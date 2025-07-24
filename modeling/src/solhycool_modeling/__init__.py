@@ -5,6 +5,7 @@ from typing import Literal, Optional
 import inspect
 import numpy as np
 import pandas as pd
+from enum import Enum
 from iapws import IAPWS97 as w_props
 
 import combined_cooler_model # Always import combined_cooler_model before importing matlab
@@ -12,6 +13,19 @@ import matlab
 
 from solhycool_modeling.utils import dump_in_span
 
+class EnvIds(str, Enum):
+    """ Environment variables identifiers and mapping to dataframe columns """
+    HR = "HR_pct"
+    Tamb = "Tamb_C"
+    Tv = "Tv_C"
+    Q = "Q_kW"
+    Pe = "Ce_spot_market_price_eur_kWh"
+    Pw = "water_price_eur_l"
+    Pw_s2 = "water_price_alternative_eur_l"
+    Vavail = "Vavail_m3"
+    deltaV = "deltaV_m3_h"
+    mv = "mv_kgh"
+    
 @dataclass
 class ModelInputsRange:
     """ Real decision variables box bounds, as in: (lower bound, upper bound)"""
@@ -41,16 +55,19 @@ class EnvironmentVariables:
     Q: float | np.ndarray[float] # Thermal power, kW
 
     # Costs
-    Pe: float | np.ndarray[float] # Cost of electricity, €/kWhe
-    Pw: float | np.ndarray[float] = None # Cost of water, €/l
-    Pw_s1: float | np.ndarray[float] = None # Cost of water from source 1, €/l
-    Pw_s2: float | np.ndarray[float] = None # Cost of water from source 2, €/l
+    Pe: Optional[float | np.ndarray[float]] = None # Cost of electricity, €/kWhe
+    Pw: Optional[float | np.ndarray[float]] = None # Cost of water, €/l
+    Pw_s1: Optional[float | np.ndarray[float]] = None # Cost of water from source 1, €/l
+    Pw_s2: Optional[float | np.ndarray[float]] = None # Cost of water from source 2, €/l
     
-    Vavail: float | np.ndarray[float] = None # Available volume of water, m³
-    deltaV: float | np.ndarray[float] = None # Variation of available volume of water, m³/h
+    Vavail: Optional[float | np.ndarray[float]] = None # Available volume of water, m³
+    deltaV: Optional[float | np.ndarray[float]] = None # Variation of available volume of water, m³/h
 
     # Thermal load (optional)
-    mv: float | np.ndarray[float] = None # Vapor mass flow rate, kg/h!!
+    mv: Optional[float | np.ndarray[float]] = None # Vapor mass flow rate, kg/h!!
+    
+    # Add a hidden field to store the list of names of the fields from the dataframe
+    
 
     def __post_init__(self) -> None:
         if self.mv is not None:
@@ -95,17 +112,17 @@ class EnvironmentVariables:
         - An EnvironmentVariables instance
         """
         return cls(
-            HR=np.asarray(df["HR_pct"]),
-            Tamb=np.asarray(df["Tamb_C"]),
-            Q=np.asarray(df["Q_kW"]),
-            Tv=np.asarray(df["Tv_C"]),
-            mv=df["mv_kgh"] if "mv_kgh" in df else None, 
-            Pe=np.asarray(df["Ce_spot_market_price_eur_kWh"]),
-            Pw=np.asarray(df[f"water_price_eur_l"]) if f"water_price_eur_l" in df else None,
-            Pw_s1=np.asarray(df[f"water_price_eur_l"]) if f"water_price_eur_l" in df else None,
-            Pw_s2=np.asarray(df[f"water_price_alternative_eur_l"]) if f"water_price_alternative_eur_l" in df else None,
-            Vavail=np.asarray(df["Vavail_m3"]) if "Vavail_m3" in df else None,
-            deltaV=np.asarray(df["deltaV_m3_h"]) if "deltaV_m3_h" in df else None 
+            HR=np.asarray(df[EnvIds.HR.value]),
+            Tamb=np.asarray(df[EnvIds.Tamb.value]),
+            Q=np.asarray(df[EnvIds.Q.value]),
+            Tv=np.asarray(df[EnvIds.Tv.value]),
+            mv=df[EnvIds.mv.value] if EnvIds.mv.value in df else None, 
+            Pe=np.asarray(df[EnvIds.Pe.value]),
+            Pw=np.asarray(df[EnvIds.Pw.value]) if EnvIds.Pw.value in df else None,
+            Pw_s1=np.asarray(df[EnvIds.Pw.value]) if EnvIds.Pw.value in df else None,
+            Pw_s2=np.asarray(df[EnvIds.Pw_s2.value]) if EnvIds.Pw_s2.value in df else None,
+            Vavail=np.asarray(df[EnvIds.Vavail.value]) if EnvIds.Vavail.value in df else None,
+            deltaV=np.asarray(df[EnvIds.deltaV.value]) if EnvIds.deltaV.value in df else None 
         )
 
     @classmethod
@@ -120,16 +137,16 @@ class EnvironmentVariables:
         - An EnvironmentVariables instance
         """
         return cls(
-            HR=ds["HR_pct"],
-            Tamb=ds["Tamb_C"],
-            Q=ds["Q_kW"],
+            HR=ds[EnvIds["HR"].value],
+            Tamb=ds[EnvIds["Tamb"].value],
+            Q=ds[EnvIds["Q"].value],
             Tv=ds["Tv_C"],
             mv=ds["mv_kgh"] if "mv_kgh" in ds else None, 
-            Pe=ds["Ce_spot_market_price_eur_kWh"],
-            Pw=ds[f"water_price_eur_l"] if f"water_price_eur_l" in ds else None,
-            Pw_s1=ds[f"water_price_eur_l"] if f"water_price_eur_l" in ds else None,
-            Pw_s2=ds[f"water_price_alternative_eur_l"] if f"water_price_alternative_eur_l" in ds else None,
-            Vavail=ds["Vavail_m3"] if "Vavail_m3" in ds else None,
+            Pe=ds[EnvIds.Pe.value],
+            Pw=ds[EnvIds.Pw.value] if EnvIds.Pw.value in ds else None,
+            Pw_s1=ds[EnvIds.Pw.value] if EnvIds.Pw.value in ds else None,
+            Pw_s2=ds[EnvIds.Pw_s2.value] if EnvIds.Pw_s2.value in ds else None,
+            Vavail=ds[EnvIds.Vavail.value] if EnvIds.Vavail.value in ds else None,
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )
         
@@ -169,9 +186,20 @@ class EnvironmentVariables:
         return EnvironmentVariables(**vars_dict)
 
     def to_matlab(self) -> "EnvironmentVariables":
-        """ Convert all attributes to matlab.double """
-        
-        return EnvironmentVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
+        """Convert all attributes to matlab.double (2D lists of floats)"""
+        def convert_value(v):
+            if isinstance(v, (np.ndarray, list)):
+                return matlab.double(np.atleast_2d(np.array(v, dtype=float)).tolist())
+            elif isinstance(v, (int, float, np.integer, np.floating)):
+                return matlab.double([[float(v)]])
+            else:
+                raise TypeError(f"Unsupported type for MATLAB conversion: {type(v)}")
+
+        return EnvironmentVariables(**{
+            k: convert_value(v)
+            for k, v in asdict(self).items()
+            if v is not None
+        })
     
     def constrain_to_model(self, model_inputs_range: ModelInputsRange = ModelInputsRange()) -> "EnvironmentVariables":
         """
@@ -189,6 +217,32 @@ class EnvironmentVariables:
                     self.__dict__[key] = max(value[0], min(value[1], self.__dict__[key]))
                     
         return self
+    
+    def to_dataframe(self, index: pd.DatetimeIndex = None, column_names: Optional[dict] = None) -> pd.DataFrame:
+        """
+        Convert the environment variables to a pandas dataframe
+
+        Parameters:
+        - index: Pandas DatetimeIndex to use as index of the dataframe
+
+        Returns:
+        - A pandas dataframe with the environment variables
+        """
+        
+        if column_names is None:
+            column_names = {e.name: e.value for e in EnvIds}
+        
+        data = asdict(self)
+        df = pd.DataFrame(data, index=index)
+        
+        df.rename(columns=column_names, inplace=True)
+        
+        # Convert matlab.double to numpy arrays
+        for col in df.columns:
+            if isinstance(df[col].iloc[0], matlab.double):
+                df[col] = df[col].apply(lambda x: np.asarray(x).flatten()[0])
+                
+        return df
 
 @dataclass
 class OperationPoint:

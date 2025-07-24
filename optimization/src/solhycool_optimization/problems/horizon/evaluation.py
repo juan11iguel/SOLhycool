@@ -10,7 +10,10 @@ from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint
-from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, DayResults
+from solhycool_optimization import (DecisionVariables, 
+                                    ValuesDecisionVariables, 
+                                    DayResults,
+                                    StaticResults)
 from solhycool_optimization.utils import pareto_front_indices
 from solhycool_optimization.utils.evaluation import optimize
 from solhycool_optimization.utils.serialization import get_fitness_history
@@ -114,6 +117,69 @@ def get_pareto_front(
     df_paretos = pd.DataFrame([asdict(op) for op in ops])
     
     return pareto_idxs, df_paretos
+
+# TODO: This should not be in this module
+@retry(
+    stop=stop_after_attempt(3),  # Retry up to 3 times
+    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
+    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
+)
+def generate_set_of_paretos(
+    n_parallel_evals: int,
+    df_env: pd.DataFrame, 
+    dv_values: ValuesDecisionVariables, 
+) -> StaticResults:
+    """ Generate pareto fronts for the given environment """
+    
+    multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
+    
+    date_str = df_env.index[0].strftime("%Y%m%d")
+    start_time = time.time()
+    
+    # Compute total number of evaluations
+    total_num_evals = np.prod([len(value) for value in asdict(dv_values).values()])
+    
+    # 1. Evaluate decision variables
+    df_paretos = []
+    consumption_arrays = []
+    pareto_idxs_list = []
+    with ProcessPoolExecutor(max_workers=n_parallel_evals) as executor:
+        futures = {
+            executor.submit(
+                evaluate_decision_variables, step_idx, ds, dv_values, total_num_evals, date_str
+            ): step_idx 
+            for step_idx, (dt, ds) in enumerate(df_env.iterrows())
+        }
+        
+        for future in as_completed(futures):
+            step_idx = futures[future]
+            dv_list, consumption_list = future.result()
+            
+            # 2. Generate pareto front
+            consumption_array = np.array(consumption_list).transpose()
+            pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_env, step_idx)
+            df_paretos.append(df_pareto) 
+            consumption_arrays.append(consumption_array)
+            pareto_idxs_list.append(pareto_idxs)
+    
+    # Sort the pareto fronts and consumption arrays by time
+    # Step 1: Get the time keys for sorting
+    time_keys = [df["time"].min() for df in df_paretos]
+    # Step 2: Get the sorted indices based on the time keys
+    sorted_indices = sorted(range(len(time_keys)), key=lambda i: time_keys[i])
+    # Step 3: Apply sorted indices to all parallel lists
+    df_paretos = [df_paretos[i] for i in sorted_indices]
+    consumption_arrays = [consumption_arrays[i] for i in sorted_indices]
+    pareto_idxs_list = [pareto_idxs_list[i] for i in sorted_indices]
+    
+    logger.info(f"{date_str} | Completed evaluation in {time.time() - start_time:.1f} seconds")
+
+    return StaticResults(
+        index=df_env.index,
+        df_paretos=df_paretos,
+        consumption_arrays=consumption_arrays,
+        pareto_idxs=pareto_idxs_list,
+    )
 
 def path_selector(
     params: AlgoParams, 

@@ -98,6 +98,69 @@ class ValuesDecisionVariables:
         })
         
 @dataclass
+class StaticResults:
+    index: pd.DatetimeIndex # Index of the results
+    df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
+    consumption_arrays: list[np.ndarray[float]] # Array with the consumption values for the candidate operation points
+    pareto_idxs: list[int] # Path of indices of the pareto fronts from the dataset of candidate operation points
+    
+    @classmethod
+    def initialize(cls, input_path: Path):
+        """ Initialize the class from a possibly gzipped file. """
+        
+        if input_path.suffix == ".gz":
+            # Uncompress the gzip file into a temporary .h5 file
+            with gzip.open(input_path, 'rb') as f_in:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                    temp_path = Path(f_out.name)
+        else:
+            temp_path = input_path
+
+        with pd.HDFStore(temp_path, mode='r') as store:
+            df_paretos = []
+            consumption_arrays = []
+            for key in store.keys():
+                if key.startswith("/pareto/"):
+                    df_paretos.append(store[key])
+                elif key.startswith("/consumption/"):
+                    consumption_arrays.append(store[key].to_numpy())
+
+            index = pd.DatetimeIndex([pd.to_datetime(key.split("/")[-1], format="%Y%m%dT%H%M") for key in store.keys() if key.startswith("/pareto/")])
+
+            pareto_idxs = [list(range(len(df))) for df in df_paretos]
+
+        if input_path.suffix == ".gz":
+            temp_path.unlink()
+
+        return cls(index=index, df_paretos=df_paretos, consumption_arrays=consumption_arrays, pareto_idxs=pareto_idxs)
+    
+    def export(self, output_path: Path, ) -> None:
+        """ Export results to a file. """
+        
+        if not output_path.exists():
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with pd.HDFStore(output_path, mode='a', complevel=9, complib='zlib') as store:
+            for dt, df_pareto, consumption_array in zip(self.index, self.df_paretos, self.consumption_arrays):
+                table_key = dt.strftime("%Y%m%dT%H%M")
+
+                # Save pareto front for this timestep
+                store.put(
+                    f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
+                )
+
+                # Save consumption array for this timestep
+                if consumption_array is not None:
+                    df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
+                    store.put(f"/consumption/{table_key}", df_consumption, format="table", data_columns=True)
+
+            # Save indices of points in the pareto front
+            store.put("/paths/pareto_idxs", pd.Series(self.pareto_idxs))
+
+        logger.info(f"StaticResults saved to {output_path}")
+        
+@dataclass
 class DayResults:
     index: pd.DatetimeIndex # Index of the results
     df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step

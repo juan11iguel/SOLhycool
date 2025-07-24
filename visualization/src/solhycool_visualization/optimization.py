@@ -1,5 +1,5 @@
 # Similarly named as in the optimization package, decisions need to be made
-from typing import Literal
+from typing import Literal, Optional
 import pandas as pd
 import numpy as np
 import copy
@@ -56,6 +56,10 @@ def plot_pareto_front(
     selected_idxs: list[int] | list[list[int]] = None,
     line_width: float =0.5,
     showlegend: bool = True,
+    date_fmt: str = "%H:%M",
+    simple_colors: bool = False,
+    xaxis_label: Optional[str] = None,
+    yaxis_label: Optional[str] = None,
     **kwargs,
 ) -> go.Figure:
     """
@@ -71,7 +75,10 @@ def plot_pareto_front(
         op = ops.iloc[0]
         opacity = 1 if highlight_idx is None or pareto_idx == highlight_idx else 0.3
         if highlight_idx is None:
-            color = f'rgba({pareto_idx * 30 % 255}, {100 + pareto_idx * 20 % 155}, {200 - pareto_idx * 20 % 200}, 0.7)'
+            if simple_colors:
+                color = plt_colors[pareto_idx]
+            else:
+                color = f'rgba({pareto_idx * 30 % 255}, {100 + pareto_idx * 20 % 155}, {200 - pareto_idx * 20 % 200}, 0.7)'
         else:
             if pareto_idx == highlight_idx:
                 color = plt_colors[pareto_idx]
@@ -84,7 +91,7 @@ def plot_pareto_front(
         diff = 1
         idx_str = str(pareto_idx)
         if "time" in ops.columns:
-            idx_str = op["time"].strftime("%H:%M")
+            idx_str = op["time"].strftime(date_fmt)
             diff = (op["time"] - ops_list[pareto_idx-1].iloc[0]["time"]).seconds/3600
             
         if pareto_idx > 0 and mode == "side_by_side":
@@ -98,7 +105,7 @@ def plot_pareto_front(
         if pareto_idx > 0:
             x0_values_list.append(x_values[0])
         
-        name = f'{idx_str} | T<sub>amb</sub>={op["Tamb"]:.1f} ºC, ɸ={op["HR"]:.0f} %, T<sub>v</sub>={op["Tv"]:.1f} ºC, Q={op["Qc_released"]:.0f} kW<sub>th</sub>' if full_legend else idx_str
+        name = f'{idx_str} | T<sub>amb</sub>={op["Tamb"]:.1f} °C, HR={op["HR"]:.0f} %, T<sub>v</sub>={op["Tv"]:.1f} °C, Q̇={op["Qc_released"]:.0f} kW<sub>th</sub>' if full_legend else idx_str # ɸ
         
         # custom_data, hover_text = generate_tooltip_data(ops)
         custom_data, hover_text = None, None
@@ -223,13 +230,13 @@ def plot_pareto_front(
 
     # Set axis labels
     fig.update_xaxes(
-        title_text=f"{objective_keys[0]} ({OPERATION_PT_FIELD_METADATA[objective_keys[0]].get('units', '')})", 
+        title_text=f"{objective_keys[0]} ({OPERATION_PT_FIELD_METADATA[objective_keys[0]].get('units', '')})" if xaxis_label is None else xaxis_label, 
         title_font=dict(size=default_fontsize),
         zeroline=False,
         range=(-x_offset, minor_xticks[-1]+x_offset) if mode=="side_by_side" else (0, max([ops[objective_keys[0]].max() for ops in ops_list])*1.05) # So it's available when transplanting to other axis
         )
     fig.update_yaxes(
-        title_text=f"{objective_keys[1]} ({OPERATION_PT_FIELD_METADATA[objective_keys[1]].get('units', '')})", 
+        title_text=f"{objective_keys[1]} ({OPERATION_PT_FIELD_METADATA[objective_keys[1]].get('units', '')})" if yaxis_label is None else yaxis_label, 
         title_font=dict(size=default_fontsize),
         showgrid=True, range=[ 0, max([ops[objective_keys[1]].max() for ops in ops_list])*1.05 ]
     )
@@ -239,11 +246,10 @@ def plot_pareto_front(
     kwargs.setdefault("showlegend", True)
     kwargs.setdefault("font", dict(size=default_fontsize))
     kwargs.setdefault("margin", dict(l=20, r=20, t=20, b=20, pad=5))
-    
+    kwargs.setdefault("legend_bgcolor", 'rgba(255,255,255,0.9)')
     fig.update_layout(
-        legend=dict(bgcolor='rgba(255,255,255,0.9)'),
         newshape=newshape_style,
-        **kwargs
+        **kwargs,
     )
     
     return fig
