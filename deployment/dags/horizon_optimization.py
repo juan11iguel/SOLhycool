@@ -130,7 +130,12 @@ def horizon_optimization(
             ext="csv"
         )
         
-        day_results = DayResults.initialize(Path(export_path))
+        df = DayResults.initialize(Path(export_path)).df_results
+        
+        # Convert boolean columns to integers (0/1)
+        # This is necessary for CSV compatibility as some systems may not handle boolean types well
+        bool_cols = df.select_dtypes(include=["bool"]).columns
+        df[bool_cols] = df[bool_cols].astype(int)
 
         # Create a temporary directory for results
         # Generate visualization and report files
@@ -139,7 +144,7 @@ def horizon_optimization(
         # Upload results csv file
         # Convert DataFrame to CSV in-memory
         csv_buffer = StringIO()
-        day_results.df_results.to_csv(csv_buffer, index=True)
+        df.to_csv(csv_buffer, index=True)
         csv_buffer.seek(0)  # rewind to beginning
         
         # Upload using HTTP PUT
@@ -174,7 +179,7 @@ def horizon_optimization(
 
             # Save the day results
             day_results_path = temp_dir_path / "results.h5"
-            day_results.export(day_results_path, reduced=True)
+            day_results.export(day_results_path, reduced=True, single_day=True)
 
             # Create archive directly
             archive_base = Path(tempfile.mktemp(suffix=""))  # Don't add .tar.gz manually
