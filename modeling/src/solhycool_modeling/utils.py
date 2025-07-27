@@ -1,7 +1,10 @@
-from typing import Literal
+from typing import Literal, Optional, Iterable
 from datetime import datetime
 import numpy as np
 import pandas as pd
+from iapws import IAPWS97 as w_props
+
+from solhycool_modeling import EnvironmentVariables
 
 
 def dump_in_span(vars_dict: dict, span: tuple[int, int] | tuple[datetime, datetime], return_format: Literal["values", "series"] = "values") -> dict:
@@ -41,3 +44,86 @@ def dump_in_span(vars_dict: dict, span: tuple[int, int] | tuple[datetime, dateti
             span_vars_dict = {name: value.values if isinstance(value, pd.Series) else value for name, value in span_vars_dict.items()}
 
         return span_vars_dict
+    
+def flows_to_ratios(qc: float, qdc: float, qwct: float) -> tuple[float, float]:
+    """
+    Convert flow values to Rp and Rs ratios.
+
+    Parameters:
+    - qc: float, must be > 0
+    - qdc: float, must be >= 0
+    - qwct: float, must be >= 0
+
+    Returns:
+    - Rp: float
+    - Rs: float
+    """
+
+    if qc <= 0:
+        raise ValueError("qc must be greater than 0")
+    if qdc < 0:
+        raise ValueError("qdc must be greater than or equal to 0")
+    if qwct < 0:
+        raise ValueError("qwct must be greater than or equal to 0")
+
+    Rp = round(1 - qdc / qc, 3)
+
+    if qdc < 1e-2:
+        Rs = 0  # could be anything really
+    else:
+        numerator = qwct / qc - Rp
+        denominator = 1 - Rp
+        Rs = max(round(numerator / denominator, 3), 0)
+
+    return Rp, Rs
+
+    
+def add_aggretated_variables(df: pd.DataFrame, ev: Optional[EnvironmentVariables] = None) -> pd.DataFrame:
+    """
+    Add aggregated variables to the DataFrame.
+    Mainly: thermal powers, costs
+
+    Args:
+        df: A pandas DataFrame containing the timeseries data.
+
+    Returns:
+        A DataFrame with additional aggregated variables.
+    """
+    
+    # Calculate thermal powers
+    # w_props(T=df["Tdc_in"] + 273.15, P=1.6).cp
+    df["Qc_released"] = df["mv"] * (df["Tv"] + 273.15).apply(lambda T: w_props(T=T, x=1).h - w_props(T=T, x=0).h) / 3600  # kWth
+    df["Qc_absorbed"] = df["qc"] / 3.6 * 4.18 * (df["Tc_out"] - df["Tc_in"])  # m³/h -> kg/s * [kJ/kg·K] * K => kWth
+    df["Qdc"] = df["qdc"] / 3.6 * 4.18 * (df["Tdc_in"] - df["Tdc_out"])  # m³/h -> kg/s * [kJ/kg·K] * K => kWth
+    df["Qwct"] = df["qwct"] / 3.6 * 4.18 * (df["Twct_in"] - df["Twct_out"])  # m³/h -> kg/s * [kJ/kg·K] * K => kWth
+    
+    # Estimate state variables if not logged
+    df["dc_active"] = df["Qdc"] > 5 # kW, Threshold to consider the DC active
+    df["wct_active"] = df["Qwct"] > 5 # kW, Threshold to consider the WCT active
+    
+    # Calculate the hydraulic distribution
+    df["Rp"], df["Rs"] = zip(*df.apply(lambda row: flows_to_ratios(row["qc"], row["qdc"], row["qwct"]), axis=1))
+    
+    # Add qwct_s
+    if "qwct_s" not in df.columns:
+        df["qwct_s"] = df["qwct"] + df["qdc"]*df["Rs"]
+    
+    # If environment variables are provided
+    if ev is not None:
+        # calculate the associated cost of operation
+        if ev.Pe is not None:
+            ...
+        if ev.Cw is not None:
+            ...
+        
+        # calculate the available water evolution
+        if ev.Vavail is not None:
+            elapsed_time_between_steps = pd.Series(np.diff(df.index)).dt.total_seconds().div(3600).tolist()
+            Vavail = [ev.Vavail if ev.Vavail is not Iterable else ev.Vavail[0]]
+            for elapsed_time, Cw in zip(elapsed_time_between_steps, df["Cw"].values):
+                Vavail.append(
+                    max(0, Vavail[-1] - Cw * elapsed_time)
+                )
+            df["Vavail"] = Vavail
+            
+    return df

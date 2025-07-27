@@ -16,7 +16,7 @@
     b:20,
     pad:5
   },
-  vertical_spacing: 0.05,
+  vertical_spacing: 0.01,
   xdomain: [0, 0.9],
   // yaxis_right_pos
   xminor: true,
@@ -28,7 +28,7 @@
   plots: {
     environment: {
       title: "<b>Environment</b>",
-      row_height: 0.5,
+      row_height: 1,
       // bg_color: "steelblue",
       ylabels_left: ["<b>Weather<br>conditions</b><br>ºC"],
       ylabels_right: ["Relative<br>humidity (%)"], # As many as n_yaxis-1
@@ -385,6 +385,5 @@
         ]
       ],
     }
-
   }
 }

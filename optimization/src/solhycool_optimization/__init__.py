@@ -169,17 +169,17 @@ class DayResults:
     fitness_history: Optional[pd.Series] = None # Series with the fitness history of the path selection optimization
     consumption_arrays: Optional[list[np.ndarray[float]]] = None # Array with the consumption values for the candidate operation points
     pareto_idxs: Optional[list[int]] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
+    date_str: str = None # Date string for the results
+    eval_at: Optional[str] = None # Evaluation time, e.g. "20231001T1200"
     
-    date_str: str = None
-
     def __post_init__(self):
         if self.date_str is None:
             self.date_str = self.index[0].strftime("%Y%m%d")
         # if len(self.index) != len(self.df_paretos):
         #     raise ValueError("Length of index and df_paretos must be the same")
+        if self.eval_at is None:
+            self.eval_at = datetime.datetime.now().strftime("%Y%m%dT%H%M")
             
-
-
     @classmethod
     def initialize(cls, input_path: Path, date_str: Optional[str] = None, log: bool = True) -> "DayResults":
         temp_path = input_path
@@ -214,7 +214,12 @@ class DayResults:
                     fitness_history = None
 
                 if "/paths/selected_pareto_idxs" in store:
-                    selected_idxs = store["/paths/selected_pareto_idxs"].to_list()
+                    try:
+                        selected_idxs = store["/paths/selected_pareto_idxs"].to_list()
+                    except TypeError:
+                        logger.warning("Results are not date-agnostic. Likely due to forgetting specifying `single_day=False` when exporting.")
+                        table_key = df_results_all.index[0].strftime("%Y%m%d")
+                        selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
                 else:
                     selected_idxs = []
 
@@ -304,7 +309,7 @@ class DayResults:
         if not output_path.exists():
             output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        if single_day:
+        if not single_day:
             self.date_str = f'{self.index[0].strftime("%Y%m%dT%H%M")}-{self.index[-1].strftime("%Y%m%dT%H%M")}'
             
         if reduced:
@@ -343,11 +348,11 @@ class DayResults:
             store.put("/results", results_df.sort_index(), format="table", data_columns=get_queryable_columns(results_df), complib="zlib", complevel=9,)
 
             # Save indices of points in the pareto front and the ones selected from it for each step
-            table_key = self.index[0].strftime("%Y%m%d")
-            store.put(
-                f"/paths/selected_pareto_idxs/{table_key}" if single_day else "/paths/selected_pareto_idxs", 
-                pd.Series(self.selected_pareto_idxs)
-            )
+            if single_day:
+                table_path = f"/paths/selected_pareto_idxs/{self.index[0].strftime('%Y%m%d')}" 
+            else:
+                table_path = "/paths/selected_pareto_idxs"
+            store.put(table_path, pd.Series(self.selected_pareto_idxs))
             
             if self.pareto_idxs is not None:
                 # store.put(f"/paths/pareto_idxs/{table_key}", pd.Series(self.pareto_idxs))

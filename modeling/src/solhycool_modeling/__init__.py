@@ -11,8 +11,6 @@ from iapws import IAPWS97 as w_props
 import combined_cooler_model # Always import combined_cooler_model before importing matlab
 import matlab
 
-from solhycool_modeling.utils import dump_in_span
-
 class EnvIds(str, Enum):
     """ Environment variables identifiers and mapping to dataframe columns """
     HR = "HR_pct"
@@ -52,7 +50,7 @@ class EnvironmentVariables:
 
     # Thermal load
     Tv: float | np.ndarray[float] # Vapor temperature, ºC
-    Q: float | np.ndarray[float] # Thermal power, kW
+    Q: Optional[float | np.ndarray[float]] = None # Thermal power, kWth
 
     # Costs
     Pe: Optional[float | np.ndarray[float]] = None # Cost of electricity, €/kWhe
@@ -70,35 +68,62 @@ class EnvironmentVariables:
     
 
     def __post_init__(self) -> None:
-        if self.mv is not None:
-            return
         
-        if isinstance(self.Tv, matlab.double):
-            Tv = np.asarray(self.Tv).flatten()[0]
-            Pth = np.asarray(self.Q).flatten()[0]
-        else:
-            Tv = self.Tv
-            Pth = self.Q
+        assert self.mv is not None or self.Q is not None, "Either mv or Q must be provided"
+        
+        if self.mv is None:
+        
+            if isinstance(self.Tv, matlab.double):
+                Tv = np.asarray(self.Tv).flatten()[0]
+                Pth = np.asarray(self.Q).flatten()[0]
+            else:
+                Tv = self.Tv
+                Pth = self.Q
 
-        # Calculate mv
-        # if isinstance(self.Tv, Iterable):
-        #     hsat_v = w_props.from_list(T=Tv+273.15, x=1).h
-        #     hsat_l = w_props.from_list(T=Tv+273.15, x=0).h
-        # else:
-        if isinstance(self.Tv, Iterable):
-            # Terrible
-            mv = np.array(
-                [pth / (w_props(T=tv+273.15, x=1).h - w_props(T=tv+273.15, x=0).h) * 3600 for pth, tv in zip(Pth, Tv)]
-            )
-        else:
-            hsat_v = w_props(T=Tv+273.15, x=1).h
-            hsat_l = w_props(T=Tv+273.15, x=0).h
-            mv = Pth / (hsat_v - hsat_l) * 3600 # kg/h
+            # Calculate mv
+            # if isinstance(self.Tv, Iterable):
+            #     hsat_v = w_props.from_list(T=Tv+273.15, x=1).h
+            #     hsat_l = w_props.from_list(T=Tv+273.15, x=0).h
+            # else:
+            if isinstance(self.Tv, Iterable):
+                # Terrible
+                mv = np.array(
+                    [pth / (w_props(T=tv+273.15, x=1).h - w_props(T=tv+273.15, x=0).h) * 3600 for pth, tv in zip(Pth, Tv)]
+                )
+            else:
+                hsat_v = w_props(T=Tv+273.15, x=1).h
+                hsat_l = w_props(T=Tv+273.15, x=0).h
+                mv = Pth / (hsat_v - hsat_l) * 3600 # kg/h
 
-        if isinstance(self.Tv, matlab.double):
-            self.mv = matlab.double([mv])
-        else:
-            self.mv = mv
+            if isinstance(self.Tv, matlab.double):
+                self.mv = matlab.double([mv])
+            else:
+                self.mv = mv
+                
+        if self.Q is None:
+        
+            if isinstance(self.Tv, matlab.double):
+                Tv = np.asarray(self.Tv).flatten()[0]
+                Mv = np.asarray(self.mv).flatten()[0]
+            else:
+                Tv = self.Tv
+                Mv = self.mv
+
+            # Calculate Q
+            if isinstance(self.Tv, Iterable):
+                # Terrible
+                Q = np.array(
+                    [mv * (w_props(T=tv+273.15, x=1).h - w_props(T=tv+273.15, x=0).h) / 3600 for mv, tv in zip(Mv, Tv)]
+                )
+            else:
+                hsat_v = w_props(T=Tv+273.15, x=1).h
+                hsat_l = w_props(T=Tv+273.15, x=0).h
+                Q = mv * (hsat_v - hsat_l) / 3600 # kWth
+
+            if isinstance(self.Tv, matlab.double):
+                self.Q = matlab.double([Q])
+            else:
+                self.Q = Q
             
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame) -> "EnvironmentVariables":
@@ -180,6 +205,8 @@ class EnvironmentVariables:
 
     def dump_in_span(self, span: tuple[int, int]) -> 'EnvironmentVariables':
         """ Dump environment variables within a given span """
+        
+        from solhycool_modeling.utils import dump_in_span
 
         vars_dict = dump_in_span(vars_dict=asdict(self), span=span, return_format="values")
         

@@ -20,6 +20,9 @@ def plot_hydraulic_distribution(
     labels: list[str] = None,
     legend_id: str = "hydraulic_distribution",
     showticklabels: bool = True,
+    pad_value: float = np.nan,
+    pad_side: Literal["left", "right"] = "left",
+    highlight_bar_idx: Optional[int] = None,
 ) -> go.Figure:
     
     if isinstance(qc, np.ndarray):
@@ -29,43 +32,92 @@ def plot_hydraulic_distribution(
     
     n_series = len(qc)
     assert all(len(lst) == n_series for lst in [Rp, Rs]), "All input lists must have the same length"
-    n_points = len(qc[0])
-    assert all(len(q) == n_points for q in qc), "Each series must have the same number of points"
+    
+    # Find the maximum length among all arrays
+    max_length = max(max(len(q) for q in qc), max(len(r) for r in Rp), max(len(r) for r in Rs))
+    
+    # Pad arrays to match the maximum length
+    def pad_array(arr: np.ndarray, target_length: int, pad_value: float, pad_side: str) -> np.ndarray:
+        if len(arr) == target_length:
+            return arr
+        pad_width = target_length - len(arr)
+        if pad_side == "left":
+            return np.pad(arr, (pad_width, 0), constant_values=pad_value)
+        else:  # right
+            return np.pad(arr, (0, pad_width), constant_values=pad_value)
+    
+    # Pad all arrays to the same length
+    qc = [pad_array(q, max_length, pad_value, pad_side) for q in qc]
+    Rp = [pad_array(r, max_length, pad_value, pad_side) for r in Rp]
+    Rs = [pad_array(r, max_length, pad_value, pad_side) for r in Rs]
+    
+    n_points = max_length
     
     if x is None:
         x = np.arange(n_points)
+    elif len(x) != n_points:
+        # If x is provided but doesn't match the padded length, pad it as well
+        if isinstance(x[0], (int, float)):
+            # For numeric x, extend with sequential values
+            if pad_side == "left":
+                x_start = x[0] - (n_points - len(x))
+                x = np.arange(x_start, x[0]).tolist() + x.tolist()
+            else:
+                x_end = x[-1] + (n_points - len(x))
+                x = x.tolist() + np.arange(x[-1] + 1, x_end + 1).tolist()
+        else:
+            # For non-numeric x (e.g., datetime), pad with None or duplicate values
+            if pad_side == "left":
+                x = [None] * (n_points - len(x)) + x.tolist()
+            else:
+                x = x.tolist() + [None] * (n_points - len(x))
+        x = np.array(x)
+    
     if labels is None:
         labels = list(string.ascii_uppercase[:n_series])
 
     fig = go.Figure()
 
     for i, (qc_, Rp_, Rs_, label) in enumerate(zip(qc, Rp, Rs, labels)):
+        # Handle NaN values in calculations - NaN * anything = NaN, which is what we want
         qdc = qc_ * (1 - Rp_)
         qwct_p = qc_ * Rp_
         qwct_s = qdc * Rs_
         qdc_only = qdc - qwct_s
 
+        # Create masks to handle NaN values in plotting
+        valid_mask = ~(np.isnan(qc_) | np.isnan(Rp_) | np.isnan(Rs_))
+        
+        line = dict(
+            width=None if highlight_bar_idx is None or i != highlight_bar_idx else 2,
+            color=None if highlight_bar_idx is None or i != highlight_bar_idx else ComponentColors.CONDENSER.value,
+        )
+        
         fig.add_trace(go.Bar(
             x=x,
-            y=qdc_only,
+            y=np.where(valid_mask, qdc_only, None),  # Use None for invalid data points
             showlegend=True if i == 0 else False,
             # legendgroup=legend_id,
             name='DC //',
             offsetgroup=label,
-            marker=dict(color=ComponentColors.DC.value),
+            marker=dict(
+                color=ComponentColors.DC.value,
+                line=line
+            ),
             hovertemplate = f'DC // ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
         ))
         
         fig.add_trace(go.Bar(
             x=x,
-            y=qwct_s,
+            y=np.where(valid_mask, qwct_s, None),
             name='DC 🠒 WCT',
             showlegend=True if i == 0 else False,
             # legendgroup=legend_id,
             offsetgroup=label,
-            base=qdc_only,
+            base=np.where(valid_mask, qdc_only, None),
             marker=dict(
                 color=ComponentColors.DC.value,
+                line=line,
                 pattern=dict(
                     shape="/",
                     fgcolor=ComponentColors.WCT.value,
@@ -79,15 +131,18 @@ def plot_hydraulic_distribution(
         
         fig.add_trace(go.Bar(
             x=x,
-            y=qwct_p,
+            y=np.where(valid_mask, qwct_p, None),
             name='WCT //',
             showlegend=True if i == 0 else False,
             # legendgroup="hydraulic_distribution",
             offsetgroup=label,
-            base=qdc_only + qwct_s,
-            marker=dict(color=ComponentColors.WCT.value),
+            base=np.where(valid_mask, qdc_only + qwct_s, None),
+            marker=dict(
+                color=ComponentColors.WCT.value,
+                line=line
+            ),
             
-            text=[label] + [None]* n_points if n_series > 1 else [None]* n_points,
+            text=[label if j == n_points-1 and valid_mask[j] else None for j in range(n_points)] if n_series > 1 else [None] * n_points,
             # textfont_size=12, textangle=0, textposition="outside", cliponaxis=False),
             textposition='outside',
             textangle=-90,
@@ -119,12 +174,14 @@ def plot_hydraulic_distribution(
                 showgrid=False,  # Hide minor grid lines
             ),
         ) if len(x) < 24 and not isinstance(x[0], int) else None,
-        yaxis_range=[0, max(q.max() for q in qc) * 1.1],
+        yaxis_range=[0, max(np.nanmax(q) for q in qc) * 1.1],
         uniformtext_minsize=12, 
         uniformtext_mode='show',
         hovermode="x unified",
         hoverlabel_align = 'right',
     )
+
+    # print(f"{fig.layout=} | {showticklabels=}")
 
     return fig
 
@@ -156,6 +213,7 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
     ]
 
     # Copy xaxis properties
+    # print(f"{fig_aux.layout=}")
     fig_out.layout[xaxis_long_id] = fig_out.layout[xaxis_long_id].update(
         {
             name: value for name, value in fig_aux.layout.xaxis.to_plotly_json().items() 
@@ -176,14 +234,23 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
         bargap=fig_aux.layout.bargap,
     )
 
-    # display(fig_out.layout)
+    # print(fig_out.layout)
     # display(fig_out.data)
     
     return fig_out
 
 
-def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFrame = None,
-                 day_results: DayResults | MultipleDayResults = None, template: Optional[str] = None) -> go.Figure:
+def plot_results(
+    plot_config: dict, 
+    df: pd.DataFrame = None, 
+    df_comp: pd.DataFrame = None,
+    day_results: DayResults | MultipleDayResults = None, 
+    template: Optional[str] = None,
+    hydraulic_distribution_dfs: Optional[list[pd.DataFrame]] = None,
+    hydraulic_distribution_highlight_bar_idx: Optional[int] = None,
+    hydraulic_distribution_labels: Optional[list[str]] = None,
+    hydraulic_distribution_transplant_xaxis: bool = False,
+) -> go.Figure:
                 #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
     supported_transplants = ["hydraulic_distribution", "paretos"]
@@ -207,16 +274,26 @@ def plot_results(plot_config: dict, df: pd.DataFrame = None, df_comp: pd.DataFra
         
         # Join hydraulic distribution plot
         if plot_id == "hydraulic_distribution":
-            
-            qc = df["qc"].values if df_comp is None else [df["qc"].values, df_comp["qc"].values]
-            Rp = df["Rp"].values if df_comp is None else [df["Rp"].values, df_comp["Rp"].values]
-            Rs = df["Rs"].values if df_comp is None else [df["Rs"].values, df_comp["Rs"].values]
-            # legend_id = f"legend{plot_idx if plot_idx > 0 else ''}"
+            if hydraulic_distribution_dfs:
+                df_ = hydraulic_distribution_dfs
+            else:
+                df_ = [df] if df_comp is None else [df, df_comp]
+                
+            qc = [df_["qc"].values for df_ in df_]
+            Rp = [df_["Rp"].values for df_ in df_]
+            Rs = [df_["Rs"].values for df_ in df_]
 
             fig = organ_transplant(
                 fig=fig,
-                fig_aux=plot_hydraulic_distribution(qc, Rp, Rs, x=df.index, showticklabels=False), #, legend_id=legend_id),
-                plot_id=plot_id
+                fig_aux=plot_hydraulic_distribution(
+                    qc, Rp, Rs, 
+                    x=df_[0].index, 
+                    showticklabels=hydraulic_distribution_transplant_xaxis, 
+                    highlight_bar_idx=hydraulic_distribution_highlight_bar_idx,
+                    labels=hydraulic_distribution_labels,
+                ),
+                plot_id=plot_id,
+                transplant_xaxis=hydraulic_distribution_transplant_xaxis
             )
                     
         # Join paretos plot
