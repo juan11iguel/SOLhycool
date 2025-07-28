@@ -268,9 +268,9 @@ def horizon_optimization_day_report(
             
             # Remove the original uncompressed files from WebDAV to save space
             try:
-                for file in fs.ls(output_dir, detail=False):
-                    fs.remove(f"{output_dir}{file}")
-                fs.rmdir(output_dir)  # Remove the empty directory
+                # for file in fs.ls(output_dir, detail=False):
+                #     fs.remove(f"{output_dir}{file}")
+                fs.rmdir(output_dir, )  # Remove the empty directory
                 logger.info(f"Cleaned up remote directory: {output_dir}")
             except Exception as e:
                 logger.warning(f"Could not clean up remote directory {output_dir}: {e}")
