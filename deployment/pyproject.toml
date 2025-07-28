@@ -7,11 +7,28 @@ authors = [
     { name = "Juan Miguel Serrano Rodríguez", email = "juan11iguel@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fsspec>=2025.7.0",
+    "pandas>=2.3.1",
+    "webdav4>=0.10.0",
+]
 
 [project.scripts]
 deployment = "deployment:main"
 
+[project.optional-dependencies]
+fsspec = [
+    "webdav4>=0.10.0",
+]
+all = [
+    "webdav4>=0.10.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+]

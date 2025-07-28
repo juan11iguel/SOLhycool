@@ -1,6 +1,9 @@
+from os import unlink
 from typing import Optional
 from urllib.parse import urlparse
 import pandas as pd
+from pathlib import Path
+from loguru import logger
 
 def get_data(data_url: str) -> pd.DataFrame:
     """
@@ -18,6 +21,8 @@ def get_data(data_url: str) -> pd.DataFrame:
 
 def extract_url_components(url: str) -> tuple[str, str]:
     # TODO: Move to deployment.utils or similar
+    
+    print(f"Extracting components from URL: {url}")
     
     domain = urlparse(url).netloc
     share_id = urlparse(url).path.split('/')[-1]
@@ -50,3 +55,14 @@ def build_file_url(
     else: # When downloading from webdav
         return f"https://{domain}/public.php/dav/files/{share_id}/{file_id}.{ext}"
 
+
+def cleanup_paths(paths: list[str]) -> None:
+    for path_ in paths:
+        p = Path(path_)
+        if not p.exists():
+            logger.warning(f"Cleanup: {p} does not exist, skipping deletion.")
+            continue
+                    
+        # Clean up archive file
+        unlink(p)            
+        logger.info(f"Cleanup: Deleting temporary file {p}")

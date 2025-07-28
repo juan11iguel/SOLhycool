@@ -1,7 +1,7 @@
 {
   title: "SOLhycool operation optimization",
   subtitle: "Experimental evaluation results",
-  height: 2000,
+  height: 3000,
   width: 1200,
   margin: {
     l:20,
@@ -10,12 +10,13 @@
     b:20,
     pad:5
   },
-  vertical_spacing: 0.05,
+  vertical_spacing: 0.015,
   xdomain: [0, 0.9],
   // yaxis_right_pos
   xminor: true,
   xaxis_nticks: 24,
   hoverlabel_bgcolor: "rgba(255,255,255,0.8)", // Background color for hover labels
+  title_delta_y: 0.001,
 
   # Individual plot attributes
   # First specify the plot attributes
@@ -23,12 +24,12 @@
   plots: {
 
     # Environment
-    environment: {
+    environment_: {
       title: "<b>Environment</b>",
       row_height: 0.5,
       // bg_color: "steelblue",
       ylabels_left: ["<b>Weather<br>conditions</b><br>ºC"],
-      ylabels_right: ["Relative<br>humidity (%)"], # As many as n_yaxis-1
+      ylabels_right: ["<b>Relative<br>humidity</b> (%)"], # As many as n_yaxis-1
       ylims_left: 'manual',
       showlegend: true,
       legend_position: "top", // "top" (horizontal) or "side" (vertical)
@@ -36,7 +37,7 @@
       traces_left: [
         {
           var_id: "Tamb",
-          name: "T<sub>amb</sub> (ºC)", # "T<sub>amb,ts</sub>",
+          name: "T<sub>amb</sub>", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_green",
           showlegend: true,
@@ -47,7 +48,7 @@
       traces_right: [
         {
           var_id: "HR",
-          name: "HR (%)", # "T<sub>amb,ts</sub>",
+          name: "HR", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "plotly_blue",
           width: 3,
@@ -70,7 +71,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -81,7 +82,7 @@
       traces_right: [
         {
           var_id: "Tv",
-          name: "T<sub>v</sub> (ºC)",
+          name: "T<sub>v</sub>",
           mode: "markers+lines",
           color: "bg_gray",
           width: 3,
@@ -89,7 +90,7 @@
         },
         {
           var_id: "Tc_in",
-          name: "T<sub>c,in</sub> (ºC)",
+          name: "T<sub>c,in</sub>",
           mode: "markers+lines",
           color: "plotly_blue",
           dash: "dash",
@@ -98,7 +99,7 @@
         },
         {
           var_id: "Tc_out",
-          name: "T<sub>c,out</sub> (ºC)",
+          name: "T<sub>c,out</sub>",
           mode: "markers+lines",
           color: "plotly_red",
           dash: "dot",
@@ -304,7 +305,7 @@
       // traces_left: [
       //   {
       //     var_id: "Qc_released",
-      //     name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+      //     name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
       //     mode: "lines",
       //     color: "bg_gray",
       //     width: 3,
@@ -313,7 +314,7 @@
       //   },
       //   {
       //     var_id: "Qwct",
-      //     name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
+      //     name: "Q<sub>wct</sub>",
       //     mode: "lines",
       //     color: "wct_purple",
       //     width: 3,
@@ -324,7 +325,7 @@
       traces_left: [
           {
             var_id: "Twct_in",
-            name: "T<sub>wct,in</sub> (ºC)",
+            name: "T<sub>wct,in</sub>",
             mode: "markers+lines",
             color: "plotly_red",
             width: 3,
@@ -332,7 +333,7 @@
           },
           {
             var_id: "Twct_out",
-            name: "T<sub>wct,out</sub> (ºC)",
+            name: "T<sub>wct,out</sub>",
             mode: "markers+lines",
             color: "plotly_blue",
             width: 3,
@@ -353,7 +354,7 @@
       // traces_left: [
       //   {
       //     var_id: "Qc_released",
-      //     name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+      //     name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
       //     mode: "lines",
       //     color: "bg_gray",
       //     width: 3,
@@ -362,7 +363,7 @@
       //   },
       //   {
       //     var_id: "Qdc",
-      //     name: "Q<sub>dc</sub> (kW<sub>th</sub>)",
+      //     name: "Q<sub>dc</sub>",
       //     mode: "lines",
       //     color: "dc_green",
       //     width: 3,
@@ -373,7 +374,7 @@
       traces_left: [
           {
             var_id: "Tdc_in",
-            name: "T<sub>dc,in</sub> (ºC)",
+            name: "T<sub>dc,in</sub>",
             mode: "markers+lines",
             color: "plotly_red",
             width: 3,
@@ -381,7 +382,7 @@
           },
           {
             var_id: "Tdc_out",
-            name: "T<sub>dc,out</sub> (ºC)",
+            name: "T<sub>dc,out</sub>",
             mode: "markers+lines",
             color: "plotly_blue",
             width: 3,
@@ -396,13 +397,13 @@
       title: "<b>Regulatory control |</b> Dry cooler outlet temperature loop",
       row_height: 1,
       // bg_color: "bg_gray", # bg gray
-      ylabels_left: ["Outlet<br>temperature<br>ºC</br>"],
+      ylabels_left: ["<b>Controlled<br>variable</b><br>ºC"],
       ylims_left: 'manual',
-      # ylabels_left: ["T<sub>dc</sub> (ºC)"],
+      # ylabels_left: ["T<sub>dc</sub>"],
       showlegend: true,
 
       # Plotted between this plot and the next one
-      show_active: true,
+      show_active: false,
       active_var_id: "dc_active",
       active_color: "dc_green",
       tigth_vertical_spacing: true, # Reduce vertical spacing between this plot and the next one
@@ -411,7 +412,7 @@
       traces_left: [
         {
           var_id: "Tdc_in",
-          name: "disturbance (experimental)", # T<sub>dc,in,ts</sub>
+          name: "T<sub>dc,in</sub>", # T<sub>dc,in,ts</sub>
           mode: "lines",
           color: "gray", # gray
           width: 2,
@@ -420,7 +421,7 @@
         },
         {
           var_id: "Tdc_out",
-          name: "controlled / measured variable", # "T<sub>dc,out</sub>",
+          name: "T<sub>dc,out</sub>", # "T<sub>dc,out</sub>",
           mode: "lines",
           color: "dc_green", # green DC
           showlegend: true,
@@ -428,7 +429,7 @@
         },
         {
           var_id: "Tdc_out_sp",
-          name: "setpoint", # "T<sub>dc,sp</sub>",
+          name: "T<sup>SP</sup><sub>dc,out</sub>", # "T<sub>dc,sp</sub>",
           mode: "lines",
           color: "dc_green", # green DC
           width: 4,
@@ -441,7 +442,7 @@
     temperatures_dc_cv: {
       row_height: 0.7,
       // bg_color: "bg_gray", # bg gray
-      ylabels_left: ["Control signal<br>ω<sub>dc</sub> (%)"],
+      ylabels_left: ["<b>Control signal</b><br>ω<sub>dc</sub> (%)"],
       ylims_left: 'manual',
       showlegend: true,
 
@@ -460,13 +461,13 @@
       title: "Wet cooler outlet temperature loop",
       row_height: 1,
       // bg_color: "bg_gray", # bg gray
-      # ylabels_left: ["T<sub>wct</sub> (ºC)"],
-      ylabels_left: ["Outlet<br>temperature<br>T<sub>dc,out</sub> (ºC)"],
+      # ylabels_left: ["T<sub>wct</sub>"],
+      ylabels_left: ["<b>Controlled<br>variable</b><br>ºC"],
       ylims_left: 'manual',
       showlegend: true,
       
       # Plotted between this plot and the next one
-      show_active: true,
+      show_active: false,
       active_var_id: "wct_active",
       active_color: "wct_purple",
       active_plot_domain_shift: 0.04, # Shift the active plot bottom domain to avoid overlap with the next plot
@@ -475,29 +476,29 @@
       traces_left: [
         {
           var_id: "Twct_in",
-          name: "T<sub>wct,in,ts</sub>",
+          name: "T<sub>wct,in</sub>",
           mode: "lines",
           color: "gray", # gray
           width: 2,
-          showlegend: false,
-          "instrument": "pt100"
+          showlegend: true,
+          // "instrument": "pt100"
         },
         {
           var_id: "Twct_out",
           name: "T<sub>wct,out</sub>",
           mode: "lines",
           color: "wct_purple",
-          showlegend: false,
-          "instrument": "pt100"
+          showlegend: true,
+          // "instrument": "pt100"
         },
         {
           var_id: "Twct_out_sp",
-          name: "T<sub>wct,sp</sub>",
+          name: "T<sup>SP</sup><sub>wct</sub>",
           mode: "lines",
           color: "wct_purple",
           width: 4,
           dash: "dash", # "dot", "dash", "dashdot"
-          showlegend: false
+          showlegend: true
         },
       ]
     },
@@ -506,7 +507,7 @@
       row_height: 0.7,
       // bg_color: "bg_gray", # bg gray
       ylims_left: 'manual',
-      ylabels_left: ["Control<br>signal<br>ω<sub>wct</sub> (%)"],
+      ylabels_left: ["<b>Control<br>signal</b><br>ω<sub>wct</sub> (%)"],
       showlegend: true,
 
       traces_left: [
@@ -525,9 +526,11 @@
       // bg_color: "bg_gray", # bg gray
       ylims_left: 'manual',
       ylims_right: [0, 100],
-      ylabels_left: ["q<sub>c</sub> (m³/h)"],
-      ylabels_right: ["ω<sub>c</sub> (%)"],
+      ylabels_left: ["<b>Controlled<br>variable</b><br>m³/h"],
+      ylabels_right: ["<b>Control signal</b> (%)"],
       title: "Recirculating cooling water flow loop",
+      showlegend: true,
+      legend_position: "top",
       // tigth_vertical_spacing: true, # Reduce vertical spacing between this plot and the next one
 
       traces_left: [
@@ -536,17 +539,17 @@
           name: "q<sub>c</sub>",
           mode: "lines",
           color: "c_blue",
-          showlegend: false,
-          // "instrument": "vortex_flow_meter"
+          showlegend: true,
+          "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qc_sp",
-          name: "q<sub>c,sp</sub>",
+          name: "q<sup>SP</sup><sub>c</sub>",
           mode: "lines",
           color: "c_blue",
           width: 4,
           dash: "dash", # "dot", "dash", "dashdot"
-          showlegend: false
+          showlegend: true
         },
       ],
       traces_right: [
@@ -555,7 +558,7 @@
           name: "ω<sub>c</sub>",
           mode: "lines",
           color: "dark_gray",
-          showlegend: false
+          showlegend: true
         },
       ],
     },
@@ -566,8 +569,10 @@
       ylims_left: 'manual',
       ylims_right: [0, 100],
       // bg_color: "bg_gray", # bg gray
-      ylabels_left: ["q<sub>dc</sub> (m³/h)"],
-      ylabels_right: ["V<sub>p</sub> (%)"],
+      ylabels_left: ["<b>Controlled<br>variable</b><br>m³/h"],
+      ylabels_right: ["<b>Control signal</b> (%)"],
+      showlegend: true,
+      legend_position: "top",
 
       traces_left: [
         {
@@ -575,8 +580,8 @@
           name: "q<sub>dc</sub>",
           mode: "lines",
           color: "dc_green",
-          showlegend: false,
-          // "instrument": "vortex_flow_meter"
+          showlegend: true,
+          "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qdc_sp",
@@ -585,7 +590,7 @@
           color: "dc_green",
           width: 4,
           dash: "dash", # "dot", "dash", "dashdot"
-          showlegend: false
+          showlegend: true
         },
       ],
       traces_right: [
@@ -594,7 +599,7 @@
           name: "v<sub>p</sub>",
           mode: "lines",
           color: "dark_gray", # purple WCT
-          showlegend: false
+          showlegend: true
         },
       ]
     },
@@ -605,26 +610,28 @@
       ylims_left: 'manual',
       ylims_right: [0, 100],
       // bg_color: "bg_gray", # bg gray
-      ylabels_left: ["q<sub>dc❯wct</sub> (m³/h)"],
-      ylabels_right: ["V<sub>s/sub> (%)"],
+      ylabels_left: ["<b>Controlled<br>variable</b><br>m³/h"],
+      ylabels_right: ["<b>Control signal</b> (%)"],
+      showlegend: true,
+      legend_position: "top",
 
       traces_left: [
         {
           var_id: "qwct_s",
-          name: "q<sub>dc❯wct</sub>",
+          name: "q<sub>dc-wct</sub>",
           mode: "lines",
           color: "wct_purple",
-          showlegend: false,
-          // "instrument": "vortex_flow_meter"
+          showlegend: true,
+          "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qwct_s_sp",
-          name: "q<sub>dc❯wct,sp</sub>",
+          name: "q<sup>SP</sup><sub>dc-wct</sub>",
           mode: "lines",
           color: "wct_purple",
           width: 4,
           dash: "dash", # "dot", "dash", "dashdot"
-          showlegend: false
+          showlegend: true
         },
       ],
       traces_right: [
@@ -633,7 +640,7 @@
           name: "v<sub>s</sub>",
           mode: "lines",
           color: "dark_gray", # purple WCT
-          showlegend: false
+          showlegend: true
         },
       ]
     },

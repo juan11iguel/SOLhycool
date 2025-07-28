@@ -71,3 +71,23 @@ docker compose up airflow-init
 ### Start up all services
 docker compose up
 ```
+
+# Testing the DAGs
+
+## Basic test
+
+Just activate the python environment and run the dag file:
+
+```bash
+python dag.py
+```
+
+It will raise any errors preventing the dag from being loaded, but no runtime errors. For that the complete test is used.
+
+## Complete test
+
+Run `airflow test dag_id`. To specify some parameters different to the default one, add them as a `json` string:
+
+```bash
+airflow dags test horizon_optimization_day_report --conf '{"plt_config_path":"../data/plot_config_day_test.hjson"}'
+```

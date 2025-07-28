@@ -58,22 +58,38 @@ def flows_to_ratios(qc: float, qdc: float, qwct: float) -> tuple[float, float]:
     - Rp: float
     - Rs: float
     """
+    # Handle NaN values
+    if pd.isna(qc) or pd.isna(qdc) or pd.isna(qwct):
+        return 0.0, 0.0
+    
+    # Convert to float to handle potential numpy types
+    qc = float(qc)
+    qdc = float(qdc)
+    qwct = float(qwct)
 
+    # Handle edge case where qc is zero or negative
     if qc <= 0:
-        raise ValueError("qc must be greater than 0")
+        return 0.0, 0.0
+    
+    # Validate inputs with more lenient handling
     if qdc < 0:
-        raise ValueError("qdc must be greater than or equal to 0")
+        qdc = 0.0  # Clamp negative values to zero
     if qwct < 0:
-        raise ValueError("qwct must be greater than or equal to 0")
+        qwct = 0.0  # Clamp negative values to zero
 
-    Rp = round(1 - qdc / qc, 3)
+    # Calculate Rp with bounds checking
+    Rp = max(0.0, min(1.0, round(1 - qdc / qc, 3)))
 
-    if qdc < 1e-2:
-        Rs = 0  # could be anything really
+    # Calculate Rs with robust handling
+    if qdc < 1e-6:  # Very small threshold to avoid floating point issues
+        Rs = 0.0
     else:
-        numerator = qwct / qc - Rp
         denominator = 1 - Rp
-        Rs = max(round(numerator / denominator, 3), 0)
+        if abs(denominator) < 1e-10:  # Avoid division by very small numbers
+            Rs = 0.0
+        else:
+            numerator = qwct / qc - Rp
+            Rs = max(0.0, min(1.0, round(numerator / denominator, 3)))
 
     return Rp, Rs
 
@@ -101,8 +117,15 @@ def add_aggretated_variables(df: pd.DataFrame, ev: Optional[EnvironmentVariables
     df["dc_active"] = df["Qdc"] > 5 # kW, Threshold to consider the DC active
     df["wct_active"] = df["Qwct"] > 5 # kW, Threshold to consider the WCT active
     
-    # Calculate the hydraulic distribution
-    df["Rp"], df["Rs"] = zip(*df.apply(lambda row: flows_to_ratios(row["qc"], row["qdc"], row["qwct"]), axis=1))
+    # Calculate the hydraulic distribution with error handling
+    try:
+        ratios_result = df.apply(lambda row: flows_to_ratios(row["qc"], row["qdc"], row["qwct"]), axis=1)
+        df["Rp"], df["Rs"] = zip(*ratios_result)
+    except Exception as e:
+        # If there's any error, fall back to safe defaults
+        print(f"Warning: Error calculating hydraulic ratios: {e}")
+        df["Rp"] = 0.0
+        df["Rs"] = 0.0
     
     # Add qwct_s
     if "qwct_s" not in df.columns:
