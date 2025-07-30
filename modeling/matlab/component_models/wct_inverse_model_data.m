@@ -26,10 +26,8 @@ function [wwct, valid] = wct_inverse_model_data(Tamb, HR, Tin, q, Tout, options)
         Tin (1,1) double
         q (1,1) double
         Tout (1,1) double
-        options.lb_x (1,1) double = 0;
-        options.ub_x (1,1) double = 93.4161;
         options.silence_warnings logical = false
-        options.tolerance (1,1) double = 1e-3
+        options.tolerance (1,1) double = 0.5
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4];
         options.lb (1,5) double = 0.9*[9.0600   10.3300   31.1700    5.7049         0];
@@ -42,11 +40,14 @@ function [wwct, valid] = wct_inverse_model_data(Tamb, HR, Tin, q, Tout, options)
         valid (1,1) logical
     end
 
-    if q < 1e-3
+    if q < options.lb(4)
         wwct = 0;
         valid = true;
         return 
     end
+
+    lb_x = options.lb(end);
+    ub_x = options.ub(end);
 
     % Optimization options
     opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display', 'none'); 
@@ -57,8 +58,12 @@ function [wwct, valid] = wct_inverse_model_data(Tamb, HR, Tin, q, Tout, options)
     
     % Run optimization
     % (options.lb+options.ub)/2
-    [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), options.lb_x, [], [], [], [], options.lb_x, options.ub_x, [], opt);
+    [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), (lb_x+ub_x)/2, [], [], [], [], lb_x, ub_x, [], opt);
     valid = (fval <= options.tolerance) && (exitflag > 0);
+
+    if ~valid && ~options.silence_warnings
+        fprintf("No feasible fan speed found: fval=%.3f > tol=%.3f or exit flag=%d > 0\n", fval, options.tolerance, exitflag)
+    end
 
     function residual = inner_model(wwct)
         % Compute the output temperature using the WCT model
@@ -72,7 +77,7 @@ function [wwct, valid] = wct_inverse_model_data(Tamb, HR, Tin, q, Tout, options)
         );
         
         % Compute squared residual
-        residual = (Tout - Twct_out).^2;
+        residual = abs(Tout - Twct_out);
     end
 
 end

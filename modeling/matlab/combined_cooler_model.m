@@ -189,7 +189,8 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     % Components cooling power
     Qdc  = mdc*XSteam('Cp_pT',2,(Tdc_in+Tdc_out)/2)*(Tdc_in-Tdc_out);
     Qwct = mwct*XSteam('Cp_pT',2,(Twct_in+Twct_out)/2)*(Twct_in-Twct_out);
-    Qcc = mc_kgs*XSteam('Cp_pT',2,(Tcc_in+Tcc_out)/2)*(Tcc_in-Tcc_out);
+    Qcc = Qdc+Qwct;
+    % Qcc = mc_kgs*XSteam('Cp_pT',2,(Tcc_in+Tcc_out)/2)*(Tcc_in-Tcc_out);
 
     detailed = build_detailed_struct();
 

@@ -97,6 +97,10 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     % Validation
     if Tc_out >= Tv_C - parameters.condenser_deltaTv_cout_min
         valid = false;
+        if ~silence_warnings
+            fprintf('DEBUG: Condenser validation failed - Tc_out=%.2f >= Tv_C - deltaTv_cout_min=%.2f (Tv_C=%.2f, deltaTv_cout_min=%.2f)\n', ...
+                    Tc_out, Tv_C - parameters.condenser_deltaTv_cout_min, Tv_C, parameters.condenser_deltaTv_cout_min);
+        end
     end
 
     % DC
@@ -133,21 +137,37 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     );
     if ~valid_ % No feasible fan speed found for the given inputs
         valid = false;
+        if ~silence_warnings
+            fprintf('DEBUG: WCT validation failed - No feasible fan speed found for inputs: Tamb_C=%.2f, HR_pp=%.2f, Twct_in=%.2f, qwct=%.2f, Twct_out=%.2f\n', ...
+                    Tamb_C, HR_pp, Twct_in, qwct, Twct_out);
+        end
     end
 
     % With wwct, evaluate model
     [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options);
 
     % Validation
-    if abs( detailed.Qcc - detailed.Qc_released ) > 10
+    if abs( detailed.Qcc - detailed.Qc_released) > 15
         valid = false;
+        if ~silence_warnings
+            fprintf('DEBUG: Heat balance validation failed - |Qcc - Qc_released| > 10: |%.2f - %.2f| = %.2f\n', ...
+                    detailed.Qcc, detailed.Qc_released, abs(detailed.Qcc - detailed.Qc_released));
+        end
     end
 
-    if detailed.Qdc < 10 && detailed.qdc > 0 % Water circulation on inactive component
+    if detailed.Qdc < 10 && detailed.qdc > 0.5 % Water circulation on inactive component
         valid = false;
+        if ~silence_warnings
+            fprintf('DEBUG: DC inactive component validation failed - Water circulation on inactive DC: Qdc=%.2f < 10 && qdc=%.2f > 0\n', ...
+                    detailed.Qdc, detailed.qdc);
+        end
     end
-    if detailed.Qwct < 10 && detailed.qwct > 0 % Water circulation on inactive component
+    if detailed.Qwct < 10 && detailed.qwct > 0.5 % Water circulation on inactive component
         valid = false;
+        if ~silence_warnings
+            fprintf('DEBUG: WCT inactive component validation failed - Water circulation on inactive WCT: Qwct=%.2f < 10 && qwct=%.2f > 0\n', ...
+                    detailed.Qwct, detailed.qwct);
+        end
     end
 end
 

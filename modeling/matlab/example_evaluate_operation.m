@@ -1,31 +1,37 @@
 data = readtable("../data/data.csv");
 addpath("component_models/")
 
+p = default_parameters();
+
 %% Evaluate wct fan speed given outlet temperature
 for i=1:height(data)
     if ~(data.qwct(i) > 0.5)
         continue
     end
-    [wwct, valid] = wct_inverse_model_data(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i));
+    [wwct, valid] = wct_inverse_model_data(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i), ...
+        model_data_path=parameters.wct_model_data_path, silence_warnings=false, lb=p.wct_lb, ub=p.wct_ub);
 
     fprintf("Point %d | wwct model: %.2f, wwct experimental: %.2f | Valid: %s\n", i, wwct, data.wwct(i), string(valid))
+    fprintf("Tamb=%.2f, HR=%.2f, Twct_in=%.2f, qwct=%.2f, Twct_out=%.2f\n", data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i))
 end
 
 %% Evaluate operation point given everything but the wct fan frequency
+clc
 
-
-parameters = default_parameters();
-parameters.condenser_option = 7;
-options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'silence_warnings', false, 'parameters', parameters);
+% parameters = default_parameters();
+p.condenser_option = 6;
+options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'silence_warnings', false, 'parameters', p);
 
 for i=1:height(data)
     % if ~(data.qwct(i) > 0.5)
     %     continue
     % end
-    [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), data.wdc(i), data.Tv(i));
-
-    fprintf("Point %d | wwct model: %.2f, wwct experimental: %.2f | Valid: %s\n", i, detailed.wwct, data.wwct(i), string(valid))
+    [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), data.wdc(i), data.Tv(i), options);
+    
+    fprintf("Point %d | Valid: %s | wwct model: %.2f, wwct experimental: %.2f \n", i, string(valid), detailed.wwct, data.wwct(i))
+    fprintf("Experimental data: Tamb=%.2f, HR=%.2f, Twct_in=%.2f, qwct=%.2f, Twct_out=%.2f\n", data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i))
     fprintf("Tc_in_ref= %.2f, Tc_in_mod=%.2f | Tc_out_ref= %.2f, Tc_out_mod=%.2f | Tdc_out_ref= %.2f, Tdc_out_mod=%.2f | Twct_in_ref= %.2f, Twct_in_mod=%.2f | Twct_out_ref= %.2f, Twct_out_mod=%.2f\n\n", ...
         data.Tc_in(i), detailed.Tc_in, data.Tc_out(i), detailed.Tc_out, data.Tdc_out(i), detailed.Tdc_out, data.Twct_in(i), detailed.Twct_in, data.Twct_out(i), detailed.Twct_out)
+    display(detailed.qwct)
 end
 
