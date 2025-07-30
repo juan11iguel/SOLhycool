@@ -18,6 +18,10 @@
   hoverlabel_bgcolor: "rgba(255,255,255,0.8)", // Background color for hover labels
   title_delta_y: 0.001,
 
+  vertical_highlights: {
+    "var_id": "optim_eval",
+  }
+
   # Individual plot attributes
   # First specify the plot attributes
   # In traces, specify the variables to be plotted, the definition order controls the order of the traces in the plot
@@ -64,14 +68,14 @@
       ylabels_right: ["ºC"],
       ylabels_left: ["<b>Load<br>conditions</b><br>kW<sub>th</sub>"],
       ylims_right: 'manual',
-      ylims_left: [0, 250],
+      ylims_left: [0, 500],
       showlegend: true,
       legend_position: "top",
 
       traces_left: [
         {
-          var_id: "Qc_released",
-          name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
+          var_id: "Qc_absorbed",
+          name: "Q̇<sub>c</sub>", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -120,50 +124,52 @@
       ylims_right: 'manual',
       showlegend: true,
       legend_position: "top",
+      "show_vertical_highlights": false, // Disable vertical highlights for this plot
+
 
       traces_left: [
-        // {
-        //   var_id: "Vavail",
-        //   name: "V<sub>available</sub> (m³)",
-        //   mode: "lines",
-        //   color: "plotly_cyan",
-        //   width: 3,
-        //   fill: "tozeroy",
-        //   showlegend: true,
-        // },
+        {
+          var_id: "Vavail",
+          name: "V<sub>avail</sub>",
+          mode: "lines",
+          color: "plotly_cyan",
+          width: 3,
+          fill: "tozeroy",
+          showlegend: true,
+        },
       ],
-      // traces_right: [
-      //   [
-      //     {
-      //       var_id: "Pe",
-      //       name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
-      //       mode: "lines",
-      //       color: "plotly_yellow",
-      //       width: 3,
-      //       showlegend: true,
-      //     },
-      //   ],
-      //   [
-      //     {
-      //       var_id: "Pw_s1",
-      //       name: "Water price - source 1 (€/l)",
-      //       mode: "lines",
-      //       color: "turquesa",
-      //       dash: "solid",
-      //       width: 3,
-      //       showlegend: true,
-      //     },
-      //     {
-      //       var_id: "Pw_s2",
-      //       name: "Water price - source 2 (€/l)",
-      //       mode: "lines",
-      //       color: "turquesa",
-      //       dash: "dash",
-      //       width: 3,
-      //       showlegend: true,
-      //     },
-      //   ]
-      // ],
+      traces_right: [
+        [
+          {
+            var_id: "Pe",
+            name: "P<sub>e</sub>", # "T<sub>amb,ts</sub>",
+            mode: "lines",
+            color: "plotly_yellow",
+            width: 3,
+            showlegend: true,
+          },
+        ],
+        [
+          {
+            var_id: "Pw_s1",
+            name: "P<sub>w,s1</sub>",
+            mode: "lines",
+            color: "turquesa",
+            dash: "solid",
+            width: 3,
+            showlegend: true,
+          },
+          {
+            var_id: "Pw_s2",
+            name: "P<sub>w,s2</sub>",
+            mode: "lines",
+            color: "turquesa",
+            dash: "dash",
+            width: 3,
+            showlegend: true,
+          },
+        ]
+      ],
     },
 
     # Results
@@ -257,6 +263,7 @@
       # "bg_color": "bg_gray",
       "ylabels_left": ["<b>Cooling power<br>distribution</b><br>W<sub>th</sub>"],
       "showlegend": true,  
+      "show_vertical_highlights": false, // Disable vertical highlights for this plot
       "legend_position": "side",
       "ylims_left": [0, 250],
       "traces_left": [
@@ -297,8 +304,10 @@
       row_height: 1,
       // bg_color: "bg_gray",
       ylabels_left: ["<b>Wet Cooler<br>(WCT)</b><br>ºC"],
+      ylabels_right: ["<b>Water consumption</b><br>l/h"],
       // ylabels_right: ["ºC", "%"],
       ylims_left: 'manual',
+      ylims_right: [0, 1250],
       showlegend: true,
       legend_position: "top",
 
@@ -340,6 +349,16 @@
             showlegend: true,
           },
       ],
+      traces_right: [
+        {
+          var_id: "Cw",
+          name: "C<sub>w,wct</sub>",
+          mode: "markers",
+          color: "plotly_cyan",
+          width: 2,
+          showlegend: true,
+        },
+      ]
     },
     
     dc: {
@@ -389,6 +408,16 @@
             showlegend: true,
           }
         ],
+      //   traces_right: [
+      //   {
+      //     var_id: "Ce",
+      //     name: "C<sub>w,wct</sub>",
+      //     mode: "markers+lines",
+      //     color: "plotly_cyan",
+      //     width: 2,
+      //     showlegend: true,
+      //   },
+      // ],
     },
   
     # Control plots

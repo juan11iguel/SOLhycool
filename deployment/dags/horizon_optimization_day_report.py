@@ -8,8 +8,10 @@ import pandas as pd
 from loguru import logger
 from airflow.sdk import dag, task
 import hjson
+import copy
 
-from deployment.webdav import init_file_system
+from solhycool_deployment.webdav import init_file_system
+from solhycool_modeling import EnvironmentVariables
 from solhycool_modeling.utils import add_aggretated_variables
 from solhycool_optimization.utils.serialization import load_multiple_optimization_results
 from solhycool_visualization.operation import plot_results
@@ -23,7 +25,7 @@ from phd_visualizations import save_figure
 def horizon_optimization_day_report(
     optimization_url: str = "https://collab.psa.es/s/WR6MxyJsnZWi9xH",
     test_data_url: str = "https://collab.psa.es/s/CcosLNJKw4Dbg9C",
-    test_data_suffix_id: str = "_process_timeseries",
+    test_data_fn: str = f"{datetime.datetime.now().strftime("%Y%m%d")}_process_timeseries",
     date_str: str = datetime.datetime.now().strftime("%Y%m%d"),
     plt_config_path: str = "./data/plot_config_day_test.hjson",
     compress_and_delete: bool = True,
@@ -47,7 +49,7 @@ def horizon_optimization_day_report(
     #### Parameters:
     - **optimization_url**: WebDAV URL containing optimization results directories
     - **test_data_url**: WebDAV URL containing experimental test data CSV files  
-    - **test_data_suffix_id**: Suffix for the experimental data filename (e.g., "_process_timeseries")
+    - **test_data_fn**: Experimental data filename (e.g., "20250101_process_timeseries")
     - **date_str**: Target date in YYYYMMDD format (defaults to today)
     - **plt_config_path**: Path to HJSON configuration file defining plot layout and styling
     - **compress_and_delete**: If True, compress results to .tar.gz and delete source directory
@@ -60,7 +62,7 @@ def horizon_optimization_day_report(
     - Hydraulic distribution analysis across multiple optimization runs
     
     #### Data Sources:
-    - Experimental data: `{date_str}{test_data_suffix_id}.csv` from test_data_url
+    - Experimental data: `{test_data_fn}.csv` from test_data_url
     - Optimization results: All directories matching `*{date_str}*` from optimization_url
     
     #### Example Usage:
@@ -88,7 +90,7 @@ def horizon_optimization_day_report(
         date_str: str,
         optimization_url: str, 
         test_data_url: str, 
-        test_data_suffix_id: str,
+        test_data_fn: str,
         plt_config_path: str,
         compressed_results: bool,
         max_n_plot_points: int
@@ -126,7 +128,16 @@ def horizon_optimization_day_report(
         
         #### Key Features:
         - **Robust data handling**: Manages timezone conversions, missing data, alignment
-        - **Performance optimization**: Limits plot points to prevent browser overload  
+        - **Performance optimization**: Limits pdf_exp["HR"].values,
+            Tamb=df_exp["Tamb"].values,
+            Tv=df_exp["Tv"].values,
+            mv=df_exp["mv"].values,
+            
+            Vavail=df_opt["Vavail"].dropna().iloc[0], # From optimization results (just Vavail0)
+            Pe=df_opt["Pe"].values, # From optimization results
+            Pw_s1=df_opt["Pw_s1"].values, # From optimization results
+            Pw_s2=df_opt["Pw_s2"].values, # From optimization results
+        )lot points to prevent browser overload  
         - **Multi-format output**: Interactive HTML + static PNG/SVG for different use cases
         - **Compression support**: Optional .tar.gz packaging for efficient storage
         - **Cleanup automation**: Removes temporary files and optionally source data
@@ -142,7 +153,7 @@ def horizon_optimization_day_report(
             date_str: Target date in YYYYMMDD format
             optimization_url: WebDAV URL for optimization results
             test_data_url: WebDAV URL for experimental data
-            test_data_suffix_id: Filename suffix for experimental data
+            test_data_fn: Filename for experimental data
             plt_config_path: Path to plot configuration JSON
             compressed_results: Whether to compress and clean up outputs
             max_n_plot_points: Maximum data points to include in plots
@@ -160,9 +171,9 @@ def horizon_optimization_day_report(
         
         # === EXPERIMENTAL DATA LOADING ===
         # Load and process experimental data from the test facility
-        logger.info(f"Loading experimental data: {date_str}{test_data_suffix_id}.csv")
+        logger.info(f"Loading experimental data: {test_data_fn}.csv")
         df_exp = pd.read_csv(
-            init_file_system(test_data_url).open(f"{date_str}{test_data_suffix_id}.csv"),
+            init_file_system(test_data_url).open(f"{test_data_fn}.csv"),
             index_col="time", parse_dates=True
         )
         
@@ -172,8 +183,6 @@ def horizon_optimization_day_report(
         else:
             df_exp.index = df_exp.index.tz_convert("UTC")
             
-        # Calculate derived variables (thermal powers, hydraulic ratios, costs, etc.)
-        df_exp = add_aggretated_variables(df_exp)
 
         # === OPTIMIZATION RESULTS LOADING ===
         # Create temporary directory for downloading optimization results
@@ -191,9 +200,12 @@ def horizon_optimization_day_report(
         dfs, eval_times, df_opt = load_multiple_optimization_results(
             temp_dir_path, 
             date_str=date_str,
-            look_for="dir"  # Look for directories containing .h5 files
+            look_for="dir",  # Look for directories containing .h5 files
+            eval_time_from_parent_fn = True
         )
+        opt_index = copy.deepcopy(df_opt.index)
 
+        
         # === DATA PREPROCESSING FOR VISUALIZATION ===
         # Reduce experimental data points for better plot performance
         # Use linear interpolation to select evenly spaced points
@@ -203,10 +215,25 @@ def horizon_optimization_day_report(
             logger.info(f"Reduced experimental data to {max_n_plot_points} points for plotting")
         
         # Create aligned datasets for different plot types:
-        # df_exp2: experimental data aligned to optimization index (for hydraulic distribution)
         # df_opt2: optimization data aligned to experimental index (for timeseries comparison)
-        df_exp2 = df_exp.reindex(df_opt.index, method="ffill")
         df_opt2 = df_opt.reindex(df_exp.index, method="ffill")
+        
+        # Calculate derived variables (thermal powers, hydraulic ratios, costs, etc.)
+        ev = EnvironmentVariables(
+            HR=df_exp["HR"].values,
+            Tamb=df_exp["Tamb"].values,
+            Tv=df_exp["Tv"].values,
+            mv=df_exp["mv"].values,
+            
+            # From optimization results
+            Vavail=df_opt2["Vavail"].values,
+            Pe=df_opt2["Pe"].values,
+            Pw_s1=df_opt2["Pw_s1"].values,
+            Pw_s2=df_opt2["Pw_s2"].values,
+        )
+        # df_exp2: experimental data aligned to optimization index (for hydraulic distribution)
+        df_exp = add_aggretated_variables(df_exp, ev=ev, eval_times=eval_times)
+        df_exp2 = df_exp.reindex(opt_index, method="ffill")
         
         # === OUTPUT PREPARATION ===
         # Export the merged optimization results for reference
@@ -286,7 +313,7 @@ def horizon_optimization_day_report(
         date_str=date_str,
         optimization_url=optimization_url,
         test_data_url=test_data_url,
-        test_data_suffix_id=test_data_suffix_id,
+        test_data_fn=test_data_fn,
         plt_config_path=plt_config_path,
         compressed_results=compress_and_delete,
         max_n_plot_points=max_n_plot_points

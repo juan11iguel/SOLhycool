@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Literal, Optional
 import string
 from loguru import logger
+import datetime
 
 from phd_visualizations.test_timeseries import experimental_results_plot
 from solhycool_optimization import DayResults, MultipleDayResults
@@ -13,10 +14,10 @@ from solhycool_visualization.optimization import plot_pareto_front
 
 
 def plot_hydraulic_distribution(
-    qc: list[np.ndarray] | np.ndarray, 
-    Rp: list[np.ndarray] | np.ndarray, 
-    Rs: list[np.ndarray] | np.ndarray, 
-    x: np.ndarray = None,
+    qc: list[np.ndarray] | np.ndarray | pd.Series | list[pd.Series], 
+    Rp: list[np.ndarray] | np.ndarray | pd.Series | list[pd.Series],
+    Rs: list[np.ndarray] | np.ndarray | pd.Series | list[pd.Series],
+    x: Optional[np.ndarray] = None,
     labels: list[str] = None,
     legend_id: str = "hydraulic_distribution",
     showticklabels: bool = True,
@@ -25,56 +26,52 @@ def plot_hydraulic_distribution(
     highlight_bar_idx: Optional[int] = None,
 ) -> go.Figure:
     
-    if isinstance(qc, np.ndarray):
+    # Ensure all inputs are lists
+    if isinstance(qc, np.ndarray | pd.Series):
         qc = [qc]
         Rp = [Rp]
         Rs = [Rs]
-    
+        
     n_series = len(qc)
-    assert all(len(lst) == n_series for lst in [Rp, Rs]), "All input lists must have the same length"
+    assert all(len(lst) == n_series for lst in [Rp, Rs]), "All input lists must have the same length"# Determine if working with time series
+    is_timeseries = isinstance(qc[0], pd.Series)
     
-    # Find the maximum length among all arrays
-    max_length = max(max(len(q) for q in qc), max(len(r) for r in Rp), max(len(r) for r in Rs))
-    
-    # Pad arrays to match the maximum length
-    def pad_array(arr: np.ndarray, target_length: int, pad_value: float, pad_side: str) -> np.ndarray:
-        if len(arr) == target_length:
-            return arr
-        pad_width = target_length - len(arr)
-        if pad_side == "left":
-            return np.pad(arr, (pad_width, 0), constant_values=pad_value)
-        else:  # right
-            return np.pad(arr, (0, pad_width), constant_values=pad_value)
-    
-    # Pad all arrays to the same length
-    qc = [pad_array(q, max_length, pad_value, pad_side) for q in qc]
-    Rp = [pad_array(r, max_length, pad_value, pad_side) for r in Rp]
-    Rs = [pad_array(r, max_length, pad_value, pad_side) for r in Rs]
-    
-    n_points = max_length
-    
-    if x is None:
-        x = np.arange(n_points)
-    elif len(x) != n_points:
-        # If x is provided but doesn't match the padded length, pad it as well
-        if isinstance(x[0], (int, float)):
-            # For numeric x, extend with sequential values
-            if pad_side == "left":
-                x_start = x[0] - (n_points - len(x))
-                x = np.arange(x_start, x[0]).tolist() + x.tolist()
-            else:
-                x_end = x[-1] + (n_points - len(x))
-                x = x.tolist() + np.arange(x[-1] + 1, x_end + 1).tolist()
+    if is_timeseries:
+        if x is None:
+            x = qc[0].index
         else:
-            # For non-numeric x (e.g., datetime), pad with None or duplicate values
+            # Ensure x is a datetime index for resampling
+            if not isinstance(x, (pd.DatetimeIndex, pd.Index)):
+                x = pd.to_datetime(x)
+        
+        # Resample all Series to match the common index
+        qc = [s.reindex(x).fillna(pad_value).to_numpy() for s in qc]
+        Rp = [s.reindex(x).fillna(pad_value).to_numpy() for s in Rp]
+        Rs = [s.reindex(x).fillna(pad_value).to_numpy() for s in Rs]
+        x = x.to_numpy()  # Convert x to numpy for plotting
+    else:
+        # Pad non-timeseries arrays to the maximum length
+        def pad_array(arr: np.ndarray, target_length: int) -> np.ndarray:
+            if len(arr) == target_length:
+                return arr
+            pad_width = target_length - len(arr)
             if pad_side == "left":
-                x = [None] * (n_points - len(x)) + x.tolist()
+                return np.pad(arr, (pad_width, 0), constant_values=pad_value)
             else:
-                x = x.tolist() + [None] * (n_points - len(x))
-        x = np.array(x)
+                return np.pad(arr, (0, pad_width), constant_values=pad_value)
+        
+        max_length = max(max(len(q) for q in qc), max(len(r) for r in Rp), max(len(r) for r in Rs))
+        qc = [pad_array(np.asarray(q), max_length) for q in qc]
+        Rp = [pad_array(np.asarray(r), max_length) for r in Rp]
+        Rs = [pad_array(np.asarray(r), max_length) for r in Rs]
+        
+        if x is None:
+            x = np.arange(max_length)
     
     if labels is None:
         labels = list(string.ascii_uppercase[:n_series])
+
+    n_points = len(x)
 
     fig = go.Figure()
 
@@ -110,7 +107,7 @@ def plot_hydraulic_distribution(
         fig.add_trace(go.Bar(
             x=x,
             y=np.where(valid_mask, qwct_s, None),
-            name='DC 🠒 WCT',
+            name='DC - WCT',
             showlegend=True if i == 0 else False,
             # legendgroup=legend_id,
             offsetgroup=label,
@@ -126,7 +123,7 @@ def plot_hydraulic_distribution(
                     solidity=0.5,
                 ),
             ),
-            hovertemplate = f'DC 🠒 WCT ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
+            hovertemplate = f'DC - WCT ({label}) | %{{y:.2f}}<extra></extra>' if i == 0 else f'{label} | %{{y:.2f}}<extra></extra>',
         ))
         
         fig.add_trace(go.Bar(
@@ -242,9 +239,10 @@ def organ_transplant(fig: go.Figure, fig_aux: go.Figure, plot_id: str, transplan
 
 def plot_results(
     plot_config: dict, 
-    df: pd.DataFrame = None, 
-    df_comp: pd.DataFrame = None,
-    day_results: DayResults | MultipleDayResults = None, 
+    df: Optional[pd.DataFrame] = None, 
+    df_comp: Optional[pd.DataFrame] = None,
+    comp_trace_labels: Optional[list[str]] = ["[opt]"],
+    day_results: Optional[DayResults | MultipleDayResults] = None, 
     template: Optional[str] = None,
     hydraulic_distribution_dfs: Optional[list[pd.DataFrame]] = None,
     hydraulic_distribution_highlight_bar_idx: Optional[int] = None,
@@ -259,7 +257,14 @@ def plot_results(
     if df is None:
         df = day_results.df_results
     
-    fig = experimental_results_plot(plot_config, df=df, df_comp=df_comp, resample=False, template=template)
+    fig = experimental_results_plot(
+        plot_config, 
+        df=df, 
+        df_comp=df_comp, 
+        resample=False, 
+        template=template, 
+        comp_trace_labels=comp_trace_labels,
+    )
     
     # for plot_id in plot_config["plots"]:
     #     assert plot_id in supported_transplants, f"Supported plot types are: {supported_transplants}, not {plot_id}"
@@ -279,9 +284,9 @@ def plot_results(
             else:
                 df_ = [df] if df_comp is None else [df, df_comp]
                 
-            qc = [df_["qc"].values for df_ in df_]
-            Rp = [df_["Rp"].values for df_ in df_]
-            Rs = [df_["Rs"].values for df_ in df_]
+            qc = [df_["qc"] for df_ in df_]
+            Rp = [df_["Rp"] for df_ in df_]
+            Rs = [df_["Rs"] for df_ in df_]
 
             fig = organ_transplant(
                 fig=fig,

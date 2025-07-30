@@ -94,7 +94,12 @@ def flows_to_ratios(qc: float, qdc: float, qwct: float) -> tuple[float, float]:
     return Rp, Rs
 
     
-def add_aggretated_variables(df: pd.DataFrame, ev: Optional[EnvironmentVariables] = None) -> pd.DataFrame:
+def add_aggretated_variables(
+    df: pd.DataFrame, 
+    ev: Optional[EnvironmentVariables] = None, 
+    scada_to_model_units: bool = True, 
+    eval_times: list[datetime] | list[str] | None = None
+) -> pd.DataFrame:
     """
     Add aggregated variables to the DataFrame.
     Mainly: thermal powers, costs
@@ -105,6 +110,29 @@ def add_aggretated_variables(df: pd.DataFrame, ev: Optional[EnvironmentVariables
     Returns:
         A DataFrame with additional aggregated variables.
     """
+    
+    dt_formats_to_try = ["%Y%m%d_%H%M", "%Y%m%dT%H%M", "%Y%m%d %H%M"]
+    
+    df = df.copy()
+    
+    if eval_times is not None:
+        df["optim_eval"] = 0  # default value
+        if isinstance(eval_times[0], str):
+            for fmt in dt_formats_to_try:
+                try:
+                    event_times = pd.to_datetime(eval_times, format=fmt, utc=True)
+                    break
+                except ValueError:
+                    continue
+            else:
+                raise ValueError(f"None of the provided formats matched: {dt_formats_to_try}")
+        # Set 'event' to 1 for each 5-minute window starting at each event time
+        for t in event_times:
+            df.loc[t : t + pd.Timedelta(minutes=4), "optim_eval"] = 1
+
+    # Convert units
+    if scada_to_model_units:
+        df["Cw"] = df["Cw"].ewm(alpha=0.04, adjust=False).mean() * 60 # Convert l/min to l/h
     
     # Calculate thermal powers
     # w_props(T=df["Tdc_in"] + 273.15, P=1.6).cp
@@ -130,23 +158,52 @@ def add_aggretated_variables(df: pd.DataFrame, ev: Optional[EnvironmentVariables
     # Add qwct_s
     if "qwct_s" not in df.columns:
         df["qwct_s"] = df["qwct"] + df["qdc"]*df["Rs"]
-    
-    # If environment variables are provided
-    if ev is not None:
-        # calculate the associated cost of operation
-        if ev.Pe is not None:
-            ...
-        if ev.Cw is not None:
-            ...
         
-        # calculate the available water evolution
-        if ev.Vavail is not None:
-            elapsed_time_between_steps = pd.Series(np.diff(df.index)).dt.total_seconds().div(3600).tolist()
-            Vavail = [ev.Vavail if ev.Vavail is not Iterable else ev.Vavail[0]]
-            for elapsed_time, Cw in zip(elapsed_time_between_steps, df["Cw"].values):
-                Vavail.append(
-                    max(0, Vavail[-1] - Cw * elapsed_time)
-                )
-            df["Vavail"] = Vavail
+    if ev is not None and ev.Pe is not None:
+        df["Pe"] = ev.Pe
+        # calculate the associated cost of operation
+        # TODO: Create a function that reads the coefficients and uses np.polyval
+        # if ev.Pe is not None:
+        #     df["Je"] = ev.Pe * df[""]
+    if ev is not None and ev.Pw_s1 is not None and ev.Pw_s2 is not None:
+        df["Pw_s1"] = ev.Pw_s1
+        df["Pw_s2"] = ev.Pw_s2
+    
+    # calculate the available water evolution
+    if ev is not None and ev.Vavail is not None:
+        elapsed_time_between_steps = pd.Series(np.diff(df.index)).dt.total_seconds().div(3600).tolist() # hours
+        Cw_s1 = []
+        Cw_s2 = []
+        Jw_s1 = []
+        Jw_s2 = []
+        
+        # From the first non-NaN index to the end of the DataFrame
+        i0 = np.where(~np.isnan(ev.Vavail))[0][0] # Initial available water volume
+        Vavail = [ev.Vavail[i0]] 
+        for i in range(i0, len(df)):
+            ds = df.iloc[i]
+            elapsed_time = elapsed_time_between_steps[i] if i < len(elapsed_time_between_steps) else 1e-3
             
+            Cw_s1.append( min( ds["Cw"]*elapsed_time, Vavail[-1]*1e3 ) / elapsed_time )
+            Cw_s2.append( ds["Cw"] - Cw_s1[-1] )
+            Vavail.append(
+                Vavail[-1]-(Cw_s1[-1]*1e-3*elapsed_time)
+            )
+            if ev.Pw_s1 is not None and ev.Pw_s2 is not None:
+                Pw_s1 = ev.Pw_s1 if np.ndim(ev.Pw_s1) == 0 else ev.Pw_s1[i]
+                Pw_s2 = ev.Pw_s2 if np.ndim(ev.Pw_s2) == 0 else ev.Pw_s2[i]
+            
+                Jw_s1.append( Cw_s1[-1] * Pw_s1 )
+                Jw_s2.append( Cw_s2[-1] * Pw_s2 )
+            
+            i += 1
+
+        # Left pad with nans
+        nans_to_add = np.array([np.nan] * (len(df) - len(Cw_s1)))
+        df["Cw_s1"] = np.concatenate((nans_to_add, Cw_s1))
+        df["Cw_s2"] = np.concatenate((nans_to_add, Cw_s2))
+        df["Jw_s1"] = np.concatenate((nans_to_add, Jw_s1)) if Jw_s1 else np.array([np.nan] * len(df))
+        df["Jw_s2"] = np.concatenate((nans_to_add, Jw_s2)) if Jw_s2 else np.array([np.nan] * len(df))
+        df["Vavail"] = np.concatenate((nans_to_add, Vavail[:-1])) # Remove the last value as it is not needed
+
     return df
