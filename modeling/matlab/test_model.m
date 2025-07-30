@@ -5,11 +5,13 @@ clc
 addpath(genpath("utils/"))
 addpath(genpath("component_models/"))
 
-data = readtable("../assets/cc_out_exp.csv");
+data = readtable("../data/cc_out_exp.csv");
 % To update/modify data, load the new data, modify it, and finally export it
 % writetable(data, "assets/data.csv")
 
 N = height(data);
+
+params = default_parameters();
 
 %% Visualize loh caloreh
 compute_condenser_heats(data, 7, visualize=true);
@@ -52,24 +54,27 @@ clc
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
-model_fun = @dc_model_physical;
+model_fun = @dc_model_data;
 
 % [Tout, Pe] = model_dc(Tamb, Tin, w_fan, q)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
-% inactive_idxs = [];
+inactive_idxs = [];
 for i=1:N
     fprintf("Evaluating step %d\n", i)
-    [Tout_data(i), Ce_data(i)] = model_fun(data.Tamb(i), data.Tdc_in(i), data.qdc(i), data.wdc(i));
+    [Tout_data(i), Ce_data(i)] = model_fun(data.Tamb(i), data.Tdc_in(i), data.qdc(i), data.wdc(i), ...
+        model_data_path=params.dc_model_data_path, lb=params.dc_lb, ub=params.dc_ub, ce_coeffs=params.dc_ce_coeffs);
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
     if Ce_data(i) < 1e-3
-        % inactive_idxs = [inactive_idxs, i];
+        inactive_idxs = [inactive_idxs, i];
     end
 end
+inactive_idxs
+active_idxs = ~ismember(1:height(data), inactive_idxs);
 % print out model performance
 fprintf("DC model Tdc_out RMSE (ºC) \t| Data based = %.2f / Physical = %.2f\n", rmse(data.Tdc_out', Tout_data), nan)
 results = array2table([Tout_data', Ce_data'], "VariableNames", ["Tdc_out", "Ce"]);
-regression_plot(data, rearrangeTable(data, results), [15], output_vars_sensor_types=repmat("pt100", 1, 1));
+regression_plot(data(active_idxs, :), rearrangeTable(data(active_idxs, :), results(active_idxs, :)), [15], output_vars_sensor_types=repmat("pt100", 1, 1));
 
 %% WCT
 clc
@@ -81,29 +86,35 @@ clc
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
-model_fun = @wct_model_physical;
+model_fun = @wct_model_data;
 
 % [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
+inactive_idxs = [];
 for i=1:N
     fprintf("Evaluating step %d\n", i)
-    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i));
+    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i), ...
+        model_data_path=params.wct_model_data_path, lb=params.wct_lb, ub=params.wct_ub, ce_coeffs=params.wct_ce_coeffs);
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
+    if Cw_data(i) < 1e-3
+        inactive_idxs = [inactive_idxs, i];
+    end
 end
+active_idxs = ~ismember(1:height(data), inactive_idxs);
 % print out model performance
 fprintf("WCT model Twct_out RMSE (ºC)\t| Data based = %.2f / Physical = %.2f\n", rmse(data.Twct_out', Tout_data), nan)
 fprintf("WCT model Cw RMSE (l/h) \t| Data based = %.2f / Physical = %.2f\n", rmse(data.Cw', Cw_data), nan)
 
 results = array2table([Tout_data', Ce_data', Cw_data'], "VariableNames", ["Twct_out", "Ce", "Cw"]);
-regression_plot(data, rearrangeTable(data, results), [16, 13], output_vars_sensor_types=["pt100", "paddle_flow_meter"], units=["ºC", "l/h"]);
+regression_plot(data(active_idxs,:), rearrangeTable(data(active_idxs,:), results(active_idxs,:)), [16, 13], output_vars_sensor_types=["pt100", "paddle_flow_meter"], units=["ºC", "l/h"]);
 
 
 %% Combined model
 clc
 
-model_type = "physical";
+model_type = "data";
 
 params = default_parameters();
 if strcmp(model_type, "physical")

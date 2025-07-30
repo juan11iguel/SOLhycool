@@ -88,6 +88,9 @@ def horizon_optimization(
             path_selector_params=algo_params,
         )
         
+        # Initialize WebDAV file system
+        fs = init_file_system(data_url)
+        
         # Write results table
         day_results.df_results.to_csv(fs.open(f'{file_id_results}.csv', 'w'), index=True)
         

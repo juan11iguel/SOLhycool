@@ -30,7 +30,7 @@ function params = default_parameters()
     
     % Paths
     models_folder = fullfile(fileparts(mfilename('fullpath')), "/component_models");
-    params.dc_model_data_path = char(fullfile(models_folder, "dc_model_data.mat"));
-    params.wct_model_data_path = char(fullfile(models_folder, "wct_model_data.mat"));
+    params.dc_model_data_path = char(fullfile(models_folder, "model_data_dc_fp_gaussian.mat")); % dc_model_data.mat
+    params.wct_model_data_path = char(fullfile(models_folder, "model_data_wct_fp_gaussian.mat")); % wct_model_data.mat
 end
 

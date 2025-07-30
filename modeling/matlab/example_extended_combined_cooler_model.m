@@ -12,7 +12,7 @@ Tv_in = [];
 
 %% Data-driven
 params = default_parameters();
-params.wct_model_data_path = char("/home/patomareao/Downloads/wct_model_data.mat");
+% params.wct_model_data_path = char("/home/patomareao/Downloads/wct_model_data.mat");
 
 options = struct('model_type', 'data', 'lb', Tv, 'ub', Tv, 'x0', nan, 'silence_warnings', true, 'parameters', params); % Default values
 options.parameters.condenser_option = 7;
