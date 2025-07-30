@@ -9,13 +9,13 @@ function params = default_parameters()
     
     % DC               "Tamb",    "Tin",   "q", "w_fan"
     params.dc_lb = 0.99*[3.0      25.0,    6.0,  11];
-    params.dc_ub = 1.01*[50.0     45.0,    24.0, 99.1800];
+    params.dc_ub = 1.01*[50.0     55.0,    24.0, 99.1800];
     % wdc (%) -> Ce_dc (W)
     params.dc_ce_coeffs = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
     
     % WCT               "Tamb",     "HR",    "Tin",      "q",     "w_fan"
     params.wct_lb = 0.99*[3.0       1.0      25.0        6.0       21.0];
-    params.wct_ub = 1.01*[50.0      99.0     45.0        24.0      93.4161];
+    params.wct_ub = 1.01*[50.0      99.0     55.0        24.0      93.4161];
     % wwct (%) -> Ce_wct (W)
     params.wct_ce_coeffs = [0.4118, -11.54, 189.4];
 
