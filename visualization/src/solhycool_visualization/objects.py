@@ -92,7 +92,7 @@ class HorizonResultsVisualizer:
         """
         Plot the timeseries results of the optimization.
         """
-        return plot_results(self.results_plot_config, day_results=self.day_results, template="plotly_white")
+        return plot_results(self.results_plot_config, day_results=self.day_results, template="plotly_white", comp_trace_labels=None)
         
     def generate_all(
         self,

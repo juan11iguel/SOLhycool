@@ -46,6 +46,7 @@ def evaluate_decision_variables(
             for rp_val in dv_values.Rp:
                 for rs_val in dv_values.Rs:
                     for wdc_val in dv_values.wdc:
+                        # print(f"Evaluating: qc={qc_val}, Rp={rp_val}, Rs={rs_val}, wdc={wdc_val}")
                         dv = DecisionVariables(qc=qc_val, Rp=rp_val, Rs=rs_val, wdc=wdc_val).to_matlab()
                         Ce_kWe, Cw_lh, d, valid = cc_model.evaluate_operation(
                             ev_m.Tamb, ev_m.HR, ev_m.mv, dv.qc, dv.Rp, dv.Rs, dv.wdc, ev_m.Tv, nargout=4

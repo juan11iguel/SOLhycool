@@ -12,8 +12,8 @@ from solhycool_optimization import DayResults, ValuesDecisionVariables
 from solhycool_optimization.problems.horizon.evaluation import evaluate_day
 from solhycool_optimization.problems.horizon import AlgoParams
 from solhycool_visualization.utils import generate_visualizations
-from deployment.webdav import init_file_system
-from deployment.utils import cleanup_paths
+from solhycool_deployment.webdav import init_file_system
+from solhycool_deployment import cleanup_paths
 
 
 @dag(
@@ -69,7 +69,7 @@ def horizon_optimization(
         # Read environment
         df_env = pd.read_csv(fs.open(f'{file_id_env}.csv'), index_col=0, parse_dates=True)
         
-        df_env.index = pd.to_datetime(df_env.index)
+        # df_env.index = pd.to_datetime(df_env.index)
         # date_str = df_env.index[0].strftime("%Y%m%d")
         dv_values=ValuesDecisionVariables.initialize(
             values_per_dv=values_per_decision_variable
@@ -104,16 +104,15 @@ def horizon_optimization(
         """
         Creates visualization figures and uploads them directly to WebDAV.
         """
-        # Initialize WebDAV file system
-        fs = init_file_system(out_url)
         
-        # Create filename with timestamp
-        date_str = datetime.datetime.now().strftime("%Y%m%d")
-        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        output_dir = f"{date_str}/optimization_results_eval_at_{current_time}/"
-
         # Load results
         day_results = DayResults.initialize(Path(export_path))
+        
+        # Create filename with timestamp
+        date_str = day_results.index[0].strftime("%Y%m%d") # datetime.datetime.now().strftime("%Y%m%d")
+        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        output_dir = f"extended/{date_str}/optimization_results_eval_at_{current_time}/"
+
         
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
@@ -128,6 +127,8 @@ def horizon_optimization(
             # Save the day results
             day_results.export(temp_dir_path / "results.h5", reduced=True, single_day=False)
                 
+            # Initialize WebDAV file system
+            fs = init_file_system(out_url)
             # Copy all files from temp_dir to output_dir before the context exits
             fs.put(f"{str(temp_dir_path)}/", output_dir, recursive=True)
 

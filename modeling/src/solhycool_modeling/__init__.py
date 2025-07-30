@@ -18,7 +18,7 @@ class EnvIds(str, Enum):
     Tv = "Tv_C"
     Q = "Q_kW"
     Pe = "Ce_spot_market_price_eur_kWh"
-    Pw = "water_price_eur_l"
+    Pw_s1 = "water_price_eur_l"
     Pw_s2 = "water_price_alternative_eur_l"
     Vavail = "Vavail_m3"
     deltaV = "deltaV_m3_h"
@@ -27,15 +27,15 @@ class EnvIds(str, Enum):
 @dataclass
 class ModelInputsRange:
     """ Real decision variables box bounds, as in: (lower bound, upper bound)"""
-    qc: tuple[float, float] = (5.2211, 24.1543)
+    qc: tuple[float, float] = (6., 24.)
     Rp: tuple[float, float] = (0., 1.)
     Rs: tuple[float, float] = (0., 1.)
     wdc: tuple[float, float] = (11.0, 99.1800)
     wwct: tuple[float, float] = (21., 93.4161)
-    Tamb: tuple[float, float] = (9.06, 38.75)
-    HR: tuple[float, float] = (10.33, 89.25)
-    Tdc_in: tuple[float, float] = (33.16, 41.92)
-    Twct_in: tuple[float, float] = (31.17, 40.94)
+    Tamb: tuple[float, float] = (3., 50.)
+    HR: tuple[float, float] = (1., 99.)
+    Tdc_in: tuple[float, float] = (25., 45.)
+    Twct_in: tuple[float, float] = (25., 45.)
     
 @dataclass
 class EnvironmentVariables:
@@ -70,6 +70,9 @@ class EnvironmentVariables:
     def __post_init__(self) -> None:
         
         assert self.mv is not None or self.Q is not None, "Either mv or Q must be provided"
+        assert not np.any(np.isnan(self.Tv)), "Tv cannot contain NaN values"
+        assert not np.any(np.isnan(self.HR)), "HR cannot contain NaN values"
+        assert not np.any(np.isnan(self.Tamb)), "Tamb cannot contain NaN values"
         
         if self.mv is None:
         
@@ -124,6 +127,8 @@ class EnvironmentVariables:
                 self.Q = matlab.double([Q])
             else:
                 self.Q = Q
+                
+            assert not np.any(np.isnan(self.Q)), "Q cannot contain NaN values"
             
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame) -> "EnvironmentVariables":
@@ -168,8 +173,8 @@ class EnvironmentVariables:
             Tv=ds["Tv_C"],
             mv=ds["mv_kgh"] if "mv_kgh" in ds else None, 
             Pe=ds[EnvIds.Pe.value],
-            Pw=ds[EnvIds.Pw.value] if EnvIds.Pw.value in ds else None,
-            Pw_s1=ds[EnvIds.Pw.value] if EnvIds.Pw.value in ds else None,
+            Pw=ds[EnvIds.Pw_s1.value] if EnvIds.Pw_s1.value in ds else None,
+            Pw_s1=ds[EnvIds.Pw_s1.value] if EnvIds.Pw_s1.value in ds else None,
             Pw_s2=ds[EnvIds.Pw_s2.value] if EnvIds.Pw_s2.value in ds else None,
             Vavail=ds[EnvIds.Vavail.value] if EnvIds.Vavail.value in ds else None,
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 

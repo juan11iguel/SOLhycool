@@ -16,7 +16,7 @@
     b:20,
     pad:5
   },
-  vertical_spacing: 0.01,
+  vertical_spacing: 0.05,
   xdomain: [0, 0.9],
   // yaxis_right_pos
   xminor: true,

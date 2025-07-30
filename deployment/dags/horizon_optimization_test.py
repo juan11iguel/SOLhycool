@@ -12,7 +12,7 @@ from solhycool_optimization import DayResults, ValuesDecisionVariables
 from solhycool_optimization.problems.horizon.evaluation import evaluate_day
 from solhycool_optimization.problems.horizon import AlgoParams
 from solhycool_visualization.utils import generate_visualizations
-from deployment.webdav import init_file_system
+from solhycool_deployment.webdav import init_file_system
 
 def create_mock_day_results(date_str: str, template_path: Path, template_date_str: str = "20220501") -> DayResults:
     """
