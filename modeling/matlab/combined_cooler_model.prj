@@ -165,6 +165,8 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/condenser_model.m</file>
       <file>${PROJECT_ROOT}/component_models/dc_model_data.mat</file>
       <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
+      <file>${PROJECT_ROOT}/component_models/model_data_dc_fp_gaussian.mat</file>
+      <file>${PROJECT_ROOT}/component_models/model_data_wct_fp_gaussian.mat</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_data.mat</file>
       <file>${PROJECT_ROOT}/utils/compute_condenser_heats.m</file>
       <file>${PROJECT_ROOT}/utils/flows_to_ratios.m</file>
@@ -172,11 +174,11 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
     </fileset.resources>
     <fileset.depfun>
+      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/Psychrometrics plot/Psychrometricsnew.m</file>
+      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
       <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
-      <file>${PROJECT_ROOT}/utils/psychrometrics/Psychrometricsnew.m</file>
-      <file>${PROJECT_ROOT}/utils/xsteamPSA/XSteam.m</file>
     </fileset.depfun>
     <fileset.package>
       <file>${PROJECT_ROOT}/README.md</file>
