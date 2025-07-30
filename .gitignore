@@ -8,3 +8,4 @@ visualization/.venv/
 airflow*.db
 deployment/simple_auth_manager*
 deployment/logs
+data/datasets/experimental

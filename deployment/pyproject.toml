@@ -1,5 +1,5 @@
 [project]
-name = "deployment"
+name = "solhycool-deployment"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -11,17 +11,10 @@ dependencies = [
     "fsspec>=2025.7.0",
     "pandas>=2.3.1",
     "webdav4>=0.10.0",
-]
-
-[project.scripts]
-deployment = "deployment:main"
-
-[project.optional-dependencies]
-fsspec = [
-    "webdav4>=0.10.0",
-]
-all = [
-    "webdav4>=0.10.0",
+    "phd-visualizations",
+    "solhycool-modeling",
+    "solhycool-optimization",
+    "solhycool-visualization"
 ]
 
 [build-system]
@@ -32,3 +25,9 @@ build-backend = "hatchling.build"
 dev = [
     "jupyter>=1.1.1",
 ]
+
+[tool.uv.sources]
+phd-visualizations = { git = "https://github.com/juan11iguel/phd_visualizations", branch = "main" }
+solhycool-modeling = { path = "../modeling", editable = true }
+solhycool-optimization = { path = "../optimization", editable = true }
+solhycool-visualization = { path = "../visualization", editable = true }

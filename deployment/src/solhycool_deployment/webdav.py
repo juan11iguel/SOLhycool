@@ -1,4 +1,4 @@
-from deployment import extract_url_components
+from solhycool_deployment import extract_url_components
 from webdav4.fsspec import WebdavFileSystem
 
 def init_file_system(data_url: str) -> WebdavFileSystem:
