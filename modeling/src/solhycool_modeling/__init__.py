@@ -34,8 +34,8 @@ class ModelInputsRange:
     wwct: tuple[float, float] = (21., 93.4161)
     Tamb: tuple[float, float] = (3., 50.)
     HR: tuple[float, float] = (1., 99.)
-    Tdc_in: tuple[float, float] = (25., 45.)
-    Twct_in: tuple[float, float] = (25., 45.)
+    Tdc_in: tuple[float, float] = (25., 55.)
+    Twct_in: tuple[float, float] = (25., 55.)
     
 @dataclass
 class EnvironmentVariables:
