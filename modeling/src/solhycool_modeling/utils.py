@@ -157,7 +157,7 @@ def add_aggretated_variables(
     
     # Add qwct_s
     if "qwct_s" not in df.columns:
-        df["qwct_s"] = df["qwct"] + df["qdc"]*df["Rs"]
+        df["qwct_s"] = df["qdc"]*df["Rs"]
         
     if ev is not None and ev.Pe is not None:
         df["Pe"] = ev.Pe

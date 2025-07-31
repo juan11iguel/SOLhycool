@@ -26,7 +26,7 @@ def horizon_optimization(
     env_file_id: str = "environment",
     out_file_id: str = "optimization_results",
     n_parallel_steps: int = 24,
-    values_per_decision_variable: int = 10,
+    values_per_decision_variable: int = 8,
     plt_config_path: str = "./data/plot_config_day_horizon.hjson"
 ):
     """

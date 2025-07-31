@@ -121,7 +121,7 @@
       ylabels_right: ["€/kW<sub>e</sub>", "€/l"],
       // ylims_left: [0, 5000],
       ylims_left: 'manual_from_zero',
-      ylims_right: 'manual',
+      ylims_right: ['manual', 'manual'],
       showlegend: true,
       legend_position: "top",
       "show_vertical_highlights": false, // Disable vertical highlights for this plot
@@ -446,7 +446,7 @@
           color: "gray", # gray
           width: 2,
           showlegend: true,
-          "instrument": "pt100"
+          // "instrument": "pt100"
         },
         {
           var_id: "Tdc_out",
@@ -454,7 +454,7 @@
           mode: "lines",
           color: "dc_green", # green DC
           showlegend: true,
-          "instrument": "pt100"
+          // "instrument": "pt100"
         },
         {
           var_id: "Tdc_out_sp",
@@ -472,7 +472,7 @@
       row_height: 0.7,
       // bg_color: "bg_gray", # bg gray
       ylabels_left: ["<b>Control signal</b><br>ω<sub>dc</sub> (%)"],
-      ylims_left: 'manual',
+      ylims_left: [0, 100],
       showlegend: true,
 
       traces_left: [
@@ -510,7 +510,7 @@
           color: "gray", # gray
           width: 2,
           showlegend: true,
-          // "instrument": "pt100"
+          "instrument": "pt100"
         },
         {
           var_id: "Twct_out",
@@ -518,7 +518,7 @@
           mode: "lines",
           color: "wct_purple",
           showlegend: true,
-          // "instrument": "pt100"
+          "instrument": "pt100"
         },
         {
           var_id: "Twct_out_sp",
@@ -538,6 +538,7 @@
       ylims_left: 'manual',
       ylabels_left: ["<b>Control<br>signal</b><br>ω<sub>wct</sub> (%)"],
       showlegend: true,
+      ylims_left: [0, 100],
 
       traces_left: [
         {
@@ -569,7 +570,7 @@
           mode: "lines",
           color: "c_blue",
           showlegend: true,
-          "instrument": "vortex_flow_meter"
+          // "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qc_sp",
@@ -610,7 +611,7 @@
           mode: "lines",
           color: "dc_green",
           showlegend: true,
-          "instrument": "vortex_flow_meter"
+          // "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qdc_sp",
@@ -651,7 +652,7 @@
           mode: "lines",
           color: "wct_purple",
           showlegend: true,
-          "instrument": "vortex_flow_meter"
+          // "instrument": "vortex_flow_meter"
         },
         {
           var_id: "qwct_s_sp",

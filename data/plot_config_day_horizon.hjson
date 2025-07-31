@@ -119,7 +119,7 @@
       ylabels_right: ["€/kW<sub>e</sub>", "€/l"],
       // ylims_left: [0, 5000],
       ylims_left: 'manual_from_zero',
-      ylims_right: 'manual',
+      ylims_right: ['manual', 'manual'],
       showlegend: true,
       legend_position: "top",
 
@@ -270,6 +270,7 @@
       ylabels_left: ["<b>Wet Cooler<br>(WCT)</b><br>kW<sub>th</sub>"],
       ylabels_right: ["ºC", "%"],
       ylims_left: 'manual_from_zero',
+      ylims_right: [null, [0, 100]],
       showlegend: true,
       legend_position: "top",
 
@@ -331,6 +332,7 @@
       ylabels_left: ["<b>Dry Cooler<br>(DC)</b><br>kW<sub>th</sub>"],
       ylabels_right: ["ºC", "%"],
       ylims_left: 'manual_from_zero',
+      ylims_right: [null, [0, 100]],
       showlegend: true,
       legend_position: "top",
 

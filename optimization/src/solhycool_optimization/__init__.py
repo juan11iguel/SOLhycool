@@ -23,6 +23,8 @@ from solhycool_optimization.utils.serialization import get_queryable_columns
 
 warnings.filterwarnings("ignore", category=NaturalNameWarning)
 
+# TODO: eval_at should be exported within the metadata in the hdf file, so it could be serialized an deserialized
+
 @dataclass
 class RealDecVarsBoxBounds:
     """ Real decision variables box bounds, as in: (lower bound, upper bound)"""

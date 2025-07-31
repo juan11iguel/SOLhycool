@@ -11,6 +11,7 @@ import hjson
 import copy
 
 from solhycool_deployment.webdav import init_file_system
+from solhycool_deployment.visualizations import process_dfs_for_exp_visualization
 from solhycool_modeling import EnvironmentVariables
 from solhycool_modeling.utils import add_aggretated_variables
 from solhycool_optimization.utils.serialization import load_multiple_optimization_results
@@ -157,6 +158,11 @@ def horizon_optimization_day_report(
             plt_config_path: Path to plot configuration JSON
             compressed_results: Whether to compress and clean up outputs
             max_n_plot_points: Maximum data points to include in plots
+            
+        ### Testing the DAG:
+        ```bash
+        airflow dags test horizon_optimization_day_report --conf '{"plt_config_path":"/workspaces/SOLhycool/data/plot_config_day_test.hjson","date_str":"20250731","test_data_fn":"20250731_process_timeseries"}'
+        ```
         """
         
         # Define output directory structure in WebDAV
@@ -164,6 +170,10 @@ def horizon_optimization_day_report(
         
         # Initialize WebDAV file systems for both data sources
         fs = init_file_system(optimization_url)
+        
+        # Create a temporary directory for storing downloaded and processed files
+        temp_dir = tempfile.TemporaryDirectory(delete=False)
+        temp_dir_path = Path(temp_dir.name)
 
         # Load plot configuration from HJSON file
         # This defines the layout, styling, and which variables to plot
@@ -182,12 +192,15 @@ def horizon_optimization_day_report(
             df_exp.index = df_exp.index.tz_localize("UTC")
         else:
             df_exp.index = df_exp.index.tz_convert("UTC")
-            
-
+        counts = df_exp.index.value_counts().sort_index()
+        if counts.max() > 1:
+            logger.warning(f"Found duplicate timestamps in experimental data: {counts[counts > 1]}")
+            # If duplicates exist, average them to ensure unique timestamps
+            df_exp = df_exp.groupby(df_exp.index).mean()
+            logger.info("Averaged duplicate timestamps in experimental data")
+        
         # === OPTIMIZATION RESULTS LOADING ===
         # Create temporary directory for downloading optimization results
-        temp_dir = tempfile.TemporaryDirectory(delete=False)
-        temp_dir_path = Path(temp_dir.name)
 
         # Download all optimization result directories for this date from WebDAV
         logger.info(f"Downloading optimization results from: {output_dir}")
@@ -203,20 +216,15 @@ def horizon_optimization_day_report(
             look_for="dir",  # Look for directories containing .h5 files
             eval_time_from_parent_fn = True
         )
-        opt_index = copy.deepcopy(df_opt.index)
+        opt_index = copy.deepcopy(df_opt.index) # Save original index for later alignment
+        
+        # Export the merged optimization results for reference
+        df_opt.to_csv(temp_dir_path / 'optimization_results.csv', index=True)
+        logger.info("Saved merged optimization results to CSV")
 
-        
         # === DATA PREPROCESSING FOR VISUALIZATION ===
-        # Reduce experimental data points for better plot performance
-        # Use linear interpolation to select evenly spaced points
-        if len(df_exp) > max_n_plot_points:
-            indices = np.linspace(0, len(df_exp) - 1, max_n_plot_points).astype(int)
-            df_exp = df_exp.iloc[indices]
-            logger.info(f"Reduced experimental data to {max_n_plot_points} points for plotting")
-        
-        # Create aligned datasets for different plot types:
-        # df_opt2: optimization data aligned to experimental index (for timeseries comparison)
-        df_opt2 = df_opt.reindex(df_exp.index, method="ffill")
+        # df_opt2: optimization data aligned to experimental index
+        df_opt = df_opt.reindex(df_exp.index, method="ffill")
         
         # Calculate derived variables (thermal powers, hydraulic ratios, costs, etc.)
         ev = EnvironmentVariables(
@@ -226,26 +234,38 @@ def horizon_optimization_day_report(
             mv=df_exp["mv"].values,
             
             # From optimization results
-            Vavail=df_opt2["Vavail"].values,
-            Pe=df_opt2["Pe"].values,
-            Pw_s1=df_opt2["Pw_s1"].values,
-            Pw_s2=df_opt2["Pw_s2"].values,
+            Vavail=df_opt["Vavail"].values,
+            Pe=df_opt["Pe"].values,
+            Pw_s1=df_opt["Pw_s1"].values,
+            Pw_s2=df_opt["Pw_s2"].values,
         )
-        # df_exp2: experimental data aligned to optimization index (for hydraulic distribution)
         df_exp = add_aggretated_variables(df_exp, ev=ev, eval_times=eval_times)
+ 
+        # Export the experimental timeseries for reference
+        df_exp.to_csv(temp_dir_path / 'experimental_data.csv', index=True)
+        logger.info("Saved processed experimental timeseries results to CSV")
+
+        # Reduce experimental data points for better plot performance
+        # Use linear interpolation to select evenly spaced points
+        if len(df_exp) > max_n_plot_points:
+            indices = np.linspace(0, len(df_exp) - 1, max_n_plot_points).astype(int)
+            df_exp = df_exp.iloc[indices]
+            logger.info(f"Reduced experimental data to {max_n_plot_points} points for plotting")
+        
+        # Create aligned datasets for different plot types:
+        # df_opt: optimization data aligned to experimental index (for timeseries comparison)
+        df_opt = df_opt.reindex(df_exp.index, method="ffill")
+        # df_exp2: experimental data aligned to optimization index (for hydraulic distribution)
         df_exp2 = df_exp.reindex(opt_index, method="ffill")
         
-        # === OUTPUT PREPARATION ===
-        # Export the merged optimization results for reference
-        df_opt.to_csv(temp_dir_path / 'optimization_results.csv', index=True)
-        logger.info("Saved merged optimization results to CSV")
-
         # === VISUALIZATION GENERATION ===
+        df_exp_plot, df_opt_plot = process_dfs_for_exp_visualization(df_exp, df_opt)
+        
         logger.info("Generating comparison plots...")
         fig = plot_results(
             plot_config=plt_config,
-            df=df_exp,                    # Main experimental data for timeseries
-            df_comp=df_opt2,              # Optimization data aligned to experimental timeline
+            df=df_exp_plot,                    # Main experimental data for timeseries
+            df_comp=df_opt_plot,              # Optimization data aligned to experimental timeline
             template="plotly_white",       # Clean white theme
             hydraulic_distribution_dfs=[df_exp2] + dfs,  # All datasets for hydraulic analysis
             hydraulic_distribution_highlight_bar_idx=0,   # Highlight experimental data
