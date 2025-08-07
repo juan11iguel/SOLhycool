@@ -13,7 +13,7 @@ from solhycool_optimization.problems.horizon.evaluation import evaluate_day
 from solhycool_optimization.problems.horizon import AlgoParams
 from solhycool_visualization.utils import generate_visualizations
 from solhycool_deployment.webdav import init_file_system
-from solhycool_deployment import cleanup_paths
+from solhycool_deployment import cleanup_paths, welcome_message
 
 
 @dag(
@@ -147,6 +147,8 @@ def horizon_optimization(
         cleanup_paths(paths)
         
     # Pipeline logic
+    welcome_message()
+    
     export_path = evaluate_optimization(
         data_url=data_url,
         file_id_env=env_file_id,

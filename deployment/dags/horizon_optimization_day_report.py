@@ -10,6 +10,7 @@ from airflow.sdk import dag, task
 import hjson
 import copy
 
+from solhycool_deployment import welcome_message
 from solhycool_deployment.webdav import init_file_system
 from solhycool_deployment.visualizations import process_dfs_for_exp_visualization
 from solhycool_modeling import EnvironmentVariables
@@ -317,7 +318,7 @@ def horizon_optimization_day_report(
             try:
                 # for file in fs.ls(output_dir, detail=False):
                 #     fs.remove(f"{output_dir}{file}")
-                fs.rmdir(output_dir, )  # Remove the empty directory
+                fs.rm(output_dir, recursive=True)  # Remove the directory
                 logger.info(f"Cleaned up remote directory: {output_dir}")
             except Exception as e:
                 logger.warning(f"Could not clean up remote directory {output_dir}: {e}")
@@ -329,6 +330,9 @@ def horizon_optimization_day_report(
     # 2. process_data  
     # 3. generate_plots
     # 4. upload_results
+    
+    welcome_message()
+    
     build_day_visualization(
         date_str=date_str,
         optimization_url=optimization_url,
