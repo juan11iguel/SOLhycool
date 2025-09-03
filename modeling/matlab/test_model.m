@@ -86,7 +86,10 @@ clc
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
-model_fun = @wct_model_data;
+model_fun = @wct_model_physical; % wct_model_data
+c_poppe = 1.4889; % 1.52;
+n_poppe = -0.71; % -0.69;
+
 
 % [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
@@ -96,7 +99,7 @@ inactive_idxs = [];
 for i=1:N
     fprintf("Evaluating step %d\n", i)
     [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i), ...
-        model_data_path=params.wct_model_data_path, lb=params.wct_lb, ub=params.wct_ub, ce_coeffs=params.wct_ce_coeffs);
+        model_data_path=params.wct_model_data_path, lb=params.wct_lb, ub=params.wct_ub, ce_coeffs=params.wct_ce_coeffs, c_poppe=c_poppe, n_poppe=n_poppe);
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
     if Cw_data(i) < 1e-3
         inactive_idxs = [inactive_idxs, i];

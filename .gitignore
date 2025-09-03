@@ -10,3 +10,4 @@ deployment/simple_auth_manager*
 deployment/logs
 data/datasets/experimental
 *.asv
+simulation/src/solhycool_evaluation/__pycache__/__init__.cpython-312.pyc

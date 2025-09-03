@@ -1,6 +1,9 @@
 from pathlib import Path
 import pandas as pd
 from loguru import logger
+import pytz
+
+from solhycool_evaluation import OperationPlan, OperationValues
 
 def preprocess_meteonorm_txt_data(txt_file_path: Path) -> pd.DataFrame:
     """
@@ -91,5 +94,101 @@ def repeat_and_align_index(
         .ffill()
         .bfill()
     )
+    
+    return df
+
+
+def generate_operation_value(timestamp: pd.Timestamp, operation_plan: OperationPlan) -> float:
+    """
+    Generate operation value for a given timestamp based on the operation plan.
+    
+    Args:
+        timestamp: pandas timestamp with timezone info
+        operation_plan: OperationPlan object containing periods and values
+    
+    Returns:
+        float: Operation value for the given timestamp
+    """
+    time_of_day = timestamp.time()
+    
+    for i, (start_time, end_time) in enumerate(operation_plan.period):
+        # Handle overnight periods (e.g., 21:30 to 07:00)
+        if start_time > end_time:
+            if time_of_day >= start_time or time_of_day < end_time:
+                return operation_plan.values[i]
+        else:
+            if start_time <= time_of_day < end_time:
+                return operation_plan.values[i]
+    
+    # Default case (shouldn't happen if periods cover full day)
+    return 0.0
+
+def generate_annual_operation_table(
+    op_plans: list[OperationPlan],
+    year: int = 2025,
+    freq: str = '10m',
+    timezone: str = 'Europe/Madrid',
+    extra_cols: bool = False
+) -> pd.DataFrame:
+    """
+    Generate annual operation table with multiple operation plans.
+    
+    Example usage:
+    # Generate the annual operation table
+    op_plans: list[OperationPlan] = [
+        OperationPlan(periods, [ov.PEAK.value, ov.OFF.value, ov.PEAK.value, ov.PARTIAL.value]),
+        OperationPlan(periods, [ov.PEAK.value, ov.OFF.value, ov.PEAK.value, ov.PEAK.value]),
+        OperationPlan(periods, [ov.PEAK.value, ov.PARTIAL.value, ov.PEAK.value, ov.PEAK.value]),
+        OperationPlan(periods, [ov.PEAK.value, ov.PEAK.value, ov.PEAK.value, ov.PEAK.value]),
+    ]
+    
+    # You can change the frequency as needed: 'h' (hourly), '30min' (30 min), '15min' (15 min), etc.
+    annual_table = generate_annual_operation_table(op_plans, year=2025, freq='10min', extra_cols=False)
+    
+    Args:
+        year: Year for which to generate the table
+        freq: Pandas frequency string (e.g., 'H' for hourly, '30T' for 30 minutes)
+        timezone: Timezone string (default: 'Europe/Madrid')
+    
+    Returns:
+        DataFrame with datetime index and columns for each operation plan
+    """
+    # Create timezone object
+    tz = pytz.timezone(timezone)
+    
+    # Create date range for the entire year
+    start_date = pd.Timestamp(f'{year}-01-01', tz=tz)
+    end_date = pd.Timestamp(f'{year+1}-01-01', tz=tz)
+    
+    # Generate datetime index with specified frequency
+    datetime_index = pd.date_range(
+        start=start_date,
+        end=end_date,
+        freq=freq,
+        inclusive='left',  # Exclude the end date
+        tz=tz
+    )
+    
+    # Create DataFrame
+    df = pd.DataFrame(index=datetime_index)
+    
+    # Add columns for each operation plan
+    for i, op_plan in enumerate(op_plans):
+        column_name = f'operation_plan_{i+1}'
+        df[column_name] = [generate_operation_value(ts, op_plan) for ts in datetime_index]
+    
+    # Add additional useful columns
+    if extra_cols:
+        df['date'] = df.index.date
+        df['time'] = df.index.time
+        df['day_of_year'] = df.index.dayofyear
+        df['weekday'] = df.index.day_name()
+        
+    # Display basic info about the table
+    print(f"Table shape: {df.shape}")
+    print(f"Date range: {df.index.min()} to {df.index.max()}")
+    print(f"Frequency: {df.index.freq}")
+    print("\nColumn names:")
+    print(df.columns.tolist())
     
     return df
