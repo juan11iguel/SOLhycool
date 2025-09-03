@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 import pytz
+import calendar
 
 from solhycool_evaluation import OperationPlan, OperationValues
 
@@ -192,3 +193,104 @@ def generate_annual_operation_table(
     print(df.columns.tolist())
     
     return df
+
+def generate_operation_rules_table(
+    op_plans: list[OperationPlan],
+    year: int = 2025,
+) -> dict[str, pd.DataFrame]:
+    """
+    Generate period-based operation rules table for each operation plan.
+    
+    Instead of generating rows at fixed frequency intervals, this function generates
+    one row per period per day, directly representing the operation periods and values.
+    
+    The output format for each operation plan is:
+    - Column 1: Month (1-12)
+    - Column 2: Day (1-31)
+    - Column 3: Start hour (0-23.99)
+    - Column 4: End hour (0-23.99)
+    - Column 5: Operation value
+    
+    Example output:
+    
+    month | day | start_hour | end_hour | value
+    ------|-----|------------|----------|------
+      6   | 20  |    9.0     |   12.0   | 0.5
+      6   | 20  |   12.0     |   17.0   | 0.9
+      6   | 20  |   17.0     |   18.0   | 0.7
+      1   | 15  |   10.0     |   15.0   | 0.6
+    
+    Args:
+        op_plans: List of OperationPlan objects
+        year: Year for which to generate the rules
+        timezone: Timezone string (default: 'Europe/Madrid')
+    
+    Returns:
+        Dictionary with operation plan names as keys and DataFrames as values.
+        Each DataFrame has columns: ['month', 'day', 'start_hour', 'end_hour', 'value']
+    """
+        
+    results = {}
+    
+    for plan_idx, op_plan in enumerate(op_plans):
+        rules_data = []
+        
+        # Iterate through each day of the year
+        for month in range(1, 13):
+            # Get number of days in this month
+            days_in_month = calendar.monthrange(year, month)[1]
+            
+            for day in range(1, days_in_month + 1):
+                # Convert operation plan periods to hour-based rules
+                for i, (start_time, end_time) in enumerate(op_plan.period):
+                    start_hour = start_time.hour + start_time.minute / 60.0
+                    end_hour = end_time.hour + end_time.minute / 60.0
+                    operation_value = op_plan.values[i]
+                    
+                    # Handle overnight periods (e.g., 21:30 to 07:00)
+                    if start_time > end_time:
+                        # Split into two rules: start_time to 24:00 and 00:00 to end_time
+                        # First rule: start_time to midnight
+                        rules_data.append([
+                            month, day, start_hour, 24.0, operation_value
+                        ])
+                        # Second rule: midnight to end_time (next day)
+                        next_day = day + 1
+                        next_month = month
+                        if next_day > days_in_month:
+                            next_day = 1
+                            next_month = month + 1 if month < 12 else 1
+                        rules_data.append([
+                            next_month, next_day, 0.0, end_hour, operation_value
+                        ])
+                    else:
+                        # Normal case: start_time to end_time within same day
+                        rules_data.append([
+                            month, day, start_hour, end_hour, operation_value
+                        ])
+        
+        # Create DataFrame for this operation plan
+        df = pd.DataFrame(
+            rules_data,
+            columns=['month', 'day', 'start_hour', 'end_hour', 'value']
+        )
+        
+        # Sort by month, day, start_hour for cleaner output
+        df = df.sort_values(['month', 'day', 'start_hour']).reset_index(drop=True)
+        
+        plan_name = f'operation_plan_{plan_idx + 1}'
+        results[plan_name] = df
+        
+        # Display basic info about this operation plan
+        print(f"\n{plan_name}:")
+        print(f"  Total rules: {len(df)}")
+        print(f"  Rules per day: {len(op_plan.period)}")
+        print(f"  Unique operation values: {sorted(df['value'].unique())}")
+        print(f"  Date range: {year}-{df['month'].min():02d}-{df['day'].min():02d} to {year}-{df['month'].max():02d}-{df['day'].max():02d}")
+        print("  Sample periods for Jan 1st:")
+        jan_1_sample = df[(df['month'] == 1) & (df['day'] == 1)]
+        for _, row in jan_1_sample.head().iterrows():
+            print(f"    {row['start_hour']:4.1f}h - {row['end_hour']:4.1f}h: {row['value']}")
+    
+    return results
+
