@@ -22,7 +22,7 @@ arguments (Output)
 end
 
 dT = 7; % como en WASCOP (40-33) ºC https://collab.psa.es/index.php/f/264130
-n_tb_piloto = 60; % número de tubos en DC planta piloto
+n_tb_piloto = 20; % número de tubos en paralelo DC planta piloto (60 tubos / 3 pasos)
 Tm = 36.5; % como en WASCOP
 m_dc_piloto= 24*1000/3600; 
 
