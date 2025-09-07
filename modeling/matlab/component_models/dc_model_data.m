@@ -1,4 +1,4 @@
-function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
+function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
     % DC_MODEL  Predicts outlet temperature and electrical consumption for the WASCOP dry cooler.
     %
     % Inputs:
@@ -6,6 +6,7 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
     %   Tin     - Inlet temperature (ºC)
     %   q       - Volumetric flow rate (m³/h)
     %   w_fan   - Fan load (%)
+    %   n_dc    - Number of DCs in parallel
     %   options - Struct with optional fields:
     %       .raise_error_on_invalid_inputs (logical)
     %       .model_data_path (string)
@@ -26,6 +27,7 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
         Tin (1,1) double
         q (1,1) double
         w_fan (1,1) double
+        n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "dc_model_data.mat")
         options.silence_warnings logical = false
@@ -38,6 +40,10 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
         Tout (1,1) double % ºC
         Ce (1,1) double % kW
     end
+
+    % Limits of flow rate considering the number of DCs in parallel
+    options.ub(3)=options.ub(3)*n_dc;
+    options.lb(3)=options.lb(3)*n_dc;
 
     persistent model
 
@@ -75,7 +81,7 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options)
     end
 
     function P_fan_W = power_consumption(w_fan)
-        P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
+        P_fan_W = n_dc*(max(0, polyval(options.ce_coeffs, w_fan))); % W
     end
 
     function raise_error(variable, value, lower_limit, upper_limit)
