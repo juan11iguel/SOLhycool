@@ -1,10 +1,11 @@
-function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
+function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option, n_tb)
     %Correlación de U para Surface Condenser
     % inputs:
     %   mc (m3/h): caudal de agua que circula por dentro de los tubos
     %   Tcin (ºC): temperatura del agua a la entrada de los tubos
     %   Tv (ºC): temperatura del vapor
     %   option: tipo de correlación seleccionada (1-7)
+    %   n_tb: número de tubos en paralelo
     % outputs:
     %   U (kW/m2ºC): coef de transferencia de calor
     arguments
@@ -12,6 +13,7 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
         Tc_in_C (1,1) double
         Tv_C (1,1) double
         option (1,1) int8 {mustBeInRange(option, 1, 9)} = 7
+        n_tb (1,1) double = 24
     end
     
     qc2=qc_m3h*1000; % m3/h -> kg/h
@@ -44,7 +46,7 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
             p4=343.289496507627;
             p5=-0.00100009808582273;
             p6=-0.0483094341070905;
-            mc2_tubo=qc2/24;
+            mc2_tubo=qc2/n_tb;
             U=p1*Tc_in_C+p2*mc2_tubo+p3*mc2_tubo*Tc_in_C+p4+p5*mc2_tubo^2+p6*Tc_in_C^2;
         case 4 % valor nominal según especificaciones
             U=1582*4184/3600;   %1.582-> https://collab.psa.es/f/174826; %
@@ -52,7 +54,7 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option)
             %valor medio de los obtenidos a partir de Calibra_Uexp.m
             U=1377.3;
         case 6 %correlación obtenida a partir de Calibra_Uexp.m
-           mc2_tubo=qc2/24;
+           mc2_tubo=qc2/n_tb;
            p00 =      0.1508;
            p10 =     0.06595 ;
            p01 =     -0.0007606  ;
