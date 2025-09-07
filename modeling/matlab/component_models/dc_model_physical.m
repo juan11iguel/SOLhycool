@@ -1,4 +1,4 @@
-function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options)
+function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
     % DC_MODEL (PHYSICAL)  Predicts outlet temperature and electrical consumption for the physical DC model.
     %
     % Inputs:
@@ -6,6 +6,7 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options)
     %   Tin     - Inlet temperature (ºC)
     %   q       - Volumetric flow rate (m³/h)
     %   w_fan   - Fan load (%)
+    %   n_dc    - Number of DCs in parallel
     %   options - Struct with optional fields:
     %       .raise_error_on_invalid_inputs (logical)
     %       .model_data_path (string)
@@ -22,6 +23,7 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options)
         Tin (1,1) double
         q (1,1) double
         w_fan (1,1) double
+        n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
         options.silence_warnings logical = false
@@ -34,6 +36,10 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options)
         Tout (1,1) double
         Ce (1,1) double
     end
+
+% Limits of flow rate considering the number of DCs in parallel
+options.ub(3)=options.ub(3)*n_dc;
+options.lb(3)=options.lb(3)*n_dc;
 
 % Validate inputs
 max_values = options.ub;
@@ -65,10 +71,12 @@ end
 
 % Else
 
+q_per_dc = q/n_dc; % flow rate circulating for each DC in parallel
+
 T_amb = Tamb;
 SC_DC = w_fan;
 Tin_DC = Tin;
-q_DC_m3h = q;
+q_DC_m3h = q_per_dc;
 
 
 %% PARÁMETROS DE RESOLUCIÓN
@@ -294,7 +302,7 @@ function FT = calculo_FT(Tin_DC,Tout_DC,T_amb,T_air_o)
 end
 
 function P_fan_W = power_consumption(w_fan)
-    P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
+    P_fan_W = n_dc*(max(0, polyval(options.ce_coeffs, w_fan))); % W
 end
 
 function raise_error(variable, value, lower_limit, upper_limit)
