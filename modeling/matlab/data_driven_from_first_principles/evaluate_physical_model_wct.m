@@ -1,11 +1,22 @@
+%% 
 % Generar conjunto de salidas con los modelos físicos para crear modelo
 % basado en datos
+% 
+% This script should be run with the current path being the base MATLAB project folder
+% 
+% Author: Lidia Roca Sobrino
+% -------------------------------------------------------------------------
+
 clc
 clear
 
+% Parameters
+input_data_path = "../results/model_inputs_sampling/pilot_plant_200kW/wct_in.csv";
+output_data_path = "../results/model_outputs_physical/pilot_plant_200kW/wct_out.csv";
+
 tic
 %load wct_inputs.mat;
-wct=readtable('wct_in.csv');
+wct=readtable(input_data_path);
 
 
 % Asegurarnos de que el parallel pool está activo
@@ -116,8 +127,7 @@ filasConNaN = any(ismissing(wct_out), 2);
 wct_out_sinnan = wct_out(~filasConNaN, :);
 
 %% Guardo en .csv
-
-writetable(wct_out_sinnan, "wct_out.csv");
+writetable(wct_out_sinnan, output_data_path);
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 for i=1:size(wct_out_sinnan,1)

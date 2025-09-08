@@ -1,5 +1,12 @@
+%% 
 % Generar conjunto de salidas con los modelos físicos para crear modelo
 % basado en datos
+% 
+% This script should be run with the current path being the base MATLAB project folder
+% 
+% Author: Lidia Roca Sobrino
+% -------------------------------------------------------------------------
+
 clc
 clear
 
@@ -7,22 +14,24 @@ addpath("component_models/")
 
 %% Parameters
 
-n_dc = 115;
+n_dc = 1; % 231; % 115; % 1 % 346
+case_study_id = "pilot_plant_200kW"; % "andasol_25_90MW"; % "pilot_plant_200kW";
 
+input_data_path = sprintf("../results/model_inputs_sampling/%s/dc_in.csv", case_study_id);
+output_data_path = sprintf("../results/model_inputs_sampling/%s/dc_out.csv", case_study_id);
 
-%%
-
-tic
+%% Load data and start parallel pool
 %load dc_inputs.mat;
-dc=readtable('dc_in.csv');
+dc=readtable(input_data_path);
 
 % Asegurarnos de que el parallel pool está activo
 if isempty(gcp('nocreate'))
         parpool;  % Abre pool si no está
 end
 
-%%
+%% Evaluate inputs
 
+tic
 PV=ones(size(dc,1),1); % inicialmente todos son puntos válidos
 for i=1:size(dc,1)
     pool = gcp(); % Obtener el pool de procesamiento paralelo  
@@ -80,7 +89,8 @@ filasConNaN = any(ismissing(dc_out), 2);
 dc_out_sinnan = dc_out(~filasConNaN, :);
 
 %% Guardo datos
-writetable(dc_out, "dc_out.csv");
+writetable(dc_out, output_data_path);
+fprintf("Results saved to %s\n", output_data_path)
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 for i=1:length(Tout_simu)

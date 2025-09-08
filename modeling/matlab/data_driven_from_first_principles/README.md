@@ -1,6 +1,6 @@
 # Data Driven from First Principles
 
-Welcome to the **Data Driven from First Principles** repository! This folder contains resources, scripts, and documentation for integrating data-driven methods with first-principles modeling. The goal is to leverage machine learning and statistical techniques alongside physics-based models to enhance predictive accuracy and insight.
+This folder contains resources, scripts, and documentation for integrating data-driven methods with first-principles modeling. The goal is to leverage machine learning and statistical techniques alongside physics-based models to enhance predictive accuracy and insight.
 
 ## Folder files
 
@@ -17,7 +17,7 @@ Welcome to the **Data Driven from First Principles** repository! This folder con
     > [!warning] Very large model files
     > Note that including a very large number of points in your dataset can result in model files that are extremely large (several megabytes in size).
 
-2. **Run evaluation:**
+2. **Run evaluation of physical models:**
     The script `evaluate_model_xx` must be executed
     ``` 
     Take in mind that if your input csv contains a dataset of 2000 points to be evaluated (rows), the execution time of this script can be up to 20 minutes (depending on your computer's performance).
@@ -27,4 +27,5 @@ Welcome to the **Data Driven from First Principles** repository! This folder con
      ```
      In case you eliminate rows, don't forget to save manually the table: `writetable(wct_out_sinnan, "wct_out.csv");` 
 
-
+4. **Train one or multiple ML alternatives:**   
+    Using the `batch_training.m` script, one can generate different data-driven models using the data generated with the evaluation of the physical models. To call it a convenience script is used, `generate_data_driven_models.m`, by running the appropiate section.
