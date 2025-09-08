@@ -1,0 +1,14 @@
+
+Starting evaluation of dc_fp_andasol_25gaussian_mimo 
+Elapsed time for training the model: 1.2919 seconds
+Elapsed time for evaluating validation set: 0.0027 seconds
+Saved model object and additional data in ../../data/models_data/model_data_dc_fp_andasol_25gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_dc_fp_andasol_25gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_dc_fp_andasol_25gaussian_mimo.csv
+
+Starting evaluation of dc_fp_andasol_25gaussian_mimo 
+Elapsed time for training the model: 1.2075 seconds
+Elapsed time for evaluating validation set: 0.0031 seconds
+Saved model object and additional data in ../../data/models_data/model_data_dc_fp_andasol_25gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_dc_fp_andasol_25gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_dc_fp_andasol_25gaussian_mimo.csv
