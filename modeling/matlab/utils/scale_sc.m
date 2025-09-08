@@ -39,6 +39,8 @@ overdesign = 1.8464; % 84.64 %
 % %% flujo másico nominal TOTAL antes de disrtibuirse por los tubos del SC: msc (kg/s)
 msc_nom_scaled=P_nom/(XSteam('Cp_pT',2,Tm).*dT); %kg/s
 
+fprintf("Nominal mass flow rate vapor? cooling? %.3f\n", msc_nom_scaled)
+
 % %% número de tubos en paralelo en planta escalada (suponiendo el mismo flujo másico por tubo que en planta piloto)
 n_tb_sc_scaled = msc_nom_scaled/mt_sc_nom_scaled;
 n_tb_sc_scaled = round(n_tb_sc_scaled);
@@ -46,7 +48,7 @@ n_tb_sc_scaled = round(n_tb_sc_scaled);
 %% Calculo de A_scaled
 
 U_kcal = 1582.26; % kcal/m2-h-C
-U = U_kcal*4.184/3600 %W/m2-C
+U = U_kcal*4.184/3600;  %W/m2-C
 dT1 = Tv_nom-Tc_in_C;
 dT2 = Tv_nom-Tc_out_C;
 LMTD = (dT1-dT2)/log(dT1/dT2) ;
