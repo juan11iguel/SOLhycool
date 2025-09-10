@@ -1,6 +1,9 @@
 function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
     % DC_MODEL (PHYSICAL)  Predicts outlet temperature and electrical consumption for the physical DC model.
     %
+    % This model was originally developed by XXXX 
+    % and later adapted by Juan Miguel Serrano
+    %
     % Inputs:
     %   Tamb    - Ambient temperature (ºC)
     %   Tin     - Inlet temperature (ºC)
@@ -37,7 +40,7 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
         Ce (1,1) double
     end
 
-% Limits of flow rate considering the number of DCs in parallel
+% Scale the limits of flow rate considering the number of DCs in parallel
 options.ub(3)=options.ub(3)*n_dc;
 options.lb(3)=options.lb(3)*n_dc;
 
@@ -234,7 +237,7 @@ end
 % T_air_o;   % Temperatura de salida del aire (ºC)
 % Q_law;     % Calor intercambiado (W)
 
-Ce = power_consumption(w_fan) * 1e-3; % kW
+Ce = n_dc * power_consumption(w_fan) * 1e-3; % kW
 Tout = Tout_DC;
 
 % END OF MAIN FUNCTION ----------------------------------------------------
@@ -302,7 +305,7 @@ function FT = calculo_FT(Tin_DC,Tout_DC,T_amb,T_air_o)
 end
 
 function P_fan_W = power_consumption(w_fan)
-    P_fan_W = n_dc*(max(0, polyval(options.ce_coeffs, w_fan))); % W
+    P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
 end
 
 function raise_error(variable, value, lower_limit, upper_limit)

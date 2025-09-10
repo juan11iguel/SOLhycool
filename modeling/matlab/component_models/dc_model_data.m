@@ -73,15 +73,15 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
     end
 
     if valid_inputs
-        [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q]);
-        Ce = power_consumption(w_fan) * 1e-3; % kW
+        [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q/n_dc]);
+        Ce = n_dc * power_consumption(w_fan) * 1e-3; % kW
     else
         Tout = Tin;
         Ce = 0;
     end
 
     function P_fan_W = power_consumption(w_fan)
-        P_fan_W = n_dc*(max(0, polyval(options.ce_coeffs, w_fan))); % W
+        P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
     end
 
     function raise_error(variable, value, lower_limit, upper_limit)

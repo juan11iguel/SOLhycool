@@ -12,6 +12,7 @@ function params = default_parameters()
     params.dc_ub = 1.01*[50.0     55.0,    24.0, 99.1800];
     % wdc (%) -> Ce_dc (W)
     params.dc_ce_coeffs = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
+    params.dc_n_dc = 1;
     
     % WCT               "Tamb",     "HR",    "Tin",      "q",     "w_fan"
     params.wct_lb = 0.99*[3.0       1.0      25.0        6.0       21.0];
@@ -23,6 +24,7 @@ function params = default_parameters()
     params.condenser_option = 6;
     params.condenser_A = 19.30; %%19.967-> https://collab.psa.es/f/174826 24/U;
     params.condenser_deltaTv_cout_min = 1;
+    params.condenser_n_tb = 24;
 
     % Recirculation pump
     % w_c (%) -> Ce_c (W) 

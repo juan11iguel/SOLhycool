@@ -1,7 +1,8 @@
-function [wwct, valid] = air_mass_flow_rate_to_fan_speed(ma_kgs, options)
+function [wwct, valid] = air_mass_flow_rate_to_fan_speed(ma_kgs, system, options)
     % Polynomial fit to convert from to air mass flow rate in kg/s fan speed (as a VFD percentage)
     arguments (Input)
         ma_kgs double
+        system string = "pilot_plant" % "andasol"
         options.lb (1,1) double = 21.0;
         options.ub (1,1) double = 93.4161;
         options.tolerance (1,1) double = 1e-1
@@ -29,7 +30,7 @@ function [wwct, valid] = air_mass_flow_rate_to_fan_speed(ma_kgs, options)
 
    function residual = inner_fun(w)
         % Compute the output temperature using the WCT model
-        out = fan_speed_to_air_mass_flow_rate_fit(w);
+        out = fan_speed_to_air_mass_flow_rate_fit(w, system);
         
         % Compute squared residual
         residual = abs(out - ma_kgs_);

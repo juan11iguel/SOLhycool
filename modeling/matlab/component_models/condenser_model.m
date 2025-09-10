@@ -1,4 +1,4 @@
-function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
+function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, A, n_tb, option, options)
     %CONDENSER_MODEL Model of a surface condenser using saturated vapor as
     %input and that outputs saturated liquid
     % It returns thermal power calculated in three different ways:
@@ -16,8 +16,9 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
         mv_kgs (1,1) double
         Tv_C (1,1) double
         mc_kgs (1,1) double
-        options.option (1,1) int8 {mustBeInRange(options.option, 1, 9)} = 7
-        options.A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
+        A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
+        n_tb (1,1) double = 24
+        option (1,1) int8 {mustBeInRange(option, 1, 9)} = 7
         options.deltaTv_cout_min (1,1) double {mustBePositive} = 2;
         options.Tmin (1,1) double = 25;
     end
@@ -49,7 +50,7 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
     function error = inner_model(x)
         Tc_in = x(1);
         Tc_out = x(2);
-        U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv_C, options.option); % qc/mc: kg/s -> m3/h
+        U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv_C, option, n_tb); % qc/mc: kg/s -> m3/h
         
         % ms_u=ms/3600; % kg/h -> kg/s
         % mc_u=qc*1000/3600; % m³/h -> kg/s
@@ -67,7 +68,7 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options)
         % else
         %     dTML=(dT1+dT2)/2;
         % end;
-        Q = [mv_kgs*lambda, mc_kgs*Cp*(Tc_out-Tc_in), U*options.A*dTML];
+        Q = [mv_kgs*lambda, mc_kgs*Cp*(Tc_out-Tc_in), U*A*dTML];
         error = sum((Q - mean(Q)).^2);
         % fprintf("condenser model residual: %.2f for Tc_in=%.2f, Tc_out=%.2f, Tv=%.2f\n", error, Tc_in, Tc_out, Tv_C)
     end

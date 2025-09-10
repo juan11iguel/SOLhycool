@@ -1,4 +1,4 @@
-function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, options)
+function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, A, n_tb, option)
     %CONDENSER_MODEL Model of a surface condenser using saturated vapor as
     %input and that outputs saturated liquid
     % It returns thermal power calculated in three different ways:
@@ -18,8 +18,9 @@ function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, optio
         mc_kgs (1,1) double
         Tc_in (1,1) double
         Tc_out (1,1) double
-        options.option (1,1) int8 {mustBeInRange(options.option, 1, 9)} = 7
-        options.A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
+        A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
+        n_tb (1,1) double = 24
+        option (1,1) int8 {mustBeInRange(option, 1, 9)} = 7
     end
 
     arguments (Output)
@@ -27,7 +28,7 @@ function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, optio
         U (1,1) double
     end
     
-    U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv, options.option); % qc/mc: kg/s -> m3/h
+    U=condenser_heat_transfer_coefficient(mc_kgs*3.6, Tc_in, Tv, option, n_tb); % qc/mc: kg/s -> m3/h
     
     % ms_u=ms/3600; % kg/h -> kg/s
     % mc_u=qc*1000/3600; % m³/h -> kg/s
@@ -49,7 +50,7 @@ function [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, optio
     
     Q = [mv_kgs*lambda;
          mc_kgs*Cp*(Tc_out-Tc_in);
-         U*options.A*dTML]';
+         U*A*dTML]';
 end
 
 

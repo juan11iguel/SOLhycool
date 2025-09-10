@@ -107,7 +107,14 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     qcc = qc_m3h;
 
     % Condenser
-    [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
+    [Tc_in, Tc_out] = condenser_model_fun( ...
+        mv_kgs, ...
+        Tv, ...
+        mc_kgs, ...
+        option=parameters.condenser_option, ...
+        A=parameters.condenser_A, ...
+        n_tb=parameters.condenser_n_tb ...
+    );
     Tcc_in = Tc_out;
     % Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
 
@@ -122,7 +129,8 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         silence_warnings=silence_warnings, ...
         lb=parameters.dc_lb, ...
         ub=parameters.dc_ub, ...
-        ce_coeffs=parameters.dc_ce_coeffs ...
+        ce_coeffs=parameters.dc_ce_coeffs, ...
+        n_dc=parameters.dc_n_dc  ...
     );
 
     % Solve WCT input mixer
@@ -181,7 +189,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     Cw_lh = Cw;
 
     % Condenser heat
-    [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A);
+    [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A, n_tb=parameters.condenser_n_tb);
     Qc_released = Q(1);
     Qc_absorbed = Q(2);
     Qc_transfered = Q(3);
@@ -196,9 +204,10 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
 
     function residual = inner_model(Tv)
         % Should do the bare minimum and return a residual
+        warning("This function has not been updated for a while, it should not be used without checking")
 
         % Condenser
-        [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, Tmin=Twct_min);
+        [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, n_tb=parameters.condenser_n_tb, Tmin=Twct_min);
         % DC
         Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
         % WCT

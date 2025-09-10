@@ -1,6 +1,9 @@
 function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     % WCT_MODEL  Predicts outlet temperature, electrical and water consumption for the WASCOP wet cooling tower.
     % 
+    % Model developed by Pedro Navarro
+    % Modified and adapted by Juan Miguel Serrano
+    % 
     % Inputs:
     %   Tamb    - Ambient temperature (ºC)
     %   HR      - Relative humidity (%)
