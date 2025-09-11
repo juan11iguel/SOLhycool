@@ -1,0 +1,7 @@
+
+Starting evaluation of wct_fp_andasol_gaussian_cascade 
+Elapsed time for training the model: 8.5360 seconds
+Elapsed time for evaluating validation set: 0.0305 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_andasol_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_andasol_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_andasol_gaussian_cascade.csv

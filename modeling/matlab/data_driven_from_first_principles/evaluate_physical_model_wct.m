@@ -11,8 +11,11 @@ clc
 clear
 
 % Parameters
-input_data_path = "../results/model_inputs_sampling/pilot_plant_200kW/wct_in.csv";
-output_data_path = "../results/model_outputs_physical/pilot_plant_200kW/wct_out.csv";
+case_study_id = "andasol_25_90MW"; % "andasol_25_90MW"; % "pilot_plant_200kW";
+
+input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
+output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
+model_fun = @wct_model_physical_andasol; % wct_model_physical;
 
 tic
 %load wct_inputs.mat;
@@ -35,12 +38,10 @@ for i=1:size(wct,1)
     qwct     = wct.qwct(i);
     wwct     = wct.wwct(i);
 
-    miFuncion = @(Tamb, HR, Twct_in, qwct, wwct) ...
-        wct_model_elx(Tamb, HR, Twct_in, qwct, wwct, ...
-                  80, 'c_poppe', 1.52, 'n_poppe', -0.69);    
+    % miFuncion =  %, 80, 'c_poppe', 1.52, 'n_poppe', -0.69);    
     
     % Llamar a la función en segundo plano
-    future = parfeval(@() miFuncion(Tamb, HR, Twct_in, qwct, wwct), 2);
+    future = parfeval(@() model_fun(Tamb, HR, Twct_in, qwct, wwct), 2);
 
     % Tiempo máximo permitido
     timeout = 5; % segundos

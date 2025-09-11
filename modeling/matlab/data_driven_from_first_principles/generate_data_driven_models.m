@@ -136,7 +136,8 @@ set_wct_common_parameters
 configuration_types = ["cascade"];
 alternatives = ["gaussian"]; %#ok<*NBRAK2> 
 auxiliary_id = "fp_andasol_";
-filename_to_test = "wct_out"; 
+filename_to_test = "andasol_25_90MW/wct_out"; % "andasol_50_90MW/dc_out"; % andasol_50_90MW andasol_50_90MW
+
 
 % No validation set available
 data_validation_path = []; 
