@@ -1,0 +1,28 @@
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.6441 seconds
+Elapsed time for evaluating validation set: 0.0037 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.7446 seconds
+Elapsed time for evaluating validation set: 0.0057 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 3.2306 seconds
+Elapsed time for evaluating validation set: 0.0060 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 3.8675 seconds
+Elapsed time for evaluating validation set: 0.0059 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv

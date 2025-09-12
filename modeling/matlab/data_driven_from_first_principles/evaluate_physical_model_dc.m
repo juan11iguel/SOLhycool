@@ -43,7 +43,7 @@ for i=1:size(dc,1)
     wdc      = dc.wdc(i);
     
 %     % Llamar a la función en segundo plano
-     future = parfeval(@() dc_model_physical(Tamb, wdc, Tdc_in, qdc, n_dc), 1);
+     future = parfeval(@() dc_model_physical(Tamb, Tdc_in, qdc, wdc, n_dc), 1);
 %     Tout_simu(i)= fetchOutputs(future);
 
     % Tiempo máximo permitido
@@ -76,10 +76,18 @@ for i=1:size(dc,1)
 
 end
 
+
 %% Guardo datos con el formato deseado
-dc_out=dc(:,2:end); % la primera columna no la queremos
-%dc_out=dc;
-dc_out.Tdc_out=Tout_simu';
+% Renombrar columnas existentes
+dc_out = dc(:,2:end); % quitar primera columna
+dc_out.Properties.VariableNames(2:4) = ["Tin","q","w_fan"];
+
+% Añadir nueva columna Tout
+dc_out.Tdc_out = Tout_simu';
+dc_out.Properties.VariableNames(end) = "Tout";
+
+% Intercambiar columnas "q" y "w_fan"
+dc_out = dc_out(:, ["Tamb", "Tin","w_fan","q","Tout"]);
 
 %% Elimino NaNs
 % Encuentra las filas que tienen al menos un NaN
@@ -88,50 +96,50 @@ filasConNaN = any(ismissing(dc_out), 2);
 % Elimina esas filas
 dc_out_sinnan = dc_out(~filasConNaN, :);
 
-%% Guardo datos
-writetable(dc_out, output_data_path);
+%%
+writetable(dc_out_sinnan, output_data_path);
 fprintf("Results saved to %s\n", output_data_path)
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
-for i=1:length(Tout_simu)
-    %[Tdb(i), w, phi, h, Tdp, v, Twb] = Psychrometricsnew('Tdb',wct.Tamb(i),'phi',wct.HR(i)); 
-%     Tww =wct.Tdc_in(i);
-%     Dens_agua=-1.72087973954183E-07*Tww^4+0.0000480220158358691*Tww^3-0.00782109015813148*Tww^2+0.0563115452841885*Tww+999.8;
-%     ma(i) = ajuste_m_dot_aT(wct.wdc(i),wct.Tamb(i)); 
-%     Mwct(i) = wct.qdc(i);
-%     mw(i) = Mwct(i) * Dens_agua /3600;
-%     ratio(i)=(mw(i)/ma(i));
-    dT(i) = dc.Tdc_in(i)-Tout_simu(i);
-       
-end
-% Crear gráfico de dispersión 3D
-scatter3(dc.Tamb, dc.qdc, dT, 'filled')
-xlabel('T_{amb}')
-ylabel('q')
-zlabel('dT')
-% figure
-% scatter3(Tdb, ratio, Mw_lost_Lmin, 'filled')
+% for i=1:length(Tout_simu)
+%     %[Tdb(i), w, phi, h, Tdp, v, Twb] = Psychrometricsnew('Tdb',wct.Tamb(i),'phi',wct.HR(i)); 
+% %     Tww =wct.Tdc_in(i);
+% %     Dens_agua=-1.72087973954183E-07*Tww^4+0.0000480220158358691*Tww^3-0.00782109015813148*Tww^2+0.0563115452841885*Tww+999.8;
+% %     ma(i) = ajuste_m_dot_aT(wct.wdc(i),wct.Tamb(i)); 
+% %     Mwct(i) = wct.qdc(i);
+% %     mw(i) = Mwct(i) * Dens_agua /3600;
+% %     ratio(i)=(mw(i)/ma(i));
+%     dT(i) = dc.Tdc_in(i)-Tout_simu(i);
 % 
-% elapsed_time=toc;
-% fprintf('Terminado en %0.1f s', elapsed_time)
-
-
-%% Elimino números complejos
-total_nan=sum(isnan(Tout_simu));
-fprintf('Soluciones no encontradas (=NaN): %0.0f \n', total_nan)
-
-tol = 1e-10;
-Tout_simu_valid = Tout_simu;
-Nwlost_simu_valid = Mw_lost_Lmin;
-for i=1:size(Tout_simu,1)
-    if abs(imag(Tout_simu(i))) ~= 0
-        Tout_simu_valid = NaN;
-        Nwlost_simu_valid = NaN;
-    end;
-end;
-
-total_nan=sum(isnan(Tout_simu_valid));
-fprintf('Soluciones no encontradas (=NaN) y no complejas: %0.0f \n', total_nan)
-
+% end
+% % Crear gráfico de dispersión 3D
+% scatter3(dc.Tamb, dc.qdc, dT, 'filled')
+% xlabel('T_{amb}')
+% ylabel('q')
+% zlabel('dT')
+% % figure
+% % scatter3(Tdb, ratio, Mw_lost_Lmin, 'filled')
+% % 
+% % elapsed_time=toc;
+% % fprintf('Terminado en %0.1f s', elapsed_time)
+% 
+% 
+% %% Elimino números complejos
+% total_nan=sum(isnan(Tout_simu));
+% fprintf('Soluciones no encontradas (=NaN): %0.0f \n', total_nan)
+% 
+% tol = 1e-10;
+% Tout_simu_valid = Tout_simu;
+% Nwlost_simu_valid = Mw_lost_Lmin;
+% for i=1:size(Tout_simu,1)
+%     if abs(imag(Tout_simu(i))) ~= 0
+%         Tout_simu_valid = NaN;
+%         Nwlost_simu_valid = NaN;
+%     end;
+% end;
+% 
+% total_nan=sum(isnan(Tout_simu_valid));
+% fprintf('Soluciones no encontradas (=NaN) y no complejas: %0.0f \n', total_nan)
+% 
 
 

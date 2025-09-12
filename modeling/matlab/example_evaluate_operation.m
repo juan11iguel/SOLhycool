@@ -1,14 +1,15 @@
 data = readtable("../data/data.csv");
 addpath("component_models/")
 
-p = default_parameters();
+parameters = default_parameters();
+p = parameters;
 
 %% Evaluate wct fan speed given outlet temperature
 for i=1:height(data)
     if ~(data.qwct(i) > 0.5)
         continue
     end
-    [wwct, valid] = wct_inverse_model_data(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i), ...
+    [wwct, valid] = wct_inverse_model(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i), ...
         model_data_path=parameters.wct_model_data_path, silence_warnings=false, lb=p.wct_lb, ub=p.wct_ub);
 
     fprintf("Point %d | wwct model: %.2f, wwct experimental: %.2f | Valid: %s\n", i, wwct, data.wwct(i), string(valid))

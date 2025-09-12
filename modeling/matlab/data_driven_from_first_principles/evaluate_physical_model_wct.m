@@ -11,21 +11,31 @@ clc
 clear
 
 % Parameters
-case_study_id = "andasol_25_90MW"; % "andasol_25_90MW"; % "pilot_plant_200kW";
+case_study_id = "pilot_plant_200kW"; % "andasol_90MW"; % "pilot_plant_200kW";
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
-model_fun = @wct_model_physical_andasol; % wct_model_physical;
 
-tic
+switch case_study_id
+    case "pilot_plant_200kW"
+        model_fun        = @wct_model_physical;
+        save_electrical_consumption = false;
+    case "andasol_90MW"
+        model_fun        = @wct_model_physical_andasol;
+        save_electrical_consumption = true;
+    otherwise
+        error("Invalid model_type '%s'. Options are: 'pilot_plant_200kW', 'andasol_90MW'", model_type);
+end
+
 %load wct_inputs.mat;
 wct=readtable(input_data_path);
-
 
 % Asegurarnos de que el parallel pool está activo
 if isempty(gcp('nocreate'))
         parpool;  % Abre pool si no está
 end
+
+tic
 
 PV=ones(size(wct,1),1); % inicialmente todos son puntos válidos
 for i=1:size(wct,1)
@@ -41,7 +51,7 @@ for i=1:size(wct,1)
     % miFuncion =  %, 80, 'c_poppe', 1.52, 'n_poppe', -0.69);    
     
     % Llamar a la función en segundo plano
-    future = parfeval(@() model_fun(Tamb, HR, Twct_in, qwct, wwct), 2);
+    future = parfeval(@() model_fun(Tamb, HR, Twct_in, qwct, wwct), 3);
 
     % Tiempo máximo permitido
     timeout = 5; % segundos
@@ -54,7 +64,8 @@ for i=1:size(wct,1)
             cancel(future);
             disp(['⏱ Timeout alcanzado en i = ', num2str(i), '.']);
             Tout_simu(i) = NaN;
-            Mw_lost_Lmin(i) = NaN;
+            Mw_lost_Lh(i) = NaN;
+            Ce_kWe(i) = NaN;
             break
         end
     end
@@ -62,13 +73,14 @@ for i=1:size(wct,1)
     % Solo recoger resultado si terminó bien
     if strcmp(future.State, 'finished')
         try
-            [Tout_simu(i), Mw_lost_Lmin(i)] = fetchOutputs(future);
+            [Tout_simu(i), Ce_kWe(i), Mw_lost_Lh(i)] = fetchOutputs(future);
             disp(['✅ i = ', num2str(i), ' completado / ', num2str(size(wct,1))]);
             
         catch ME
             disp(['❌ Error interno en función: ', ME.message]);
             Tout_simu(i) = NaN;
-            Mw_lost_Lmin(i) = NaN;
+            Mw_lost_Lh(i) = NaN;
+            Ce_kWe(i) = NaN;
             PV(i) = 0;
         end
     end   
@@ -116,9 +128,33 @@ wct_out = removevars(wct_out, "Twb");
 wct_out = removevars(wct_out, "mw_ma_ratio");
 
 wct_out.Twct_out=Tout_simu';
-wct_out.Cw_lh=Mw_lost_Lmin'.*60;
+wct_out.Cw_lh=Mw_lost_Lh';
 wct_out.Properties.VariableNames(6) = "Tout";
 wct_out.Properties.VariableNames(7) = "m_w_lost";
+
+if save_electrical_consumption
+    wct_out.Ce_kW = Ce_kWe';
+    wct_out.Properties.VariableNames(8) = "Ce";
+end
+
+%% Compruebo los nan y números complejos que había
+total_nan=sum(isnan(Tout_simu));
+fprintf('Soluciones no encontradas (=NaN): %d \n', total_nan)
+
+tol = 1e-10;
+Tout_simu_valid = Tout_simu;
+Mwlost_simu_valid = Mw_lost_Lh;
+Ce_simu_valid = Ce_kWe;
+for i=1:size(Tout_simu,1)
+    if abs(imag(Tout_simu(i))) ~= 0
+        Tout_simu_valid = NaN;
+        Mwlost_simu_valid = NaN;
+        Ce_simu_valid = NaN;
+    end;
+end;
+
+total_nan=sum(isnan(Tout_simu_valid));
+fprintf('Soluciones no encontradas (=NaN) y no complejas: %d \n', total_nan)
 
 %% Elimino NaNs
 % Encuentra las filas que tienen al menos un NaN
@@ -131,69 +167,52 @@ wct_out_sinnan = wct_out(~filasConNaN, :);
 writetable(wct_out_sinnan, output_data_path);
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
-for i=1:size(wct_out_sinnan,1)
-    [Tdb, w, phi, h, Tdp, v, Twb(i)] = Psychrometricsnew('Tdb',wct_out_sinnan.Tamb(i),'phi',wct_out_sinnan.HR(i)); 
-    Tww =wct_out_sinnan.Tin(i);
-    Dens_agua=-1.72087973954183E-07*Tww^4+0.0000480220158358691*Tww^3-0.00782109015813148*Tww^2+0.0563115452841885*Tww+999.8;
-   ma(i) = ajuste_m_dot_aT(wct_out_sinnan.w_fan(i),wct_out_sinnan.Tamb(i)); 
-   %ma(i) = ajuste_m_dot_a(wct_out_sinnan.q(i)); 
-    Mwct(i) = wct_out_sinnan.q(i);
-    mw(i) = Mwct(i) * Dens_agua /3600;
-    ratio(i)=(mw(i)/ma(i));
-    dT(i) = wct_out_sinnan.Tin(i)-wct_out_sinnan.Tout(i); %Tout_simu(i);
-    
-end
-% Crear gráfico de dispersión 3D
-figure
-scatter3(Twb, ratio, dT, 'filled')
-xlabel('T_{wb}')
-ylabel('ratio')
-zlabel('dT')
-
-figure
-scatter3(Twb, ratio, wct_out_sinnan.m_w_lost, 'filled')
-xlabel('T_{wb}')
-ylabel('ratio')
-zlabel('Mw_lost_Lmin')
+% for i=1:size(wct_out_sinnan,1)
+%     [Tdb, w, phi, h, Tdp, v, Twb(i)] = Psychrometricsnew('Tdb',wct_out_sinnan.Tamb(i),'phi',wct_out_sinnan.HR(i)); 
+%     Tww =wct_out_sinnan.Tin(i);
+%     Dens_agua=-1.72087973954183E-07*Tww^4+0.0000480220158358691*Tww^3-0.00782109015813148*Tww^2+0.0563115452841885*Tww+999.8;
+%    ma(i) = ajuste_m_dot_aT(wct_out_sinnan.w_fan(i),wct_out_sinnan.Tamb(i)); 
+%    %ma(i) = ajuste_m_dot_a(wct_out_sinnan.q(i)); 
+%     Mwct(i) = wct_out_sinnan.q(i);
+%     mw(i) = Mwct(i) * Dens_agua /3600;
+%     ratio(i)=(mw(i)/ma(i));
+%     dT(i) = wct_out_sinnan.Tin(i)-wct_out_sinnan.Tout(i); %Tout_simu(i);
+% 
+% end
+% % Crear gráfico de dispersión 3D
+% figure
+% scatter3(Twb, ratio, dT, 'filled')
+% xlabel('T_{wb}')
+% ylabel('ratio')
+% zlabel('dT')
+% 
+% figure
+% scatter3(Twb, ratio, wct_out_sinnan.m_w_lost, 'filled')
+% xlabel('T_{wb}')
+% ylabel('ratio')
+% zlabel('Mw_lost_Lmin')
 
 elapsed_time=toc;
-fprintf('Terminado en %0.1f s', elapsed_time)
+fprintf('Terminado en %0.1f s\n', elapsed_time)
 
-
-%% Compruebo los nan y números complejos que había
-total_nan=sum(isnan(Tout_simu));
-fprintf('Soluciones no encontradas (=NaN): %0.0f \n', total_nan)
-
-tol = 1e-10;
-Tout_simu_valid = Tout_simu;
-Mwlost_simu_valid = Mw_lost_Lmin;
-for i=1:size(Tout_simu,1)
-    if abs(imag(Tout_simu(i))) ~= 0
-        Tout_simu_valid = NaN;
-        Nwlost_simu_valid = NaN;
-    end;
-end;
-
-total_nan=sum(isnan(Tout_simu_valid));
-fprintf('Soluciones no encontradas (=NaN) y no complejas: %0.0f \n', total_nan)
 
 
 %% Functions
 
-function m_dot_a = ajuste_m_dot_aT(SC_fan_wct,Tamb)
-    p00 =   -0.0433;
-    p10 =   0.1650;
-    p01 =   -0.0273;   
-    p20 =   -0.0013;  
-    p11 =   0.0000;    
-    p02 =   0.0003;    
-    m_dot_a = p00 + p10*(SC_fan_wct/2) + p01*Tamb + p20*(SC_fan_wct/2)^2 + p11*(SC_fan_wct/2)*Tamb + p02*Tamb^2;
-end
-
-function m_dot_a = ajuste_m_dot_a(SC_fan_wct)
-        p1 = -0.0014;
-        p2 = 0.1743;
-        p3 = -0.7251;
-        m_dot_a = p1*(SC_fan_wct/2)^2 + p2*SC_fan_wct/2 + p3;
-end
-
+% function m_dot_a = ajuste_m_dot_aT(SC_fan_wct,Tamb)
+%     p00 =   -0.0433;
+%     p10 =   0.1650;
+%     p01 =   -0.0273;   
+%     p20 =   -0.0013;  
+%     p11 =   0.0000;    
+%     p02 =   0.0003;    
+%     m_dot_a = p00 + p10*(SC_fan_wct/2) + p01*Tamb + p20*(SC_fan_wct/2)^2 + p11*(SC_fan_wct/2)*Tamb + p02*Tamb^2;
+% end
+% 
+% function m_dot_a = ajuste_m_dot_a(SC_fan_wct)
+%         p1 = -0.0014;
+%         p2 = 0.1743;
+%         p3 = -0.7251;
+%         m_dot_a = p1*(SC_fan_wct/2)^2 + p2*SC_fan_wct/2 + p3;
+% end
+% 

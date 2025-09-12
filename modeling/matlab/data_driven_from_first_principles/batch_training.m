@@ -42,6 +42,12 @@ else
     filenames = [filename_to_test];
 end
 
+n_outputs = length(output_vars_idx);
+
+if n_outputs > 3
+    error("This function only supports 1 (Tout), 2 (Tout, Cw) or 3 (Tout, Cw, Ce) outputs")
+end
+
 %% Alternative methods
 
 % for filename=[filenames(1)]
@@ -107,8 +113,8 @@ for filename=filenames
             
             % load(sprintf("datos/conjuntos datos reducidos/%s.mat", filename), "data_new");
             % data_tr = data_new;
-            out_mod_tr = zeros(height(data_tr), 2);
-            model = cell(2,1);
+            out_mod_tr = zeros(height(data_tr), n_outputs);
+            model = cell(n_outputs,1);
 
             diary(sprintf('%s/logs/%s.txt', results_path, test_id));
 
@@ -139,7 +145,12 @@ for filename=filenames
                     % Predict Tout for the training set to use it for Mlost
                     [out_mod_tr(:,1), ~, ~] = predict(model{1}, inputs_tr);
                     % Fit for Mlost
-                    model{2} = fitrgp([inputs_tr, out_mod_tr(:,1)], out_ref_tr(:,2));  
+                    model{2} = fitrgp([inputs_tr, out_mod_tr(:,1)], out_ref_tr(:,2));
+
+                    % Fit for Ce, not cascade
+                    if n_outputs == 3
+                        model{3} = fitrgp(inputs_tr, out_ref_tr(:,3));
+                    end
                 end
 
             elseif strcmp(alternative, "radial_basis")

@@ -1,4 +1,4 @@
-function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
+function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct, options)
     % WCT_MODEL  Predicts outlet temperature, electrical and water consumption for the WASCOP wet cooling tower.
     % 
     % Inputs:
@@ -29,12 +29,16 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
         Tin (1,1) double
         q (1,1) double
         w_fan (1,1) double
-        options.raise_error_on_invalid_inputs (1,1) logical = false
-        options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
-        options.lb (1,5) double = 0.9*[9.0600   10.3300   31.1700    5.7049         0];
-        options.ub (1,5) double = 1.1*[38.7500   89.2500   40.9400   24.8400   93.4161];
-        options.silence_warnings logical = false
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.n_wct (1,1) double {mustBeInteger,mustBePositive} = 1
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4]; % Default quadratic coefficients
+        options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
+        options.lb (1,5) double = [0.1    0.1     5.0    5.0       0.];
+        options.ub (1,5) double = [50.0   99.99   55.0   24.8400   95.];
+        options.raise_error_on_invalid_inputs (1,1) logical = false
+        options.silence_warnings logical = false
     end
 
     arguments (Output)
@@ -45,11 +49,21 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
 
     persistent model
 
+    % Terrible
+    % Apply optional arguments from the alternative struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
+
     if isempty(model)
         load(options.model_data_path, "model");
     end
 
     % fprintf("wct model path: %s\n", options.model_data_path)
+
+    % Limits of flow rate considering the number of WCTs in parallel
+    options.ub(4)=options.ub(4)*options.n_wct;
+    options.lb(4)=options.lb(4)*options.n_wct;
     
     max_values = options.ub;
     min_values = options.lb;
@@ -70,16 +84,23 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
         end
     end
 
-    inputs = [Tamb, HR, Tin, q, w_fan];
-    out = zeros(size(inputs, 1), 2);
+    inputs = [Tamb, HR, Tin, q/options.n_wct, w_fan];
     if valid_inputs
         % Predict first variable
-        [out(:,1), ~, ~] = predict(model{1}, inputs);
+        [Tout, ~, ~] = predict(model{1}, inputs);
         % Predict for the second variable
-        [out(:,2), ~, ~] = predict(model{2}, [inputs, out(:,1)]);
-        [Tout, Cw] = deal(out(1), out(2));
-        Ce = power_consumption(w_fan) * 1e-3; % kW %+ ConsumoElectrico_P7(SC_pump_wct); % kWe
-        % Pth = q/3.6*(Tin - Tout)*4.186; % Mwct: m³/h -> kg/s; kWth
+        [Cw, ~, ~] = predict(model{2}, [inputs, Tout]);
+        Cw = max(0.0, Cw * options.n_wct); % l/h
+        
+        if length(model) > 2
+            % Electrical consumption is another GPR
+            [Ce, ~, ~] = predict(model{3}, [inputs, [Tout, Cw]]);
+            Ce = max(0.0, Ce);
+        else
+            % Otherwise estimate consumption using the polynomium
+            Ce = options.n_wct * power_consumption(w_fan) * 1e-3; % kWe
+        end
+        % Pth = q/3.6*(Tin - Tout)*4.186; % Mwct: m³/h -> kg/s; % kWth
     else
         % Skip wet cooler
         Tout = Tin;
@@ -96,6 +117,17 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options)
          msg = sprintf("Input %s=%.2f is outside limits (%.2f > %s > %.2f)", string(variable), value, lower_limit, string(variable), upper_limit);
 %         throw(MException('model:invalid_input', msg))
          warning(msg)
+    end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
     end
 
 end

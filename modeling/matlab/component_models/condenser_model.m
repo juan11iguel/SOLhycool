@@ -1,4 +1,4 @@
-function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, A, n_tb, option, options)
+function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, options_struct, options)
     %CONDENSER_MODEL Model of a surface condenser using saturated vapor as
     %input and that outputs saturated liquid
     % It returns thermal power calculated in three different ways:
@@ -16,9 +16,13 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, A, n_tb, option
         mv_kgs (1,1) double
         Tv_C (1,1) double
         mc_kgs (1,1) double
-        A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
-        n_tb (1,1) double = 24
-        option (1,1) int8 {mustBeInRange(option, 1, 9)} = 7
+
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.A (1,1) double {mustBePositive} = 19.30 %%19.967-> https://collab.psa.es/f/174826 24/U;
+        options.n_tb (1,1) double = 24
+        options.option (1,1) int8 {mustBeInRange(options.option, 1, 9)} = 7
         options.deltaTv_cout_min (1,1) double {mustBePositive} = 2;
         options.Tmin (1,1) double = 25;
     end
@@ -27,6 +31,16 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, A, n_tb, option
         Tc_in (1,1) double
         Tc_out (1,1) double
     end
+
+    % Terrible
+    % Apply optional arguments from the alternative options_struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
+    
+    option = options.option;
+    A = options.A;
+    n_tb = options.n_tb;
     
     % opt= optimoptions('fsolve', 'Display', 'off', 'Algorithm', 'trust-region');
     opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display','none'); 
@@ -71,5 +85,16 @@ function [Tc_in, Tc_out] = condenser_model(mv_kgs, Tv_C, mc_kgs, A, n_tb, option
         Q = [mv_kgs*lambda, mc_kgs*Cp*(Tc_out-Tc_in), U*A*dTML];
         error = sum((Q - mean(Q)).^2);
         % fprintf("condenser model residual: %.2f for Tc_in=%.2f, Tc_out=%.2f, Tv=%.2f\n", error, Tc_in, Tc_out, Tv_C)
+    end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
     end
 end

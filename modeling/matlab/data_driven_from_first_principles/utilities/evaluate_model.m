@@ -20,10 +20,16 @@ function out = evaluate_model(inputs, varargin)
         configuration_type = "simple";
     end
 
+    n_outputs = length(model);
 
-    out = zeros(size(inputs, 1), 2);
+    if n_outputs > 3
+        error("This function only supports up to 3 outputs")
+    end
 
-    if strcmp(model_type, "gaussian") || strcmp(model_type, "random_forest")
+
+    out = zeros(size(inputs, 1), n_outputs);
+
+    if strcmp(model_type, "gaussian") || strcmp(model_type, "random_forest" || strcmp(model_type, "gradient_boosting"))
         % Gaussian
 
         % Gaussian approach only predicts one variable at a time
@@ -41,19 +47,28 @@ function out = evaluate_model(inputs, varargin)
             % Predict for the second variable
             [out(:,2), ~, ~] = predict(model{2}, [inputs, out(:,1)]);
 
+            % Predcit for a third variable, which may or not be in cascade
+            if n_outputs > 2
+                try
+                    [out(:,3), ~, ~] = predict(model{3}, inputs);
+                catch
+                    [out(:,3), ~, ~] = predict(model{3}, [inputs, out]);
+                end
+            end
+
         end
 
-    elseif strcmp(model_type, "gradient_boosting")
-        % only cascade
-        % Predict first variable
-        if length(model) > 1
-            out(:,1) = predict(model{1}, inputs);
-    
-            % Predict for the second variable
-            out(:,2) = predict(model{2}, [inputs, out(:,1)]);
-        else
-            out = predict(model, inputs);
-        end
+    % elseif strcmp(model_type, "gradient_boosting")
+    %     % only cascade
+    %     % Predict first variable
+    %     if length(model) > 1
+    %         out(:,1) = predict(model{1}, inputs);
+    % 
+    %         % Predict for the second variable
+    %         out(:,2) = predict(model{2}, [inputs, out(:,1)]);
+    %     else
+    %         out = predict(model, inputs);
+    %     end
 
     elseif strcmp(model_type, "radial_basis") || strcmp(model_type, "radial_basis2")
         if strcmp(configuration_type, "simple")
@@ -64,11 +79,20 @@ function out = evaluate_model(inputs, varargin)
 
             try
 
-            % Predict first variable
-            out(:,1) = sim(model{1}, inputs')';
+                % Predict first variable
+                out(:,1) = sim(model{1}, inputs')';
+        
+                % Predict for the second variable
+                out(:,2) = sim(model{2}, [inputs, out(:,1)]')';
     
-            % Predict for the second variable
-            out(:,2) = sim(model{2}, [inputs, out(:,1)]')';
+                % Predcit for a third variable, which may or not be in cascade
+                if n_outputs > 2
+                    try
+                        out(:,3) = sim(model{3}, inputs')';
+                    catch
+                        out(:,3) = sim(model{3}, [inputs, out]')';
+                    end
+                end
 
             catch
 
@@ -77,6 +101,11 @@ function out = evaluate_model(inputs, varargin)
         
                 % Predict for the second variable
                 out(:,2) = sim(model{2}, inputs')';
+
+                if n_outputs > 2
+                    % Predcit for a third variable
+                    out(:,3) = sim(model{3}, inputs')';
+                end
 
             end
         else
@@ -95,6 +124,15 @@ function out = evaluate_model(inputs, varargin)
     
             % Predict for the second variable
             out(:,2) = model{2}([inputs, out(:,1)]')';
+            if n_outputs > 2
+                % Predcit for a third variable, which may or not be in cascade
+                try
+                    out(:,3) = model{3}(inputs')';
+                catch
+                    out(:,3) = model{3}([inputs, out]')';
+                end
+            end
+
         else
             raise_unknown_configuration(configuration_type)
         end

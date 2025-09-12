@@ -64,7 +64,7 @@ function U = condenser_heat_transfer_coefficient(qc_m3h, Tc_in_C, Tv_C, option, 
            U = (p00 + p10*Tc_in_C + p01*mc2_tubo + p20*Tc_in_C^2 + p11*Tc_in_C*mc2_tubo + p02*mc2_tubo^2)*1000;
     
         case 7 %correlación obtenida a partir de Calibra_Uexp.m pero con "SC_data_DoE_recortado.mat"
-            mc2_tubo=qc2/24;
+            mc2_tubo=qc2/n_tb;
            p00 =      0.8285  ;
            p10 =   -0.008205 ;
            p01 =   4.938e-05 ;

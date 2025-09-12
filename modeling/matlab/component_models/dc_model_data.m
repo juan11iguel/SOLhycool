@@ -1,4 +1,4 @@
-function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
+function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options_struct, options)
     % DC_MODEL  Predicts outlet temperature and electrical consumption for the WASCOP dry cooler.
     %
     % Inputs:
@@ -27,12 +27,15 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
         Tin (1,1) double
         q (1,1) double
         w_fan (1,1) double
-        n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "dc_model_data.mat")
         options.silence_warnings logical = false
-        options.lb (1,4) double = 0.9*[9.0600   33.1600, 5.2211, 11];
-        options.ub (1,4) double = 1.1*[38.7500   41.9200, 24.1543, 99.1800];
+        options.lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
+        options.ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
         options.ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
     end
 
@@ -42,8 +45,8 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
     end
 
     % Limits of flow rate considering the number of DCs in parallel
-    options.ub(3)=options.ub(3)*n_dc;
-    options.lb(3)=options.lb(3)*n_dc;
+    options.ub(3)=options.ub(3)*options.n_dc;
+    options.lb(3)=options.lb(3)*options.n_dc;
 
     persistent model
 
@@ -73,8 +76,8 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
     end
 
     if valid_inputs
-        [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q/n_dc]);
-        Ce = n_dc * power_consumption(w_fan) * 1e-3; % kW
+        [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q/options.n_dc]);
+        Ce = options.n_dc * power_consumption(w_fan) * 1e-3; % kW
     else
         Tout = Tin;
         Ce = 0;
@@ -88,4 +91,16 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, n_dc, options)
         msg = sprintf("Input %s=%.2f is outside limits (%.2f < %s < %.2f)", string(variable), value, lower_limit, string(variable), upper_limit);
         throw(MException('model:invalid_input', msg))
     end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
+    end
+
 end

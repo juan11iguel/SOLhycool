@@ -3,7 +3,7 @@
     <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>2.3.0</param.version>
+    <param.version>3.0.0</param.version>
     <param.authnamewatermark>Lidia Roca, Juan Miguel Serrano</param.authnamewatermark>
     <param.email>lroca@psa.es</param.email>
     <param.company>CIEMAT - Plataforma Solar de Almería</param.company>
@@ -117,8 +117,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/mixer_inverse_model.m</file>
       <file>${PROJECT_ROOT}/component_models/mixer_model.m</file>
       <file>${PROJECT_ROOT}/component_models/recirculation_pump_consumption.m</file>
-      <file>${PROJECT_ROOT}/component_models/wct_inverse_model_data.m</file>
-      <file>${PROJECT_ROOT}/component_models/wct_inverse_model_physical.m</file>
+      <file>${PROJECT_ROOT}/component_models/wct_inverse_model.m</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_data.m</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_physical.m</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_physical_andasol.m</file>
@@ -153,8 +152,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
           <file>${PROJECT_ROOT}/utils/ratios_to_flows.m</file>
           <file>${PROJECT_ROOT}/component_models/recirculation_pump_consumption.m</file>
           <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
-          <file>${PROJECT_ROOT}/component_models/wct_inverse_model_data.m</file>
-          <file>${PROJECT_ROOT}/component_models/wct_inverse_model_physical.m</file>
+          <file>${PROJECT_ROOT}/component_models/wct_inverse_model.m</file>
           <file>${PROJECT_ROOT}/component_models/wct_model_data.m</file>
           <file>${PROJECT_ROOT}/component_models/wct_model_physical.m</file>
           <file>${PROJECT_ROOT}/component_models/wct_model_physical_andasol.m</file>
@@ -176,11 +174,11 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
     </fileset.resources>
     <fileset.depfun>
-      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/Psychrometrics plot/Psychrometricsnew.m</file>
-      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
       <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
+      <file>${PROJECT_ROOT}/utils/psychrometrics/Psychrometricsnew.m</file>
+      <file>${PROJECT_ROOT}/utils/xsteamPSA/XSteam.m</file>
     </fileset.depfun>
     <fileset.package>
       <file>${PROJECT_ROOT}/README.md</file>

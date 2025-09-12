@@ -1,7 +1,9 @@
 %%
 %   This script should be run with the current path set to the path of the
 %   script
-% 
+%   
+%   Check the different sections of the script and run the desired scenario
+%   (The first section always needs to be run)
 %--------------------------------------------------------------------------
 
 %% Common parameters
@@ -52,36 +54,39 @@ global data_validation_path
 
 %% 1.3. DC - pilot plant using generated samples from first-principles model
 
-% set_common_parameters
-% set_dc_common_parameters
-% 
-% % Parameters
-% configuration_types = ["cascade"];
-% alternatives = ["gaussian"]; %#ok<*NBRAK2> 
-% auxiliary_id = "fp_";
-% filename_to_test = "dc_first_principles_samples_data"; 
-% 
-% run("batch_training.m")
-
-%% 1.4. DC - commercial CSP using generated samples from first-principles model
-
 set_common_parameters
 set_dc_common_parameters
 
 % Parameters
-configuration_types = ["simple"];
+configuration_types = ["cascade"];
 alternatives = ["gaussian"]; %#ok<*NBRAK2> 
-auxiliary_id = "fp_andasol_75";
-filename_to_test = "andasol_75_90MW/dc_out"; % "andasol_50_90MW/dc_out"; % andasol_50_90MW andasol_50_90MW
-
-% No validation set available
-data_validation_path = []; 
-trainRatio = 0.7;
-valRatio = 0.15;
-testRatio = 0.15;
+auxiliary_id = "fp_pilot_plant_";
+filename_to_test = "pilot_plant_200kW/dc_out"; 
 visualize_validation = true;
 
 run("batch_training.m")
+
+%% 1.4. DC - commercial CSP using generated samples from first-principles model
+% Nothing to evaluate! The scaled model is the same as the pilot plant just
+% with more in parallel!!
+%
+% set_common_parameters
+% set_dc_common_parameters
+% 
+% % Parameters
+% configuration_types = ["simple"];
+% alternatives = ["gaussian"]; %#ok<*NBRAK2> 
+% auxiliary_id = "fp_andasol_75_";
+% filename_to_test = "andasol_75_90MW/dc_out"; % "andasol_50_90MW/dc_out"; % andasol_50_90MW andasol_50_90MW
+% 
+% % No validation set available
+% data_validation_path = []; 
+% trainRatio = 0.7;
+% valRatio = 0.15;
+% testRatio = 0.15;
+% visualize_validation = true;
+% 
+% run("batch_training.m")
 
 
 %% 2.1. WCT - pilot plant using experimental data
@@ -116,16 +121,17 @@ run("batch_training.m")
 
 %% 2.2. WCT - pilot plant using generated samples from first-principles model
 
-% set_common_parameters
-% set_wct_common_parameters
-% 
-% % Parameters
-% configuration_types = ["cascade"];
-% alternatives = ["gaussian"]; %#ok<*NBRAK2> 
-% auxiliary_id = "fp_";
-% filename_to_test = "wct_first_principles_samples_data"; 
-% 
-% run("batch_training.m")
+set_common_parameters
+set_wct_common_parameters
+
+% Parameters
+configuration_types = ["cascade"];
+alternatives = ["gaussian"]; %#ok<*NBRAK2> 
+auxiliary_id = "fp_pilot_plant_";
+filename_to_test = "pilot_plant_200kW/wct_out"; 
+visualize_validation = true;
+
+run("batch_training.m")
 
 %% 2.3. WCT - comercial CSP using generated samples from first-principles model
 
@@ -144,6 +150,10 @@ data_validation_path = [];
 trainRatio = 0.7;
 valRatio = 0.15;
 testRatio = 0.15;
+
+% Add Ce to outputs
+output_vars_idx = [6, 7, 8];
+output_var_names = ["Tout", "Mlost", "Ce"];
 
 run("batch_training.m")
 
@@ -187,7 +197,7 @@ function set_dc_common_parameters()
     output_var_names = ["Tout"];
     output_vars_sensor_types = ["Pt100"];
 
-    data_validation_path = "data/dc_exp3_data.csv";
+    data_validation_path = "../../data/dc_exp3_exp.csv";
 end
 
 function set_wct_common_parameters()
@@ -201,7 +211,7 @@ function set_wct_common_parameters()
     input_vars_idx  = 1:5;
     output_vars_idx = [6, 7];
     output_var_names = ["Tout", "Mlost"];
-    output_vars_sensor_types = ["Pt100", "paddle_flow_meter"];
+    output_vars_sensor_types = ["Pt100", "paddle_flow_meter", ""];
 
-    data_validation_path = "data/wct_exp3_data.csv";
+    data_validation_path = "../../data/wct_out_exp.csv";
 end

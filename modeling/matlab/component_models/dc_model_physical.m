@@ -1,4 +1,4 @@
-function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
+function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options_struct, options)
     % DC_MODEL (PHYSICAL)  Predicts outlet temperature and electrical consumption for the physical DC model.
     %
     % This model was originally developed by XXXX 
@@ -26,12 +26,15 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
         Tin (1,1) double
         q (1,1) double
         w_fan (1,1) double
-        n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
         options.silence_warnings logical = false
-        options.lb (1,4) double = 0.9*[5.0600   10.0, 5.2211, 11];
-        options.ub (1,4) double = 1.1*[50.7500   50.0, 24.1543, 99.1800];
+        options.lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
+        options.ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
         options.ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
     end
 
@@ -40,9 +43,10 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, n_dc, options)
         Ce (1,1) double
     end
 
-% Scale the limits of flow rate considering the number of DCs in parallel
-options.ub(3)=options.ub(3)*n_dc;
-options.lb(3)=options.lb(3)*n_dc;
+% Limits of flow rate considering the number of DCs in parallel
+options.ub(3)=options.ub(3)*options.n_dc;
+options.lb(3)=options.lb(3)*options.n_dc;
+
 
 % Validate inputs
 max_values = options.ub;
@@ -74,7 +78,7 @@ end
 
 % Else
 
-q_per_dc = q/n_dc; % flow rate circulating for each DC in parallel
+q_per_dc = q/options.n_dc; % flow rate circulating for each DC in parallel
 
 T_amb = Tamb;
 SC_DC = w_fan;
@@ -237,7 +241,7 @@ end
 % T_air_o;   % Temperatura de salida del aire (ºC)
 % Q_law;     % Calor intercambiado (W)
 
-Ce = n_dc * power_consumption(w_fan) * 1e-3; % kW
+Ce = options.n_dc * power_consumption(w_fan) * 1e-3; % kW
 Tout = Tout_DC;
 
 % END OF MAIN FUNCTION ----------------------------------------------------
@@ -311,6 +315,17 @@ end
 function raise_error(variable, value, lower_limit, upper_limit)
     msg = sprintf("Input %s=%.2f is outside limits (%.2f < %s < %.2f)", string(variable), value, lower_limit, string(variable), upper_limit);
     throw(MException('model:invalid_input', msg))
+end
+
+function apply_options()
+    for field_name = fieldnames(options)'
+        field_name = string(field_name);
+        % fprintf('%s\n', field_name)
+        if isfield(options_struct, field_name)
+            % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+            options.(field_name) = options_struct.(field_name);
+        end
+    end
 end
 
 end

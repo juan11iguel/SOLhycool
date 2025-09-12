@@ -1,4 +1,4 @@
-function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, Tv_C, options)
+function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, Tv_C, options_struct, options)
     % COMBINED_COOLER_MODEL Simulates the behavior of a cooling system.
     % The system is composed by a condenser and a combined cooler.
     %
@@ -26,19 +26,46 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         HR_pp (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(HR_pp, 100)}
         mv_kgh (1,1) double {mustBePositive}
         qc_m3h (1,1) double {mustBePositive}
-        Rp (1,1) double {mustBeLessThanOrEqual(Rp, 1)}
-        Rs (1,1) double {mustBeLessThanOrEqual(Rs, 1)}
-        wdc (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(wdc, 100)}
+        Rp (1,1) double {mustBeGreaterThanOrEqual(Rp, 0.0), mustBeLessThanOrEqual(Rp, 1.0)}
+        Rs (1,1) double {mustBeGreaterThanOrEqual(Rs, 0.0), mustBeLessThanOrEqual(Rs, 1.0)}
+        wdc (1,1) double {mustBeGreaterThanOrEqual(wdc, 0.0), mustBeLessThanOrEqual(wdc, 100)}
         Tv_C (1,1) double {mustBeGreaterThanOrEqual(Tv_C, 20), mustBeLessThanOrEqual(Tv_C, 60)} = []
 
         % Using keyword arguments does not work when exporting the model to
-        % python
-        options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'silence_warnings', true, 'parameters', default_parameters()); % Default values
-        % options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})}
-        % options.parameters struct = default_parameters() % Default optional input
-        % options.x0 = nan
-        % options.lb = nan
-        % options.ub = nan
+        % python. Offer an alternative
+        options_struct = []
+        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
+        % DC               "Tamb",    "Tin",   "q", "w_fan"
+        options.dc_lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
+        options.dc_ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
+        % wdc (%) -> Ce_dc (W)
+        options.dc_ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
+        options.dc_n_dc  (1,1) double {mustBeInteger,mustBePositive} = 1;
+        
+        % WCT                              "Tamb",     "HR",    "Tin",      "q",     "w_fan"
+        options.wct_lb (1,5) double = 0.99*[3.0       1.0      25.0        6.0       21.0];
+        options.wct_ub (1,5) double = 1.01*[50.0      99.0     55.0        24.0      93.4161];
+        % wwct (%) -> Ce_wct (W)
+        options.wct_ce_coeffs (1,:) double = [0.4118, -11.54, 189.4];
+        options.wct_n_wct (1,1) double {mustBeInteger,mustBePositive} = 1;
+
+        % Condenser
+        options.condenser_option (1,1) int8 {mustBeInRange(options.condenser_option, 1, 9)} = 3;
+        options.condenser_A (1,1) double {mustBePositive} = 19.30; % 19.967 -> https://collab.psa.es/f/174826 24/U;
+        options.condenser_deltaTv_cout_min (1,1) double {mustBePositive} = 1;
+        options.condenser_n_tb (1,1) double {mustBeInteger,mustBePositive} = 24;
+    
+        % Recirculation pump
+        % w_c (%) -> Ce_c (W) 
+        options.recirculation_coeffs (1,:) double = [0.1461, 5.763, -38.32, 227.8];
+        
+        % Paths
+        options.dc_model_data_path = char(fullfile(fileparts(mfilename('fullpath')),  "/component_models", "model_data_dc_fp_gaussian.mat"));
+        options.wct_model_data_path = char(fullfile(fileparts(mfilename('fullpath')), "/component_models", "model_data_wct_fp_gaussian.mat"));
+
+        % Miscellaneous options
+        options.raise_error_on_invalid_inputs (1,1) logical = false
+        options.silence_warnings (1,1) logical = false
     end
 
     arguments (Output)
@@ -48,8 +75,14 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         valid (1,1) logical
     end
 
+    % Terrible
+    % Apply optional arguments from the alternative options_struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
+
     % Unpack options
-    parameters = options.parameters;
+    % parameters = options.parameters;
     model_type = options.model_type;
     silence_warnings = options.silence_warnings;
 
@@ -58,19 +91,18 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     addpath(genpath('component_models'));
 
     % Validate input parameters
-    validate_struct(default_parameters(), parameters);
+    % validate_struct(default_parameters(), options);
     
     % Assign function handles
-    condenser_model_fun = @condenser_model;
-    mixer_model_fun     = @mixer_model;
+    condenser_model_fun   = @condenser_model;
+    mixer_model_fun       = @mixer_model;
+    wct_inverse_model_fun = @wct_inverse_model;
 
     switch model_type
         case "data"
-            dc_model_fun                = @dc_model_data;
-            wct_inverse_model_fun       = @wct_inverse_model_data;
+            dc_model_fun = @dc_model_data;
         case "physical"
-            dc_model_fun                = @dc_model_physical;
-            wct_inverse_model_fun       = @wct_inverse_model_physical;
+            dc_model_fun = @dc_model_physical;
         otherwise
             error("combined_cooler_model:invalid_option", ...
                   "Invalid model_type '%s'. Options are: 'data', 'physical'", model_type);
@@ -91,30 +123,38 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
 
     % Calculate wwct
     % Condenser
-    [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv_C, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A);
+    [Tc_in, Tc_out] = condenser_model_fun( ...
+        mv_kgs, ...
+        Tv_C, ...
+        mc_kgs, ...
+        option=options.condenser_option, ...
+        A=options.condenser_A, ...
+        n_tb=options.condenser_n_tb ...
+    );
     Tcc_in = Tc_out;
     Tcc_out = Tc_in;
     % Validation
-    if Tc_out >= Tv_C - parameters.condenser_deltaTv_cout_min
+    if Tc_out >= Tv_C - options.condenser_deltaTv_cout_min
         valid = false;
         if ~silence_warnings
             fprintf('DEBUG: Condenser validation failed - Tc_out=%.2f >= Tv_C - deltaTv_cout_min=%.2f (Tv_C=%.2f, deltaTv_cout_min=%.2f)\n', ...
-                    Tc_out, Tv_C - parameters.condenser_deltaTv_cout_min, Tv_C, parameters.condenser_deltaTv_cout_min);
+                    Tc_out, Tv_C - options.condenser_deltaTv_cout_min, Tv_C, options.condenser_deltaTv_cout_min);
         end
     end
 
     % DC
     Tdc_in = Tcc_in;
-    Tdc_out = dc_model_fun( ...
+    [Tdc_out, Ce_dc] = dc_model_fun( ...
         Tamb_C, ...
         Tdc_in, ...
         qdc, ...
         wdc, ...
-        model_data_path=parameters.dc_model_data_path, ...
+        model_data_path=options.dc_model_data_path, ...
         silence_warnings=silence_warnings, ...
-        lb=parameters.dc_lb, ...
-        ub=parameters.dc_ub, ...
-        ce_coeffs=parameters.dc_ce_coeffs ...
+        lb=options.dc_lb, ...
+        ub=options.dc_ub, ...
+        ce_coeffs=options.dc_ce_coeffs, ...
+        n_dc=options.dc_n_dc  ...
     );
     
     % Solve WCT input mixer
@@ -129,11 +169,13 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         Twct_in, ...
         qwct, ...
         Twct_out, ...
-        model_data_path=parameters.wct_model_data_path, ...
-        lb=parameters.wct_lb, ...
-        ub=parameters.wct_ub, ...
+        model_type=options.model_type, ...
+        model_data_path=options.wct_model_data_path, ...
+        lb=options.wct_lb, ...
+        ub=options.wct_ub, ...
         silence_warnings=silence_warnings, ...
-        ce_coeffs=parameters.wct_ce_coeffs ...
+        ce_coeffs=options.wct_ce_coeffs, ...
+        n_wct=options.wct_n_wct ...
     );
     if ~valid_ % No feasible fan speed found for the given inputs
         valid = false;
@@ -167,6 +209,17 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         if ~silence_warnings
             fprintf('DEBUG: WCT inactive component validation failed - Water circulation on inactive WCT: Qwct=%.2f < 10 && qwct=%.2f > 0\n', ...
                     detailed.Qwct, detailed.qwct);
+        end
+    end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
         end
     end
 end

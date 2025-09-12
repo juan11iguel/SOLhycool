@@ -1,33 +1,19 @@
-function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
+function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options_struct, options)
     % WCT_MODEL  Predicts outlet temperature, electrical and water consumption for the WASCOP wet cooling tower.
     % 
     % Model developed by Pedro Navarro
     % Modified and adapted by Juan Miguel Serrano
-    % 
-    % Inputs:
-    %   Tamb    - Ambient temperature (ºC)
-    %   HR      - Relative humidity (%)
-    %   Tin     - Inlet temperature (ºC)
-    %   q       - Volumetric flow rate (m³/h)
-    %   w_fan   - Fan load (%)
-    %   options - Struct with optional fields:
-    %       .raise_error_on_invalid_inputs (logical)
-    %       .model_data_path (string)
-    %       .lb, .ub (double vectors)
-    %       .silence_warnings (logical)
-    %       .ce_coeffs (double vector)
-    %
-    % Outputs:
-    %   Tout    - Outlet temperature (ºC)
-    %   Ce      - Electrical consumption (kWe)
-    %   Cw      - Water consumption (l/h)
 
     arguments (Input)
-        Tamb (1,1) double
-        HR (1,1) double
-        Tin (1,1) double
-        q (1,1) double
-        w_fan (1,1) double
+        Tamb (1,1) double % Ambient temperature (ºC)
+        HR (1,1) double % Relative humidity (%)
+        Tin (1,1) double % Inlet temperature (ºC)
+        q (1,1) double % Volumetric flow rate (m³/h)
+        w_fan (1,1) double % Fan load (%)
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.n_wct (1,1) double {mustBeInteger,mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
         options.lb (1,5) double = [0.1    0.1     5.0    5.0       0.];
@@ -43,11 +29,20 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     end
 
     arguments (Output)
-        Tout (1,1) double % ºC
-        Ce (1,1) double % kW
-        Cw (1,1) double % l/h
+        Tout (1,1) double % Outlet temperature (ºC)
+        Ce (1,1) double % Electrical consumption (kWe)
+        Cw (1,1) double % Water consumption (l/h)
     end
 
+    % Terrible
+    % Apply optional arguments from the alternative struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
+
+    % Limits of flow rate considering the number of WCTs in parallel
+    options.ub(4)=options.ub(4)*options.n_wct;
+    options.lb(4)=options.lb(4)*options.n_wct;
 
     % Validate inputs
     max_values = options.ub;
@@ -80,7 +75,7 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     end
 
     % Else
-    Mwct = q;
+    Mwct = q / options.n_wct; % flow rate circulating for each WCT in parallel (m3/h)
     SC_fan_wct = w_fan;
     Twct_in = Tin;
 
@@ -116,18 +111,29 @@ function [Tout, Ce, Cw] = wct_model_physical(Tamb, HR, Tin, q, w_fan, options)
     % Converir M_lost_wct de kg/s a L/min
     Tww =Twct_out;
     Dens_agua=-1.72087973954183E-07*Tww^4+0.0000480220158358691*Tww^3-0.00782109015813148*Tww^2+0.0563115452841885*Tww+999.8;
-    M_lost_wct = M_lost_wct / Dens_agua  * 1000*3600; % kg/s -> l/h
+    M_lost_wct = M_lost_wct / Dens_agua  * 1000*3600 * options.n_wct; % kg/s -> l/h
     
     Tout = Twct_out;
     Cw = M_lost_wct;
 
     % Consumo eléctrico
-    Ce = power_consumption(w_fan) * 1e-3; % kW
+    Ce = options.n_wct * power_consumption(w_fan) * 1e-3; % kW
 
     %% NESTED FUNCTIONS
     function P_fan_W = power_consumption(w_fan)
         % Use polyval for fan power calculation
         P_fan_W = max(0, polyval(options.ce_coeffs, w_fan)); % W
+    end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
     end
 end
 

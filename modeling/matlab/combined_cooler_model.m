@@ -1,4 +1,4 @@
-function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options)
+ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options_struct, options)
     % COMBINED_COOLER_MODEL Simulates the behavior of a cooling system.
     % The system is composed by a condenser and a combined cooler.
     %
@@ -25,20 +25,47 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         HR_pp (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(HR_pp, 100)}
         mv_kgh (1,1) double {mustBePositive}
         qc_m3h (1,1) double {mustBePositive}
-        Rp (1,1) double {mustBeLessThanOrEqual(Rp, 1)}
-        Rs (1,1) double {mustBeLessThanOrEqual(Rs, 1)}
-        wdc (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(wdc, 100)}
-        wwct (1,1) double {mustBeNonnegative, mustBeLessThanOrEqual(wwct, 100)}
+        Rp (1,1) double {mustBeGreaterThanOrEqual(Rp, 0.0), mustBeLessThanOrEqual(Rp, 1.0)}
+        Rs (1,1) double {mustBeGreaterThanOrEqual(Rs, 0.0), mustBeLessThanOrEqual(Rs, 1.0)}
+        wdc (1,1) double {mustBeGreaterThanOrEqual(wdc, 0.0), mustBeLessThanOrEqual(wdc, 100)}
+        wwct (1,1) double {mustBeGreaterThanOrEqual(wwct, 0.0), mustBeLessThanOrEqual(wwct, 100)}
         Tv_C double {mustBeGreaterThanOrEqual(Tv_C, 20), mustBeLessThanOrEqual(Tv_C, 60)} = []
-
+        
         % Using keyword arguments does not work when exporting the model to
-        % python
-        options = struct('model_type', 'data', 'lb', nan, 'ub', nan, 'x0', nan, 'silence_warnings', true, 'parameters', default_parameters()); % Default values
-        % options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})}
-        % options.parameters struct = default_parameters() % Default optional input
-        % options.x0 = nan
-        % options.lb = nan
-        % options.ub = nan
+        % python. Offer an alternative
+        options_struct = []
+        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
+        % DC               "Tamb",    "Tin",   "q", "w_fan"
+        options.dc_lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
+        options.dc_ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
+        % wdc (%) -> Ce_dc (W)
+        options.dc_ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
+        options.dc_n_dc  (1,1) double {mustBeInteger,mustBePositive} = 1;
+        
+        % WCT                              "Tamb",     "HR",    "Tin",      "q",     "w_fan"
+        options.wct_lb (1,5) double = 0.99*[3.0       1.0      25.0        6.0       21.0];
+        options.wct_ub (1,5) double = 1.01*[50.0      99.0     55.0        24.0      93.4161];
+        % wwct (%) -> Ce_wct (W)
+        options.wct_ce_coeffs (1,:) double = [0.4118, -11.54, 189.4];
+        options.wct_n_wct (1,1) double {mustBeInteger,mustBePositive} = 1;
+
+        % Condenser
+        options.condenser_option (1,1) int8 {mustBeInRange(options.condenser_option, 1, 9)} = 6;
+        options.condenser_A (1,1) double {mustBePositive} = 19.30; % 19.967 -> https://collab.psa.es/f/174826 24/U;
+        options.condenser_deltaTv_cout_min (1,1) double {mustBePositive} = 1;
+        options.condenser_n_tb (1,1) double {mustBeInteger,mustBePositive} = 24;
+    
+        % Recirculation pump
+        % w_c (%) -> Ce_c (W) 
+        options.recirculation_coeffs (1,:) double = [0.1461, 5.763, -38.32, 227.8];
+        
+        % Paths
+        options.dc_model_data_path = char(fullfile(fileparts(mfilename('fullpath')),  "/component_models", "model_data_dc_fp_gaussian.mat"));
+        options.wct_model_data_path = char(fullfile(fileparts(mfilename('fullpath')), "/component_models", "model_data_wct_fp_gaussian.mat"));
+
+        % Miscellaneous options
+        options.raise_error_on_invalid_inputs (1,1) logical = false
+        options.silence_warnings (1,1) logical = false
     end
 
     arguments (Output)
@@ -47,8 +74,13 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         detailed (1,1) struct
     end
 
+    % Terrible
+    % Apply optional arguments from the alternative options_struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
+
     % Unpack options
-    parameters = options.parameters;
     model_type = options.model_type;
     silence_warnings = options.silence_warnings;
 
@@ -57,7 +89,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     addpath(genpath('component_models'));
 
     % Validate input parameters
-    validate_struct(default_parameters(), parameters);
+    % validate_struct(default_parameters(), parameters);
     
     % Assign function handles
     condenser_model_fun = @condenser_model;
@@ -88,20 +120,20 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     mwct = qwct / 3.6; % m3/h -> kg/s
     mdc = qdc / 3.6; % m3/h -> kg/s
     % Other
-    Twct_min = parameters.wct_lb(3);
+    Twct_min = options.wct_lb(3);
 
     % Here is where we should call fsolve to solve the model
 
-    if isempty(Tv_C)
-        x0 = get_initial_values();
-        [lb, ub] = get_bounds();
-        Aeq = [];
-        beq = [];
-        opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display','none'); 
-        Tv = fmincon(@(Tv) inner_model(Tv), x0, [], [], Aeq, beq, lb, ub, [], opt);
-    else
+    % if isempty(Tv_C)
+    %     x0 = get_initial_values();
+    %     [lb, ub] = get_bounds();
+    %     Aeq = [];
+    %     beq = [];
+    %     opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display','none'); 
+    %     Tv = fmincon(@(Tv) inner_model(Tv), x0, [], [], Aeq, beq, lb, ub, [], opt);
+    % else
         Tv = Tv_C;
-    end
+    % end
 
     % Get outputs 
     qcc = qc_m3h;
@@ -111,9 +143,9 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         mv_kgs, ...
         Tv, ...
         mc_kgs, ...
-        option=parameters.condenser_option, ...
-        A=parameters.condenser_A, ...
-        n_tb=parameters.condenser_n_tb ...
+        option=options.condenser_option, ...
+        A=options.condenser_A, ...
+        n_tb=options.condenser_n_tb ...
     );
     Tcc_in = Tc_out;
     % Qc = mc_kgs * (Tc_in - Tc_out) * XSteam('Cp_pT',2,(Tc_in+Tc_out)/2);
@@ -125,12 +157,12 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         Tdc_in, ...
         qdc, ...
         wdc, ...
-        model_data_path=parameters.dc_model_data_path, ...
+        model_data_path=options.dc_model_data_path, ...
         silence_warnings=silence_warnings, ...
-        lb=parameters.dc_lb, ...
-        ub=parameters.dc_ub, ...
-        ce_coeffs=parameters.dc_ce_coeffs, ...
-        n_dc=parameters.dc_n_dc  ...
+        lb=options.dc_lb, ...
+        ub=options.dc_ub, ...
+        ce_coeffs=options.dc_ce_coeffs, ...
+        n_dc=options.dc_n_dc  ...
     );
 
     % Solve WCT input mixer
@@ -143,11 +175,12 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         Twct_in, ...
         qwct, ...
         wwct, ...
-        model_data_path=parameters.wct_model_data_path, ...
-        lb=parameters.wct_lb, ...
-        ub=parameters.wct_ub, ...
+        model_data_path=options.wct_model_data_path, ...
+        lb=options.wct_lb, ...
+        ub=options.wct_ub, ...
         silence_warnings=silence_warnings, ...
-        ce_coeffs=parameters.wct_ce_coeffs ...
+        ce_coeffs=options.wct_ce_coeffs, ...
+        n_wct=options.wct_n_wct ...
     );
 
     % Solve CC output mixer
@@ -160,7 +193,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     end
     
     % Additional outputs
-    Ce_c = recirculation_pump_consumption(qc_m3h, parameters.recirculation_coeffs);
+    Ce_c = recirculation_pump_consumption(qc_m3h, options.recirculation_coeffs);
 
     % Validate consumptions
     % UPDATE: Not needed anymore, as the functions already validate for non-negative values
@@ -189,7 +222,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     Cw_lh = Cw;
 
     % Condenser heat
-    [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=parameters.condenser_option, A=parameters.condenser_A, n_tb=parameters.condenser_n_tb);
+    [Q, U] = condenser_heats_model(mv_kgs, Tv, mc_kgs, Tc_in, Tc_out, option=options.condenser_option, A=options.condenser_A, n_tb=options.condenser_n_tb);
     Qc_released = Q(1);
     Qc_absorbed = Q(2);
     Qc_transfered = Q(3);
@@ -207,13 +240,13 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         warning("This function has not been updated for a while, it should not be used without checking")
 
         % Condenser
-        [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=parameters.condenser_option, A=parameters.condenser_A, n_tb=parameters.condenser_n_tb, Tmin=Twct_min);
+        [Tc_in, Tc_out] = condenser_model_fun(mv_kgs, Tv, mc_kgs, option=options.condenser_option, A=options.condenser_A, n_tb=options.condenser_n_tb, Tmin=Twct_min);
         % DC
-        Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=parameters.dc_model_data_path, silence_warnings=silence_warnings);
+        Tdc_out = dc_model_fun(Tamb_C, Tc_out, qdc, wdc, model_data_path=options.dc_model_data_path, silence_warnings=silence_warnings);
         % WCT
         [~, Twct_in] = mixer_model_fun(qwct_p, qwct_s, Tc_out, Tdc_out);
-        Twct_out = wct_model_fun(Tamb_C, HR_pp, Twct_in, qwct, wwct, model_data_path=parameters.wct_model_data_path, ...
-            lb=parameters.wct_lb, ub=parameters.wct_ub, silence_warnings=silence_warnings);
+        Twct_out = wct_model_fun(Tamb_C, HR_pp, Twct_in, qwct, wwct, model_data_path=options.wct_model_data_path, ...
+            lb=options.wct_lb, ub=options.wct_ub, silence_warnings=silence_warnings);
         [~, Tcc_out] = mixer_model_fun(qdc, qwct, Tdc_out, Twct_out);
         
         % fprintf("cc model residual Tcc_out - Tc_in: %.2f for Tv=%.2f\n", abs(Tcc_out - Tc_in), Tv)
@@ -222,7 +255,7 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
 
     function x0 = get_initial_values()
         % TODO: Do not hardcode these values, compute them from input data and
-        % parameters
+        % options
         if isnan(options.x0)
             x0 = 43;
         else
@@ -231,9 +264,9 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
     end
 
     function [lb, ub] = get_bounds()
-        % TODO: Should use data from parameters
+        % TODO: Should use data from options
         if isnan(options.lb)
-            lb = 40; % parameters.wct_lb(3);
+            lb = 40; % options.wct_lb(3);
         else
             lb = options.lb;
         end
@@ -297,6 +330,17 @@ function [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh
         d.Ce_wct = Ce_wct;
         d.Cw_wct = Cw_wct;
         d.Qwct = Qwct;
+    end
+
+    function apply_options()
+        for field_name = fieldnames(options)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
     end
 
 end

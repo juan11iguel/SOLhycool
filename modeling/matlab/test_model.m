@@ -11,7 +11,7 @@ data = readtable("../data/cc_out_exp.csv");
 
 N = height(data);
 
-params = default_parameters();
+options_struct = default_parameters();
 
 %% Visualize loh caloreh
 compute_condenser_heats(data, 7, visualize=true);
@@ -43,6 +43,9 @@ fprintf("Rs estimated: \t\t%s\n", strjoin(RsString, ', '));
 fprintf("qdc from ratios: \t%s\n", strjoin(string(qdc), ', '));
 fprintf("qwct from ratios: \t%s\n", strjoin(string(qwct), ', '));
 
+fprintf("dc error: \t%s\n", strjoin(string(abs(data.qdc'-qdc)), ', '));
+fprintf("wct error: \t%s\n", strjoin(string(abs(data.qwct'-qwct)), ', '));
+
 %% DC
 clc
 
@@ -55,6 +58,8 @@ clc
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
 model_fun = @dc_model_data;
+dc_model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat";
+n_dc = 1;
 
 % [Tout, Pe] = model_dc(Tamb, Tin, w_fan, q)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
@@ -62,8 +67,17 @@ Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
 inactive_idxs = [];
 for i=1:N
     fprintf("Evaluating step %d\n", i)
-    [Tout_data(i), Ce_data(i)] = model_fun(data.Tamb(i), data.Tdc_in(i), data.qdc(i), data.wdc(i), ...
-        model_data_path=params.dc_model_data_path, lb=params.dc_lb, ub=params.dc_ub, ce_coeffs=params.dc_ce_coeffs);
+    [Tout_data(i), Ce_data(i)] = model_fun(...
+        data.Tamb(i), ...
+        data.Tdc_in(i), ...
+        data.qdc(i), ...
+        data.wdc(i), ...
+        model_data_path=dc_model_data_path, ...
+        lb=options_struct.dc_lb, ...
+        ub=options_struct.dc_ub, ...
+        ce_coeffs=options_struct.dc_ce_coeffs,....
+        n_dc=n_dc...
+    );
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
     if Ce_data(i) < 1e-3
         inactive_idxs = [inactive_idxs, i];
@@ -86,11 +100,12 @@ clc
 % model_type = "physical";
 % model_fun_physical = function_handle(char(fullfile('.', 'component_models', model_type, model_id)));
 
-model_fun = @wct_model_physical; % wct_model_data
-c_poppe = 1.4889; % 1.52;
-n_poppe = -0.71; % -0.69;
+model_fun = @wct_model_data; % wct_model_physical; % wct_model_data
 
-
+c_poppe = 1.52; % 1.52;
+n_poppe = -0.69; % -0.69;
+wct_model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat";
+% wct_model_data_path = "/home/patomareao/development/SOLhycool/modeling/matlab/component_models/wct_model_data.mat";
 % [Tout, Ce, Cw] = wct_model(Tamb, HR, Tin, q, w_fan)
 Tout_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
@@ -98,8 +113,20 @@ Cw_data = zeros(1, N); Cw_physical = zeros(1, N);
 inactive_idxs = [];
 for i=1:N
     fprintf("Evaluating step %d\n", i)
-    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.wwct(i), ...
-        model_data_path=params.wct_model_data_path, lb=params.wct_lb, ub=params.wct_ub, ce_coeffs=params.wct_ce_coeffs, c_poppe=c_poppe, n_poppe=n_poppe);
+    [Tout_data(i), Ce_data(i), Cw_data(i)] = model_fun(...
+        data.Tamb(i), ...
+        data.HR(i), ...
+        data.Twct_in(i), ...
+        data.qwct(i), ...
+        data.wwct(i), ...
+        model_data_path=wct_model_data_path, ...
+        lb=options_struct.wct_lb, ...
+        ub=options_struct.wct_ub, ...
+        ce_coeffs=options_struct.wct_ce_coeffs ...
+    );
+        % c_poppe=c_poppe, ...
+        % n_poppe=n_poppe...
+
     % [Tout_physical(i), Ce_physical(i)] = model_fun_data(data.Tamb(i), data.Tdc_in(i), data.wdc(i), data.qdc(i));
     if Cw_data(i) < 1e-3
         inactive_idxs = [inactive_idxs, i];
@@ -117,18 +144,19 @@ regression_plot(data(active_idxs,:), rearrangeTable(data(active_idxs,:), results
 %% Combined model
 clc
 
-model_type = "data";
+options_struct = default_parameters();
+% DC                       "Tamb",    "Tin",   "q", "w_fan"
+options_struct.dc_lb = 0.9*[5.0600   10.0, 5.2211, 11];
+options_struct.dc_ub = 1.1*[50.7500   50.0, 24.1543, 99.1800];
+options_struct.dc_model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat";
 
-params = default_parameters();
-if strcmp(model_type, "physical")
-    % DC               "Tamb",    "Tin",   "q", "w_fan"
-    params.dc_lb = 0.9*[5.0600   10.0, 5.2211, 11];
-    params.dc_ub = 1.1*[50.7500   50.0, 24.1543, 99.1800];
+% WCT               "Tamb",     "HR",    "Tin",      "q",     "w_fan"
+options_struct.wct_lb = [0.1    0.1     5.0    5.0       0.];
+options_struct.wct_ub = [50.0   99.99   55.0   24.8400   95.];
+options_struct.wct_model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat";
 
-    % WCT               "Tamb",     "HR",    "Tin",      "q",     "w_fan"
-    params.wct_lb = [0.1    0.1     5.0    5.0       0.];
-    params.wct_ub = [50.0   99.99   55.0   24.8400   95.];
-end
+% end
+options_struct.model_type = "physical";
 
 % Tv_data = zeros(1, N); Tout_physical = zeros(1, N);
 Ce_data = zeros(1, N); Ce_physical = zeros(1, N);
@@ -139,9 +167,18 @@ for i=1:N
     fprintf("Evaluating step %d\n", i)
 
     [Ce_data(i), Cw_data(i), detailed] = combined_cooler_model( ...
-        data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), ...
-        data.wdc(i), data.wwct(i), data.Tv(i), ...
-        struct("model_type", model_type, "silence_warnings", false, "parameters", params ,"lb", nan, "ub", nan));
+        data.Tamb(i), ...
+        data.HR(i), ...
+        data.mv(i), ...
+        data.qc(i), ...
+        data.Rp(i), ...
+        data.Rs(i), ...
+        data.wdc(i), ...
+        data.wwct(i), ...
+        data.Tv(i), ...
+        options_struct,...
+        silence_warnings=false ...
+    );
 
     detailed_data = [detailed_data detailed];
 
