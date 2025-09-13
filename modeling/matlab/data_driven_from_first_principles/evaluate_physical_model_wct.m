@@ -4,14 +4,14 @@
 % 
 % This script should be run with the current path being the base MATLAB project folder
 % 
-% Author: Lidia Roca Sobrino
+% 
 % -------------------------------------------------------------------------
 
 clc
 clear
 
 % Parameters
-case_study_id = "pilot_plant_200kW"; % "andasol_90MW"; % "pilot_plant_200kW";
+case_study_id = "andasol_90MW"; % "andasol_25_90MW"; % "pilot_plant_200kW";
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
@@ -146,7 +146,7 @@ Tout_simu_valid = Tout_simu;
 Mwlost_simu_valid = Mw_lost_Lh;
 Ce_simu_valid = Ce_kWe;
 for i=1:size(Tout_simu,1)
-    if abs(imag(Tout_simu(i))) ~= 0
+    if abs(imag(Tout_simu(i))) ~= 0 || Tout_simu(i) > 0 || Mw_lost_Lh(i) > 0
         Tout_simu_valid = NaN;
         Mwlost_simu_valid = NaN;
         Ce_simu_valid = NaN;
