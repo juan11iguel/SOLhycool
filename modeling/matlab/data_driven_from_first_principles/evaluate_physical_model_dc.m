@@ -98,7 +98,7 @@ dc_out_sinnan = dc_out(~filasConNaN, :);
 
 %%
 writetable(dc_out_sinnan, output_data_path);
-fprintf("Results saved to %s\n", output_data_path)
+fprintf("Results saved to %s, n=%d\n", output_data_path, height(dc_out_sinnan))
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 % for i=1:length(Tout_simu)
