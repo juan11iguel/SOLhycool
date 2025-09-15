@@ -40,6 +40,13 @@ function [dv_list, consumption_list] = evaluate_decision_variables(step_idx, env
     % Add dependencies
     % addpath(genpath('utils'));
     % addpath(genpath('component_models'));
+
+    wct_model = [];
+    if ~isempty(options_struct)
+        if isfield(options_struct, "wct_model_data_path")
+            wct_model=load(options_struct.wct_model_data_path, "model");
+        end
+    end
     
     % Initialize output variables
     dv_list = {};
@@ -91,7 +98,7 @@ function [dv_list, consumption_list] = evaluate_decision_variables(step_idx, env
                     % Evaluate operation point
                     % try
                         [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(...
-                            Tamb_C, HR_pp, mv_kgh, qc_val, Rp_val, Rs_val, wdc_val, Tv_C, options_struct);
+                            Tamb_C, HR_pp, mv_kgh, qc_val, Rp_val, Rs_val, wdc_val, Tv_C, options_struct, wct_model=wct_model.model);
                         
                         if valid
                             % Create decision variables structure with actual values

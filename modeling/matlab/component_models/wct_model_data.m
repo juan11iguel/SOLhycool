@@ -32,6 +32,7 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
+        options.model = []
         options.n_wct (1,1) double {mustBeInteger,mustBePositive} = 1
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4]; % Default quadratic coefficients
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
@@ -55,7 +56,10 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
         apply_options();
     end
 
-    if isempty(model)
+    if ~isempty(options.model)
+        model = options.model;
+    elseif isempty(model)
+        fprintf('I am wct_model, man better pass me some model\n')
         load(options.model_data_path, "model");
     end
 

@@ -3,6 +3,8 @@
 
 clear; clc;
 
+clear wct_model_data
+
 % Add required paths
 addpath(genpath('utils'));
 addpath(genpath('component_models'));
@@ -30,7 +32,7 @@ total_num_evals = length(dv_values.qc) * length(dv_values.Rp) * ...
 date_str = datestr(now, 'yyyymmdd');
 
 % Options
-options_struct = struct("silence_warnings", true, "wct_model_data_path", "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat");
+options_struct = struct("silence_warnings", true, "wct_model_data_path", "/home/patomareao/development/SOLhycool/modeling/matlab/component_models/model_data_wct_fp_gaussian.mat");
 
 %% Run evaluation
 fprintf('Starting evaluation of decision variables...\n');
