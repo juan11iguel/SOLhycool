@@ -122,6 +122,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/wct_model_physical.m</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_physical_andasol.m</file>
       <file>${PROJECT_ROOT}/default_parameters.m</file>
+      <file>${PROJECT_ROOT}/dummy_fun.m</file>
       <file>${PROJECT_ROOT}/evaluate_decision_variables.m</file>
       <file>${PROJECT_ROOT}/evaluate_operation.m</file>
       <file>${PROJECT_ROOT}/fans_calculator.m</file>
@@ -144,6 +145,7 @@ For details, see GettingStarted.html, distributed with this package, or the offi
           <file>${PROJECT_ROOT}/component_models/dc_model_data.m</file>
           <file>${PROJECT_ROOT}/component_models/dc_model_physical.m</file>
           <file>${PROJECT_ROOT}/default_parameters.m</file>
+          <file>${PROJECT_ROOT}/dummy_fun.m</file>
           <file>${PROJECT_ROOT}/evaluate_decision_variables.m</file>
           <file>${PROJECT_ROOT}/evaluate_operation.m</file>
           <file>${PROJECT_ROOT}/utils/fan_speed_to_air_mass_flow_rate_fit.m</file>

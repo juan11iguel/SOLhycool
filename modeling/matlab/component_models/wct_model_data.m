@@ -23,6 +23,10 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
     %   Uses a data-driven model that can be called with the predict function
     %   loaded from wct_model_data.mat.
 
+    % To force MATLAB to package the Deep Learning Toolbox when exporting
+    % the code
+    %#function network
+
     arguments (Input)
         Tamb (1,1) double
         HR (1,1) double

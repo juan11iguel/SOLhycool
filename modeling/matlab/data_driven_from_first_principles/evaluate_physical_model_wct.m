@@ -15,7 +15,7 @@ addpath("component_models/")
 %%
 
 % Parameters
-case_study_id = "andasol_90MW"; % "andasol_90MW"; % "pilot_plant_200kW";
+case_study_id = "pilot_plant_200kW"; % "andasol_90MW"; % "pilot_plant_200kW";
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
@@ -125,26 +125,6 @@ for i=1:size(wct,1)
 
 end
 
-%% Compruebo los nan y números complejos que había
-total_nan=sum(isnan(Tout_simu));
-fprintf('Soluciones no encontradas (=NaN): %d \n', total_nan)
-
-tol = 1e-10;
-Tout_simu_valid = Tout_simu;
-Mwlost_simu_valid = Mw_lost_Lh;
-Ce_simu_valid = Ce_kWe;
-for i=1:size(Tout_simu,1)
-    if abs(imag(Tout_simu(i))) ~= 0 || Tout_simu(i) < 0 || Mw_lost_Lh(i) < 0
-        Tout_simu_valid = NaN;
-        Mwlost_simu_valid = NaN;
-        Ce_simu_valid = NaN;
-    end;
-end;
-
-total_nan=sum(isnan(Tout_simu_valid));
-fprintf('Soluciones no encontradas (=NaN) y no complejas: %d \n', total_nan)
-
-
 %% Guardo datos con el formato deseado
 wct_out=wct(:,2:end); % la primera columna no la queremos
 wct_out.Properties.VariableNames(3) = "Tin";
@@ -163,19 +143,45 @@ if save_electrical_consumption
     wct_out.Properties.VariableNames(8) = "Ce";
 end
 
+%% Compruebo los nan y números complejos que había
+% --- Step 1: detect invalid rows ---
+tol = 1e-10;
 
-%% Elimino NaNs
+% Detect NaNs in Tout_simu
+invalid_nan = isnan(Tout_simu);
 
-% Encuentra las filas que tienen al menos un NaN
-filasConNaN = any(ismissing(wct_out));
+% Detect complex or negative Tout_simu or negative Mw_lost_Lh
+invalid_phys = (abs(imag(Tout_simu)) > tol) | (Tout_simu < 0) | (Mw_lost_Lh < 0);
+
+% Combine all invalid conditions
+invalid = invalid_nan | invalid_phys;
+
+% Report counts
+fprintf('Soluciones no encontradas (=NaN): %d\n', sum(invalid_nan));
+fprintf('Soluciones no encontradas (=NaN) y no complejas: %d\n', sum(invalid));
+
+% --- Step 2: apply mask to all result vectors ---
+Tout_simu_valid    = Tout_simu;
+Mwlost_simu_valid  = Mw_lost_Lh;
+Ce_simu_valid      = Ce_kWe;
+
+Tout_simu_valid(invalid)   = NaN;
+Mwlost_simu_valid(invalid) = NaN;
+Ce_simu_valid(invalid)     = NaN;
+
+% --- Step 3: (optional) remove rows with any missing values in wct_out ---
+filasConNaN = any(ismissing(wct_out), 2);
 wct_out_sin_nan = wct_out(~filasConNaN, :);
 
-% El filtro de Nan estaba mal, filtrando a posteriori
-% wct_out = wct_out(wct_out.m_w_lost > 0,:);
-% wct_out = wct_out(wct_out.Tout > 0,:);
+%%
+
+figure
+scatter(1:length(Tout_simu_valid), Tout_simu_valid)
+hold on;
+scatter(1:length(Tout_simu_valid), Mwlost_simu_valid)
 
 %% Guardo en .csv
-writetable(wct_out, output_data_path);
+writetable(wct_out_sin_nan, output_data_path);
 fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out))
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
