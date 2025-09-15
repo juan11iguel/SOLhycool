@@ -29,7 +29,7 @@ function out = evaluate_model(inputs, varargin)
 
     out = zeros(size(inputs, 1), n_outputs);
 
-    if strcmp(model_type, "gaussian") || strcmp(model_type, "random_forest" || strcmp(model_type, "gradient_boosting"))
+    if strcmp(model_type, "gaussian") || strcmp(model_type, "random_forest") || strcmp(model_type, "gradient_boosting")
         % Gaussian
 
         % Gaussian approach only predicts one variable at a time

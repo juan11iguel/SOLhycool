@@ -44,6 +44,7 @@ function [dv_list, consumption_list] = evaluate_decision_variables(step_idx, env
     wct_model = [];
     if ~isempty(options_struct)
         if isfield(options_struct, "wct_model_data_path")
+            fprintf("Pre-loading WCT model\n")
             wct_model=load(options_struct.wct_model_data_path, "model");
         end
     end

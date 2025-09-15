@@ -1,0 +1,14 @@
+
+Starting evaluation of wct_fp_pilot_plant_radial_basis_mimo 
+Elapsed time for training the model: 0.5865 seconds
+Elapsed time for evaluating validation set: 0.0049 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_radial_basis_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_radial_basis_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_radial_basis_mimo.csv
+
+Starting evaluation of wct_fp_pilot_plant_radial_basis_mimo 
+Elapsed time for training the model: 0.4540 seconds
+Elapsed time for evaluating validation set: 0.0052 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_radial_basis_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_radial_basis_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_radial_basis_mimo.csv

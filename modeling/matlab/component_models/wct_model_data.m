@@ -88,17 +88,18 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
         end
     end
 
-    inputs = [Tamb, HR, Tin, q/options.n_wct, w_fan];
     if valid_inputs
+        inputs = [Tamb, HR, Tin, q/options.n_wct, w_fan];
+
         % Predict first variable
-        [Tout, ~, ~] = predict(model{1}, inputs);
+        Tout = evalModel(model{1}, inputs);
         % Predict for the second variable
-        [Cw, ~, ~] = predict(model{2}, [inputs, Tout]);
+        Cw = evalModel(model{2}, [inputs, Tout]);
         Cw = max(0.0, Cw * options.n_wct); % l/h
         
         if length(model) > 2
             % Electrical consumption is another GPR
-            [Ce, ~, ~] = predict(model{3}, [inputs, [Tout, Cw]]);
+            Ce = evalModel(model{3}, [inputs, [Tout, Cw]]);
             Ce = max(0.0, Ce);
         else
             % Otherwise estimate consumption using the polynomium
@@ -131,6 +132,25 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
                 % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
                 options.(field_name) = options_struct.(field_name);
             end
+        end
+    end
+    
+    function y = evalModel(model, x)
+        % Detect class
+        if isa(model, 'network')
+            % Neural network expects column input
+            if isrow(x)
+                x = x';
+            end
+            y = model(x);  % same as sim(model,x)
+        elseif isa(model, 'RegressionGP')
+            % GPR expects row input
+            if iscolumn(x)
+                x = x';
+            end
+            y = predict(model, x);
+        else
+            error('Unsupported model type: %s', class(model));
         end
     end
 
