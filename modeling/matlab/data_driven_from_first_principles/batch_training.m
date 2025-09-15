@@ -48,6 +48,26 @@ if n_outputs > 3
     error("This function only supports 1 (Tout), 2 (Tout, Cw) or 3 (Tout, Cw, Ce) outputs")
 end
 
+fitrgp_auto = @(x,y) fitrgp(x, y);
+% fitrgp_auto = @(x,y) fitrgp(x, y, ...
+%     'KernelFunction','squaredexponential', ...
+%     'FitMethod','sr', ...
+%     'ActiveSetSize', 200, ...
+%     'BasisFunction','none', ...
+%     'Standardize', true ...
+% );
+
+% fitrgp_auto = @(x,y) fitrgp(x, y, ...
+%     'KernelFunction','squaredexponential', ...
+%     'FitMethod','sr', ...
+%     'ActiveSetSize', 200, ...
+%     'BasisFunction','none', ...
+%     'Standardize', true ...
+% );
+    % 'OptimizeHyperparameters','auto', ...
+    % 'HyperparameterOptimizationOptions', ...
+    % struct('AcquisitionFunctionName','expected-improvement-plus'));
+
 %% Alternative methods
 
 % for filename=[filenames(1)]
@@ -130,7 +150,8 @@ for filename=filenames
                     % Calibrate model
     
                     % Fit for Tout
-                    model = fitrgp(inputs_tr, out_ref_tr);
+                    model = fitrgp_auto(inputs_tr, out_ref_tr);
+                    model = compact(model); % Model compact version
 
                 
                 elseif ~strcmp(configuration_type, "cascade")
@@ -141,15 +162,19 @@ for filename=filenames
                     % Calibrate model
     
                     % Fit for Tout
-                    model{1} = fitrgp(inputs_tr, out_ref_tr(:,1));
+                    model{1} = fitrgp_auto(inputs_tr, out_ref_tr(:,1));
                     % Predict Tout for the training set to use it for Mlost
                     [out_mod_tr(:,1), ~, ~] = predict(model{1}, inputs_tr);
                     % Fit for Mlost
-                    model{2} = fitrgp([inputs_tr, out_mod_tr(:,1)], out_ref_tr(:,2));
+                    model{2} = fitrgp_auto([inputs_tr, out_mod_tr(:,1)], out_ref_tr(:,2));
+
+                    model{1} = compact(model{1}); % Model compact version
+                    model{2} = compact(model{2}); % Model compact version
 
                     % Fit for Ce, not cascade
                     if n_outputs == 3
                         model{3} = fitrgp(inputs_tr, out_ref_tr(:,3));
+                        model{3} = compact(model{3}); % Model compact version
                     end
                 end
 
@@ -358,7 +383,7 @@ for filename=filenames
             elapsed_time_training = toc(init_time_training);
             fprintf('Elapsed time for training the model: %.4f seconds\n', elapsed_time_training);
 
-            % Validate model
+
             init_time_validation = tic;
             out_mod_val = evaluate_model(inputs_val, alternative, model);
             elapsed_time_validation = toc(init_time_validation);

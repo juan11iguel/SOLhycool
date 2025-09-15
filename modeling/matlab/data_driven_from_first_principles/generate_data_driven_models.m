@@ -7,7 +7,7 @@
 %--------------------------------------------------------------------------
 
 %% Common parameters
-clc; clear
+% clc; clear
 
 % Important to run this at least one time!
 
@@ -142,7 +142,7 @@ set_wct_common_parameters
 configuration_types = ["cascade"];
 alternatives = ["gaussian"]; %#ok<*NBRAK2> 
 auxiliary_id = "fp_andasol_";
-filename_to_test = "andasol_25_90MW/wct_out"; % "andasol_50_90MW/dc_out"; % andasol_50_90MW andasol_50_90MW
+filename_to_test = "andasol_90MW/wct_out"; % "andasol_50_90MW/dc_out"; % andasol_50_90MW andasol_50_90MW
 
 % No validation set available
 data_validation_path = []; 
@@ -151,8 +151,8 @@ valRatio = 0.15;
 testRatio = 0.15;
 
 % Add Ce to outputs
-output_vars_idx = [6, 7, 8];
-output_var_names = ["Tout", "Mlost", "Ce"];
+output_vars_idx = [6, 7];%, 8];
+output_var_names = ["Tout", "Mlost"]; %, "Ce"];
 
 visualize_validation = true;
 

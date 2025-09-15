@@ -34,6 +34,8 @@ end
 %load wct_inputs.mat;
 wct=readtable(input_data_path);
 
+%% 
+
 % Asegurarnos de que el parallel pool está activo
 if isempty(gcp('nocreate'))
         parpool;  % Abre pool si no está
@@ -123,24 +125,6 @@ for i=1:size(wct,1)
 
 end
 
-%% Guardo datos con el formato deseado
-wct_out=wct(:,2:end); % la primera columna no la queremos
-wct_out.Properties.VariableNames(3) = "Tin";
-wct_out.Properties.VariableNames(4) = "q";
-wct_out.Properties.VariableNames(5) = "w_fan";
-wct_out = removevars(wct_out, "Twb");
-wct_out = removevars(wct_out, "mw_ma_ratio");
-
-wct_out.Twct_out=Tout_simu';
-wct_out.Cw_lh=Mw_lost_Lh';
-wct_out.Properties.VariableNames(6) = "Tout";
-wct_out.Properties.VariableNames(7) = "m_w_lost";
-
-if save_electrical_consumption
-    wct_out.Ce_kW = Ce_kWe';
-    wct_out.Properties.VariableNames(8) = "Ce";
-end
-
 %% Compruebo los nan y números complejos que había
 total_nan=sum(isnan(Tout_simu));
 fprintf('Soluciones no encontradas (=NaN): %d \n', total_nan)
@@ -160,16 +144,39 @@ end;
 total_nan=sum(isnan(Tout_simu_valid));
 fprintf('Soluciones no encontradas (=NaN) y no complejas: %d \n', total_nan)
 
-%% Elimino NaNs
-% Encuentra las filas que tienen al menos un NaN
-filasConNaN = any(ismissing(wct_out), 2);
 
-% Elimina esas filas
-wct_out_sinnan = wct_out(~filasConNaN, :);
+%% Guardo datos con el formato deseado
+wct_out=wct(:,2:end); % la primera columna no la queremos
+wct_out.Properties.VariableNames(3) = "Tin";
+wct_out.Properties.VariableNames(4) = "q";
+wct_out.Properties.VariableNames(5) = "w_fan";
+wct_out = removevars(wct_out, "Twb");
+wct_out = removevars(wct_out, "mw_ma_ratio");
+
+wct_out.Twct_out=Tout_simu';
+wct_out.Cw_lh=Mw_lost_Lh';
+wct_out.Properties.VariableNames(6) = "Tout";
+wct_out.Properties.VariableNames(7) = "m_w_lost";
+
+if save_electrical_consumption
+    wct_out.Ce_kW = Ce_kWe';
+    wct_out.Properties.VariableNames(8) = "Ce";
+end
+
+
+%% Elimino NaNs
+
+% Encuentra las filas que tienen al menos un NaN
+filasConNaN = any(ismissing(wct_out));
+wct_out_sin_nan = wct_out(~filasConNaN, :);
+
+% El filtro de Nan estaba mal, filtrando a posteriori
+% wct_out = wct_out(wct_out.m_w_lost > 0,:);
+% wct_out = wct_out(wct_out.Tout > 0,:);
 
 %% Guardo en .csv
-writetable(wct_out_sinnan, output_data_path);
-fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out_sinnan))
+writetable(wct_out, output_data_path);
+fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out))
 
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 % for i=1:size(wct_out_sinnan,1)
@@ -221,3 +228,8 @@ fprintf('Terminado en %0.1f s\n', elapsed_time)
 %         m_dot_a = p1*(SC_fan_wct/2)^2 + p2*SC_fan_wct/2 + p3;
 % end
 % 
+
+%%
+wct_out = readtable(output_data_path);
+
+wct_out(wct_out.m_w_lost < 0,:)

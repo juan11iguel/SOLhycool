@@ -26,3 +26,222 @@ Elapsed time for evaluating validation set: 0.0059 seconds
 Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
 Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
 Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 3.4511 seconds
+Elapsed time for evaluating validation set: 0.0047 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+|=====================================================================================================|
+| Iter | Eval   | Objective:  | Objective   | BestSoFar   | BestSoFar   |        Sigma |  Standardize |
+|      | result | log(1+loss) | runtime     | (observed)  | (estim.)    |              |              |
+|=====================================================================================================|
+|    1 | Best   |      1.1532 |      4.9638 |      1.1532 |      1.1532 |       11.536 |         true |
+|    2 | Best   |     0.78516 |      5.1438 |     0.78516 |     0.82935 |     0.003506 |        false |
+|    3 | Accept |      1.4292 |      4.3824 |     0.78516 |     0.78642 |       20.575 |        false |
+|    4 | Accept |      1.5201 |       5.324 |     0.78516 |     0.82132 |    0.0012391 |         true |
+|    5 | Accept |     0.78519 |      4.5906 |     0.78516 |     0.78517 |     0.003419 |        false |
+|    6 | Accept |     0.78574 |      5.3142 |     0.78516 |     0.78487 |    0.0005933 |        false |
+|    7 | Accept |     0.78576 |      5.4329 |     0.78516 |     0.78516 |   0.00010001 |        false |
+|    8 | Accept |     0.78563 |      6.2816 |     0.78516 |      0.7855 |    0.0016324 |        false |
+|    9 | Accept |     0.78576 |      5.3302 |     0.78516 |      0.7846 |   0.00021916 |        false |
+|   10 | Accept |      0.7856 |      5.0819 |     0.78516 |     0.78493 |    0.0018257 |        false |
+|   11 | Accept |     0.78576 |      5.0559 |     0.78516 |     0.78495 |   0.00010004 |        false |
+|   12 | Accept |     0.78556 |      5.6735 |     0.78516 |     0.78506 |    0.0020424 |        false |
+|   13 | Accept |     0.78576 |      5.0413 |     0.78516 |     0.78506 |   0.00021261 |        false |
+|   14 | Best   |     0.78147 |      3.6437 |     0.78147 |     0.78438 |    0.0094687 |        false |
+|   15 | Best   |     0.77655 |      4.4642 |     0.77655 |     0.77808 |     0.014079 |        false |
+|   16 | Accept |      2.2731 |      3.8653 |     0.77655 |     0.77675 |      0.02853 |        false |
+|   17 | Best   |     0.23173 |       3.452 |     0.23173 |     0.23178 |       1.7149 |         true |
+|   18 | Best   |      0.1752 |      3.5959 |      0.1752 |     0.17524 |        1.043 |         true |
+|   19 | Best   |     0.14235 |       3.509 |     0.14235 |      0.1424 |      0.50963 |         true |
+|   20 | Accept |     0.17168 |      3.6569 |     0.14235 |     0.14236 |      0.24676 |         true |
+|=====================================================================================================|
+| Iter | Eval   | Objective:  | Objective   | BestSoFar   | BestSoFar   |        Sigma |  Standardize |
+|      | result | log(1+loss) | runtime     | (observed)  | (estim.)    |              |              |
+|=====================================================================================================|
+|   21 | Accept |     0.42872 |      3.0146 |     0.14235 |     0.14237 |      0.10127 |         true |
+|   22 | Accept |     0.14244 |      3.2331 |     0.14235 |     0.14238 |      0.35925 |         true |
+|   23 | Accept |     0.94412 |      4.0679 |     0.14235 |     0.14238 |     0.023414 |         true |
+|   24 | Accept |     0.15256 |      3.6632 |     0.14235 |     0.14234 |      0.70967 |         true |
+|   25 | Accept |      1.5248 |      5.5267 |     0.14235 |     0.14234 |   0.00010004 |         true |
+|   26 | Accept |     0.24113 |      3.6714 |     0.14235 |     0.14234 |       1.5542 |        false |
+|   27 | Accept |     0.18457 |      3.9363 |     0.14235 |     0.14234 |      0.79084 |        false |
+|   28 | Accept |     0.20586 |      3.6136 |     0.14235 |     0.14234 |       1.0655 |        false |
+|   29 | Accept |     0.15594 |      4.4072 |     0.14235 |     0.14234 |      0.41903 |        false |
+|   30 | Accept |     0.16258 |      5.5001 |     0.14235 |     0.14234 |      0.53121 |        false |
+IdleTimeout has been reached.
+Parallel pool using the 'Processes' profile is shutting down.
+
+__________________________________________________________
+Optimization completed.
+MaxObjectiveEvaluations of 30 reached.
+Total function evaluations: 30
+Total elapsed time: 193.6055 seconds
+Total objective function evaluation time: 134.4374
+
+Best observed feasible point:
+     <strong>Sigma</strong>     <strong>Standardize</strong>
+    <strong>_______</strong>    <strong>___________</strong>
+
+    0.50963       true    
+
+Observed objective function value = 0.14235
+Estimated objective function value = 0.14234
+Function evaluation time = 3.509
+
+Best estimated feasible point (according to models):
+     <strong>Sigma</strong>     <strong>Standardize</strong>
+    <strong>_______</strong>    <strong>___________</strong>
+
+    0.50963       true    
+
+Estimated objective function value = 0.14234
+Estimated function evaluation time = 3.5082
+
+|=====================================================================================================|
+| Iter | Eval   | Objective:  | Objective   | BestSoFar   | BestSoFar   |        Sigma |  Standardize |
+|      | result | log(1+loss) | runtime     | (observed)  | (estim.)    |              |              |
+|=====================================================================================================|
+|    1 | Best   |      9.0719 |      4.1016 |      9.0719 |      9.0719 |      0.77482 |        false |
+|    2 | Accept |      9.2418 |      3.6541 |      9.0719 |      9.1568 |       16.112 |         true |
+|    3 | Best   |      9.0676 |      70.663 |      9.0676 |       9.068 |   0.00010416 |        false |
+|    4 | Accept |      9.5909 |      5.2016 |      9.0676 |      9.0826 |       983.42 |        false |
+|    5 | Accept |      9.0676 |      5.2814 |      9.0676 |      9.0676 |    0.0001846 |        false |
+|    6 | Accept |      9.0676 |      5.5332 |      9.0676 |      9.0676 |     0.035109 |        false |
+|    7 | Best   |      8.9938 |       5.667 |      8.9938 |      8.9938 |   0.00010001 |         true |
+|    8 | Accept |      8.9939 |      5.3118 |      8.9938 |      8.9938 |    0.0028054 |         true |
+|    9 | Accept |      8.9938 |      5.6527 |      8.9938 |      8.9937 |   0.00053567 |         true |
+|   10 | Accept |      8.9995 |      4.5664 |      8.9938 |      8.9938 |     0.031132 |         true |
+|   11 | Accept |       8.995 |      5.0031 |      8.9938 |      8.9938 |    0.0089942 |         true |
+|   12 | Accept |      8.9938 |      5.7067 |      8.9938 |      8.9937 |   0.00021801 |         true |
+|   13 | Accept |      8.9938 |      5.8994 |      8.9938 |      8.9938 |    0.0011537 |         true |
+|   14 | Best   |      8.9938 |      5.4176 |      8.9938 |      8.9939 |    0.0001003 |         true |
+|   15 | Accept |      8.9938 |      7.2776 |      8.9938 |      8.9938 |   0.00023137 |         true |
+|   16 | Accept |      8.9938 |      5.6095 |      8.9938 |      8.9938 |   0.00081203 |         true |
+|   17 | Best   |      8.9938 |      5.7073 |      8.9938 |      8.9938 |   0.00010001 |         true |
+|   18 | Accept |      8.9938 |      5.8257 |      8.9938 |      8.9938 |   0.00020735 |         true |
+|   19 | Accept |      8.9939 |      64.226 |      8.9938 |      8.9938 |     0.002073 |         true |
+|   20 | Accept |      8.9938 |       9.342 |      8.9938 |      8.9938 |   0.00045234 |         true |
+|=====================================================================================================|
+| Iter | Eval   | Objective:  | Objective   | BestSoFar   | BestSoFar   |        Sigma |  Standardize |
+|      | result | log(1+loss) | runtime     | (observed)  | (estim.)    |              |              |
+|=====================================================================================================|
+|   21 | Accept |      8.9938 |      5.4235 |      8.9938 |      8.9938 |   0.00017308 |         true |
+|   22 | Accept |      8.9938 |      5.3276 |      8.9938 |      8.9938 |    0.0012047 |         true |
+|   23 | Accept |      8.9938 |      6.3301 |      8.9938 |      8.9938 |   0.00010043 |         true |
+|   24 | Accept |       8.994 |       5.474 |      8.9938 |      8.9938 |    0.0036897 |         true |
+|   25 | Accept |      8.9938 |      5.7275 |      8.9938 |      8.9938 |   0.00043927 |         true |
+|   26 | Accept |      9.5909 |      5.5143 |      8.9938 |      8.9938 |       1208.2 |         true |
+|   27 | Accept |      9.1562 |      4.9651 |      8.9938 |      8.9938 |        27.74 |        false |
+|   28 | Accept |      9.0565 |      4.1599 |      8.9938 |      8.9938 |      0.85613 |         true |
+|   29 | Accept |      8.9939 |      5.4144 |      8.9938 |      8.9938 |    0.0017373 |         true |
+|   30 | Accept |      9.0676 |      5.5706 |      8.9938 |      8.9938 |    0.0032144 |        false |
+
+__________________________________________________________
+Optimization completed.
+MaxObjectiveEvaluations of 30 reached.
+Total function evaluations: 30
+Total elapsed time: 302.8075 seconds
+Total objective function evaluation time: 289.5545
+
+Best observed feasible point:
+      <strong>Sigma</strong>       <strong>Standardize</strong>
+    <strong>__________</strong>    <strong>___________</strong>
+
+    0.00010001       true    
+
+Observed objective function value = 8.9938
+Estimated objective function value = 8.9938
+Function evaluation time = 5.7073
+
+Best estimated feasible point (according to models):
+      <strong>Sigma</strong>       <strong>Standardize</strong>
+    <strong>__________</strong>    <strong>___________</strong>
+
+    0.00017308       true    
+
+Estimated objective function value = 8.9938
+Estimated function evaluation time = 6.4381
+
+Elapsed time for training the model: 511.5398 seconds
+Elapsed time for evaluating validation set: 0.0051 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.8382 seconds
+Elapsed time for evaluating validation set: 0.0048 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.8606 seconds
+Elapsed time for evaluating validation set: 0.0049 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 3.4303 seconds
+Elapsed time for evaluating validation set: 0.0060 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 3.4749 seconds
+Elapsed time for evaluating validation set: 0.0050 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.9288 seconds
+Elapsed time for evaluating validation set: 0.0051 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.3347 seconds
+Elapsed time for evaluating validation set: 0.0056 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.9047 seconds
+Elapsed time for evaluating validation set: 0.0051 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.5878 seconds
+{Incorrect number or types of inputs or outputs for function compact.
+
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('batch_training', '/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/batch_training.m', 388)" style="font-weight:bold">batch_training</a> (<a href="matlab: opentoline('/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/batch_training.m',388,0)">line 388</a>)
+            model = compact(model); % Model compact version
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+} 
+batch_training
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 1.2873 seconds
+Elapsed time for evaluating validation set: 0.0262 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
+
+Starting evaluation of wct_fp_pilot_plant_gaussian_cascade 
+Elapsed time for training the model: 4.0531 seconds
+Elapsed time for evaluating validation set: 0.0484 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_fp_pilot_plant_gaussian_cascade.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_fp_pilot_plant_gaussian_cascade.csv
