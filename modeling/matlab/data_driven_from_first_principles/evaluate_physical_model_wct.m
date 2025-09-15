@@ -4,7 +4,7 @@
 % 
 % This script should be run with the current path being the base MATLAB project folder
 % 
-% Author: Lidia Roca Sobrino
+% 
 % -------------------------------------------------------------------------
 
 clc

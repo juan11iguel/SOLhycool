@@ -69,7 +69,7 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     M_lost_wct = M_lost_wct / Dens_agua  * 1000*3600;
 
     % Consumo eléctrico
-    Pe = ConsumoElectrico_E01_andasol(SC_fan_wct,Tamb,HR); % + ConsumoElectrico_P7(SC_pump_wct); % kWe
+    Pe = ConsumoElectrico_E01_andasol(SC_fan_wct); %,Tamb,HR); % + ConsumoElectrico_P7(SC_pump_wct); % kWe
     % Pth = Mwct/3.6*(Twct_in - Twct_out)*4.186; % Mwct: m³/h -> kg/s; kWth
    
     else
@@ -121,15 +121,28 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
 %         m_dot_a = p00 + p10*(SC_fan_wct/2) + p01*Tamb + p20*(SC_fan_wct/2)^2 + p11*(SC_fan_wct/2)*Tamb + p02*Tamb^2;
 %     end
 
-    function [CE] = ConsumoElectrico_E01_andasol(x,T,HR)
-        % Nota: estoy tomando la T del ambiente, no del aire a la salida
-        % para calcular la densidad del aire.
-        ef=0.7;
-        [Tdb_2, w_2, phi_2, h_2, Tdp_2, v_2, Twb_2] = Psychrometricsnew('Tdb',T,'phi',HR); % Salidas: [Tdb, humratio, phi, entalphy, Tdp, volume, Twb]
-        rho_air=1/v_2;
-        Qair= (ajuste_m_dot_a_andasol(x))/rho_air; % m3/s
-        CE=(dp_wct(x)* Qair/1000)/ef; %kW        
+%     function [CE] = ConsumoElectrico_E01_andasol(x,T,HR)
+%         % Nota: estoy tomando la T del ambiente, no del aire a la salida
+%         % para calcular la densidad del aire.
+%         ef=0.7;
+%         [Tdb_2, w_2, phi_2, h_2, Tdp_2, v_2, Twb_2] = Psychrometricsnew('Tdb',T,'phi',HR); % Salidas: [Tdb, humratio, phi, entalphy, Tdp, volume, Twb]
+%         rho_air=1/v_2;
+%         Qair= (ajuste_m_dot_a_andasol(x))/rho_air; % m3/s
+%         CE=(dp_wct(x)* Qair/1000)/ef; %kW        
+%     end
+
+    function Ce = ConsumoElectrico_E01_andasol(SC) % solo 1 WCT
+        % SC (%)
+        % Ce (kW)
+        % f(x) = p1*x^3 + p2*x^2 + p3*x + p4
+           p1 =    5.35e-05 ;
+           p2 =    0.01149;
+           p3 =    -0.0141;
+           p4 =    0.1433;
+        Ce =max(p1.*SC.^3 + p2.*SC.^2 + p3.*SC + p4, 0); %kW
     end
+
+
 
     function [dp_est] = dp_wct(fan)
         p1 =     0.06322  ;
