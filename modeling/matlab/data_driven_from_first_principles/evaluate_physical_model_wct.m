@@ -147,6 +147,16 @@ end
 
 tol = 1e-10;
 
+% --- Parámetro ajustable para el umbral de consumo de agua ---
+X_std = 3; % Puedes cambiar este valor según lo que consideres outlier
+
+% Calcular mediana y desviación típica antes de filtrar
+m_w_lost_all = wct_out.m_w_lost;
+mediana_mw = median(m_w_lost_all, 'omitnan');
+std_mw = std(m_w_lost_all, 'omitnan');
+
+umbral_mw = mediana_mw + X_std*std_mw;
+
 % Condiciones de invalidez
 invalid_nan = any(ismissing(wct_out), 2); % cualquier NaN en la fila
 
@@ -155,8 +165,11 @@ invalid_phys = ...
     (abs(imag(wct_out.Tout)) > tol) | (wct_out.Tout < 0) | ...
     (wct_out.m_w_lost < 0);
 
+% Nueva condición: consumo de agua excesivo
+invalid_mw = wct_out.m_w_lost > umbral_mw;
+
 % Combinar condiciones
-invalid = invalid_nan | invalid_phys;
+invalid = invalid_nan | invalid_phys | invalid_mw;
 
 fprintf('Filas inválidas detectadas: %d de %d\n', sum(invalid), height(wct_out));
 
@@ -165,13 +178,24 @@ wct_out_sin_nan = wct_out(~invalid, :);
 
 %% Guardo en .csv
 writetable(wct_out_sin_nan, output_data_path);
-fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out))
+fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out_sin_nan))
 
 %% Visualizar
 figure
-scatter(1:height(wct_out), wct_out.Tout)
+scatter(1:height(wct_out), wct_out.Tout, 15, 'b', 'filled')
 hold on;
-scatter(1:height(wct_out), wct_out.m_w_lost)
+scatter(1:height(wct_out), wct_out.m_w_lost, 15, 'r', 'filled')
+% Puntos válidos después del filtrado
+scatter(find(~invalid), wct_out_sin_nan.Tout, 40, 'ko')
+scatter(find(~invalid), wct_out_sin_nan.m_w_lost, 40, 'go')
+legend('Tout (raw)', 'm\_w\_lost (raw)', 'Tout (filtered)', 'm\_w\_lost (filtered)')
+xlabel('Index')
+ylabel('Value')
+title('Resultados antes y después del filtrado')
+
+% Línea de umbral en la gráfica de m_w_lost
+yline(umbral_mw, '--m', sprintf('Umbral m\\_w\\_lost = %.2f', umbral_mw));
+
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 % for i=1:size(wct_out_sinnan,1)
 %     [Tdb, w, phi, h, Tdp, v, Twb(i)] = Psychrometricsnew('Tdb',wct_out_sinnan.Tamb(i),'phi',wct_out_sinnan.HR(i)); 
@@ -224,6 +248,5 @@ fprintf('Terminado en %0.1f s\n', elapsed_time)
 % 
 
 %%
-wct_out = readtable(output_data_path);
-
-wct_out(wct_out.m_w_lost < 0,:)
+% wct_out = readtable(output_data_path);
+% wct_out(wct_out.m_w_lost < 0,:)
