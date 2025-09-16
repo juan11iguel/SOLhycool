@@ -30,10 +30,11 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options_struc
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
-        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
+        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data', 'data_direct'})} = 'data'
         options.n_wct (1,1) double {mustBeInteger,mustBePositive} = 1
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4]; % Default quadratic coefficients
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "wct_model_data.mat")
+        options.inverse_model_data_path string = fullfile(fileparts(mfilename('fullpath')), "inverse_wct_model_data.mat")
         options.lb (1,5) double = [0.1    0.1     5.0    5.0       0.];
         options.ub (1,5) double = [50.0   99.99   55.0   24.8400   95.];
         options.tolerance (1,1) double = 0.5
@@ -71,22 +72,42 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options_struc
             wct_model_fun       = @wct_model_data;
         case "physical"
             wct_model_fun       = @wct_model_physical;
+        case "data_direct"
+            wct_model_fun       = @wct_model_data;
         otherwise
             error("wct_inverse:invalid_option", ...
                   "Invalid model_type '%s'. Options are: 'data', 'physical'", model_type);
     end
 
-    % Optimization options
-    opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display', 'none'); 
-    
-    % Define equality constraints (empty for now)
-    Aeq = [];
-    beq = [];
-    
-    % Run optimization
-    % (options.lb+options.ub)/2
-    [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), (lb_x+ub_x)/2, [], [], [], [], lb_x, ub_x, [], opt);
-    valid = (fval <= options.tolerance) && (exitflag > 0);
+    if strcmp(options.model_type, "data_direct")
+        % Obtainfan speed directly
+
+        lb = options.lb;
+        ub = options.ub;
+        lb(end) = options.lb(3);
+        ub(end) = options.ub(3);
+
+        wwct = inverse_wct_model_data(Tamb, HR, Tin, q, Tout, ...
+            model_data_path=options.inverse_model_data_path, ...
+            lb=lb, ...
+            ub=ub, ...
+            silence_warnings=options.silence_warnings, ...
+            raise_error_on_invalid_inputs=options.raise_error_on_invalid_inputs, ...
+            n_wct=options.n_wct ...
+        );
+        wwct = max(lb_x, min(ub_x, wwct));
+        valid = (inner_model(wwct) <= options.tolerance);
+    else
+        % Inverse the direct model
+
+        % Optimization options
+        opt = optimoptions('fmincon', 'Algorithm', 'sqp', 'OptimalityTolerance', 1e-10, 'StepTolerance', 1e-11, 'Display', 'none'); 
+        
+        % Run optimization
+        % (options.lb+options.ub)/2
+        [wwct, fval, exitflag] = fmincon(@(wwct) inner_model(wwct), (lb_x+ub_x)/2, [], [], [], [], lb_x, ub_x, [], opt);
+        valid = (fval <= options.tolerance) && (exitflag > 0);
+    end
 
     if ~valid && ~options.silence_warnings
         fprintf("No feasible fan speed found: fval=%.3f > tol=%.3f or exit flag=%d > 0\n", fval, options.tolerance, exitflag)

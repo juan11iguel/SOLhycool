@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="1762495238" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
+  <configuration build-checksum="314960183" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
     <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
@@ -122,7 +122,6 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/component_models/wct_model_physical.m</file>
       <file>${PROJECT_ROOT}/component_models/wct_model_physical_andasol.m</file>
       <file>${PROJECT_ROOT}/default_parameters.m</file>
-      <file>${PROJECT_ROOT}/dummy_fun.m</file>
       <file>${PROJECT_ROOT}/evaluate_decision_variables.m</file>
       <file>${PROJECT_ROOT}/evaluate_operation.m</file>
       <file>${PROJECT_ROOT}/fans_calculator.m</file>
@@ -145,7 +144,6 @@ For details, see GettingStarted.html, distributed with this package, or the offi
           <file>${PROJECT_ROOT}/component_models/dc_model_data.m</file>
           <file>${PROJECT_ROOT}/component_models/dc_model_physical.m</file>
           <file>${PROJECT_ROOT}/default_parameters.m</file>
-          <file>${PROJECT_ROOT}/dummy_fun.m</file>
           <file>${PROJECT_ROOT}/evaluate_decision_variables.m</file>
           <file>${PROJECT_ROOT}/evaluate_operation.m</file>
           <file>${PROJECT_ROOT}/utils/fan_speed_to_air_mass_flow_rate_fit.m</file>

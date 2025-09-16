@@ -1,0 +1,45 @@
+
+Starting evaluation of wct_inverse_fp_pilot_plant_gaussian_mimo 
+Elapsed time for training the model: 1.9172 seconds
+Elapsed time for evaluating validation set: 0.0128 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_gaussian_mimo.mat
+{Error using <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('array2table', '/home/patomareao/MATLAB/R2024b/toolbox/matlab/datatypes/tabular/array2table.m', 57)" style="font-weight:bold">array2table</a> (<a href="matlab: opentoline('/home/patomareao/MATLAB/R2024b/toolbox/matlab/datatypes/tabular/array2table.m',57,0)">line 57</a>)
+The VariableNames property must contain one name for each variable in the table.
+
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('batch_training', '/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/batch_training.m', 434)" style="font-weight:bold">batch_training</a> (<a href="matlab: opentoline('/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/batch_training.m',434,0)">line 434</a>)
+            writetable(array2table(out_mod_val, "VariableNames", output_var_names), name)
+
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('run', '/home/patomareao/MATLAB/R2024b/toolbox/matlab/lang/run.m', 112)" style="font-weight:bold">run</a> (<a href="matlab: opentoline('/home/patomareao/MATLAB/R2024b/toolbox/matlab/lang/run.m',112,0)">line 112</a>)
+evalin('caller', strcat(scriptStem, ';'));
+
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('generate_data_driven_models', '/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/generate_data_driven_models.m', 134)" style="font-weight:bold">generate_data_driven_models</a> (<a href="matlab: opentoline('/home/patomareao/development/SOLhycool/modeling/matlab/data_driven_from_first_principles/generate_data_driven_models.m',134,0)">line 134</a>)
+run("batch_training.m")
+}
+
+Starting evaluation of wct_inverse_fp_pilot_plant_gaussian_mimo 
+Elapsed time for training the model: 1.3900 seconds
+Elapsed time for evaluating validation set: 0.0127 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+
+Starting evaluation of wct_inverse_fp_pilot_plant_gaussian_mimo 
+Elapsed time for training the model: 1.3719 seconds
+Elapsed time for evaluating validation set: 0.0122 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+
+Starting evaluation of wct_inverse_fp_pilot_plant_gaussian_mimo 
+Elapsed time for training the model: 1.4719 seconds
+Elapsed time for evaluating validation set: 0.0123 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+
+Starting evaluation of wct_inverse_fp_pilot_plant_gaussian_mimo 
+Elapsed time for training the model: 1.8785 seconds
+Elapsed time for evaluating validation set: 0.0153 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_gaussian_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_gaussian_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_gaussian_mimo.csv

@@ -143,47 +143,35 @@ if save_electrical_consumption
     wct_out.Properties.VariableNames(8) = "Ce";
 end
 
-%% Compruebo los nan y números complejos que había
-% --- Step 1: detect invalid rows ---
+%% Detectar y eliminar filas inválidas directamente en wct_out
+
 tol = 1e-10;
 
-% Detect NaNs in Tout_simu
-invalid_nan = isnan(Tout_simu);
+% Condiciones de invalidez
+invalid_nan = any(ismissing(wct_out), 2); % cualquier NaN en la fila
 
-% Detect complex or negative Tout_simu or negative Mw_lost_Lh
-invalid_phys = (abs(imag(Tout_simu)) > tol) | (Tout_simu < 0) | (Mw_lost_Lh < 0);
+% Detectar valores complejos o negativos en columnas clave
+invalid_phys = ...
+    (abs(imag(wct_out.Tout)) > tol) | (wct_out.Tout < 0) | ...
+    (wct_out.m_w_lost < 0);
 
-% Combine all invalid conditions
+% Combinar condiciones
 invalid = invalid_nan | invalid_phys;
 
-% Report counts
-fprintf('Soluciones no encontradas (=NaN): %d\n', sum(invalid_nan));
-fprintf('Soluciones no encontradas (=NaN) y no complejas: %d\n', sum(invalid));
+fprintf('Filas inválidas detectadas: %d de %d\n', sum(invalid), height(wct_out));
 
-% --- Step 2: apply mask to all result vectors ---
-Tout_simu_valid    = Tout_simu;
-Mwlost_simu_valid  = Mw_lost_Lh;
-Ce_simu_valid      = Ce_kWe;
-
-Tout_simu_valid(invalid)   = NaN;
-Mwlost_simu_valid(invalid) = NaN;
-Ce_simu_valid(invalid)     = NaN;
-
-% --- Step 3: (optional) remove rows with any missing values in wct_out ---
-filasConNaN = any(ismissing(wct_out), 2);
-wct_out_sin_nan = wct_out(~filasConNaN, :);
-
-%%
-
-figure
-scatter(1:length(Tout_simu_valid), Tout_simu_valid)
-hold on;
-scatter(1:length(Tout_simu_valid), Mwlost_simu_valid)
+% Eliminar filas inválidas
+wct_out_sin_nan = wct_out(~invalid, :);
 
 %% Guardo en .csv
 writetable(wct_out_sin_nan, output_data_path);
 fprintf("Results saved to %s, n=%d\n", output_data_path, height(wct_out))
 
+%% Visualizar
+figure
+scatter(1:height(wct_out), wct_out.Tout)
+hold on;
+scatter(1:height(wct_out), wct_out.m_w_lost)
 %% Dibujo figura para chequear si tiene buena pinta las salidas
 % for i=1:size(wct_out_sinnan,1)
 %     [Tdb, w, phi, h, Tdp, v, Twb(i)] = Psychrometricsnew('Tdb',wct_out_sinnan.Tamb(i),'phi',wct_out_sinnan.HR(i)); 

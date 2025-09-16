@@ -1,0 +1,310 @@
+
+Starting evaluation of wct_inverse_fp_pilot_plant_feedforward_mimo 
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.127
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.136
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.128
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.193
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.132
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.136
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.136
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.131
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.145
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.182
+Training alg.: trainbr | Chose net with idx=1, topology: 5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.119
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.114
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.113
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.118
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.120
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.119
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.108
+Training alg.: trainbr | Chose net with idx=10, topology: 10-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.094
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.090
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.108
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.100
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.095
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.101
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.095
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.096
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.106
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.092
+Training alg.: trainbr | Chose net with idx=2, topology: 20-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.118
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.123
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.202
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.119
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.130
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.119
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.123
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.121
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.097
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.132
+Training alg.: trainbr | Chose net with idx=9, topology: 5-5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.115
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.109
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.114
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.195
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.124
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.114
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.103
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.127
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.090
+Training alg.: trainbr | Chose net with idx=10, topology: 5-10-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.111
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.113
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.110
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.092
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.190
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.094
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.104
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.088
+Training alg.: trainbr | Chose net with idx=10, topology: 10-5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.079
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.070
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.084
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.086
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.081
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.097
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.100
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.086
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.093
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.094
+Training alg.: trainbr | Chose net with idx=2, topology: 10-10-0 since it has the best performance
+Best net is with 10-10 neurons, since errors_total = 0.07
+Elapsed time for training the model: 7.5996 seconds
+Elapsed time for evaluating validation set: 0.0049 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_feedforward_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_feedforward_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_feedforward_mimo.csv
+
+Starting evaluation of wct_inverse_fp_pilot_plant_feedforward_mimo 
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.131
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.163
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.131
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.128
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.132
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.129
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.148
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.139
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.147
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.159
+Training alg.: trainbr | Chose net with idx=4, topology: 5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.117
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.132
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.114
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.122
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.117
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.107
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.111
+Training alg.: trainbr | Chose net with idx=9, topology: 10-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.080
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.107
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.096
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.099
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.089
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.087
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.098
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.103
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.108
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.101
+Training alg.: trainbr | Chose net with idx=1, topology: 20-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.125
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.105
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.132
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.122
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.121
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.128
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.119
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.139
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.099
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.118
+Training alg.: trainbr | Chose net with idx=9, topology: 5-5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.113
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.117
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.109
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.111
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.205
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.116
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.104
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.106
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.103
+Training alg.: trainbr | Chose net with idx=10, topology: 5-10-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.098
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.095
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.110
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.108
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.118
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.091
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.069
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.105
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.106
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.095
+Training alg.: trainbr | Chose net with idx=7, topology: 10-5-0 since it has the best performance
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 1: 0.102
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 2: 0.067
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 3: 0.189
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 4: 0.083
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 5: 0.102
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 6: 0.096
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 7: 0.089
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 8: 0.092
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 9: 0.112
+<a href="matlab:doc trainbr">TRAINBR</a>: <a href="matlab:doc nnwarning.adaptive_reg_override">NET.performParam.regularization has been set to 0.</a>
+Error in iteration 10: 0.100
+Training alg.: trainbr | Chose net with idx=2, topology: 10-10-0 since it has the best performance
+Best net is with 10-10 neurons, since errors_total = 0.07
+Elapsed time for training the model: 7.1189 seconds
+Elapsed time for evaluating validation set: 0.0068 seconds
+Saved model object and additional data in ../../data/models_data/model_data_wct_inverse_fp_pilot_plant_feedforward_mimo.mat
+Saved validation results in ../../results/data_driven_models/validation_wct_inverse_fp_pilot_plant_feedforward_mimo.csv
+Saved training/calibration/tunning results in ../../results/data_driven_models/training_wct_inverse_fp_pilot_plant_feedforward_mimo.csv

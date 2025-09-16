@@ -117,6 +117,22 @@ run("batch_training.m")
 % filename_to_test = "wct_exp2_"; 
 % 
 % run("batch_training.m")
+%% 2.X. WCT - INVERSE pilot plant using generated samples from first-principles model
+
+set_common_parameters
+set_wct_common_parameters
+
+% Parameters
+input_vars_idx  = [1:4, 6];
+output_vars_idx = [5];
+output_var_names = ["w_fan"];
+configuration_types = ["simple"];
+alternatives = ["gaussian", "raid"]; % ["gaussian"]; %#ok<*NBRAK2> 
+auxiliary_id = "inverse_fp_pilot_plant_";
+filename_to_test = "pilot_plant_200kW/wct_out"; 
+visualize_validation = true;
+
+run("batch_training.m")
 
 
 %% 2.2. WCT - pilot plant using generated samples from first-principles model
