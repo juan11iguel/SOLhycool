@@ -65,7 +65,7 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
     if ~isempty(options.model)
         model = options.model;
     elseif isempty(model)
-        fprintf('I am wct_model, man better pass me some model\n')
+        % fprintf('I am wct_model, man better pass me some model\n')
         load(options.model_data_path, "model");
     end
 

@@ -15,7 +15,7 @@ addpath("component_models/")
 %%
 
 % Parameters
-case_study_id = "pilot_plant_200kW"; % "andasol_90MW"; % "pilot_plant_200kW";
+case_study_id = "andasol_90MW"; % "andasol_90MW"; % "pilot_plant_200kW";
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
@@ -148,7 +148,7 @@ end
 tol = 1e-10;
 
 % --- Parámetro ajustable para el umbral de consumo de agua ---
-X_std = 3; % Puedes cambiar este valor según lo que consideres outlier
+X_std = 0.5; % Puedes cambiar este valor según lo que consideres outlier
 
 % Calcular mediana y desviación típica antes de filtrar
 m_w_lost_all = wct_out.m_w_lost;

@@ -34,7 +34,7 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
-        options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'direct'
+        options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'inverse'
         options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
         % DC               "Tamb",    "Tin",   "q", "w_fan"
         options.dc_lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
