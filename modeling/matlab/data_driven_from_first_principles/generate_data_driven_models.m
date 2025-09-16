@@ -142,7 +142,7 @@ set_wct_common_parameters
 
 % Parameters
 configuration_types = ["cascade"];
-alternatives = ["radial_basis2"]; % ["gaussian"]; %#ok<*NBRAK2> 
+alternatives = ["radial_basis2", "gaussian"]; % ["gaussian"]; %#ok<*NBRAK2> 
 auxiliary_id = "fp_pilot_plant_";
 filename_to_test = "pilot_plant_200kW/wct_out"; 
 visualize_validation = true;

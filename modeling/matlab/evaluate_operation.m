@@ -34,7 +34,8 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
-        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data', 'data_direct'})} = 'data_direct'
+        options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'direct'
+        options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
         % DC               "Tamb",    "Tin",   "q", "w_fan"
         options.dc_lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
         options.dc_ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
@@ -63,7 +64,7 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         % Paths
         options.dc_model_data_path = char(fullfile(fileparts(mfilename('fullpath')),  "/component_models", "model_data_dc_fp_gaussian.mat"));
         options.wct_model_data_path = char(fullfile(fileparts(mfilename('fullpath')), "/component_models", "model_data_wct_fp_gaussian.mat"));
-        options.inverse_model_data_path string = fullfile(fileparts(mfilename('fullpath')), "inverse_wct_model_data.mat")
+        options.inverse_wct_model_data_path string = fullfile(fileparts(mfilename('fullpath')), "inverse_wct_model_data.mat")
 
         % Miscellaneous options
         options.raise_error_on_invalid_inputs (1,1) logical = false
@@ -102,8 +103,6 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
 
     switch model_type
         case "data"
-            dc_model_fun = @dc_model_data;
-        case "data_direct"
             dc_model_fun = @dc_model_data;
         case "physical"
             dc_model_fun = @dc_model_physical;
@@ -173,9 +172,10 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         Twct_in, ...
         qwct, ...
         Twct_out, ...
+        resolution_mode=options.resolution_mode, ...
         model_type=options.model_type, ...
         model_data_path=options.wct_model_data_path, ...
-        inverse_model_data_path=options.inverse_model_data_path, ...
+        inverse_model_data_path=options.inverse_wct_model_data_path, ...
         lb=options.wct_lb, ...
         ub=options.wct_ub, ...
         silence_warnings=silence_warnings, ...

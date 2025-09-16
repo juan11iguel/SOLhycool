@@ -48,7 +48,7 @@ function [w_fan] = inverse_wct_model_data(Tamb, HR, Tin, q, Tout, options_struct
     
     max_values = options.ub;
     min_values = options.lb;
-    vars = ["Tamb", "HR", "Tin", "q", "w_fan"];
+    vars = ["Tamb", "HR", "Tin", "q", "Tout"];
 
     valid_inputs = true;
     for idx=1:length(vars)

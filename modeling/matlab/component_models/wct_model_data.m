@@ -28,11 +28,12 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
     %#function network
 
     arguments (Input)
-        Tamb (1,1) double
-        HR (1,1) double
-        Tin (1,1) double
-        q (1,1) double
-        w_fan (1,1) double
+        % Accept scalars or vectors for inputs (vectorized support)
+        Tamb double
+        HR double
+        Tin double
+        q double
+        w_fan double
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
@@ -47,9 +48,10 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
     end
 
     arguments (Output)
-        Tout (1,1) double
-        Ce (1,1) double
-        Cw (1,1) double
+        % Return scalars or column vectors
+        Tout (:,1) double
+        Ce (:,1) double
+        Cw (:,1) double
     end
 
     persistent model
@@ -72,49 +74,65 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
     % Limits of flow rate considering the number of WCTs in parallel
     options.ub(4)=options.ub(4)*options.n_wct;
     options.lb(4)=options.lb(4)*options.n_wct;
-    
+
+    % Determine whether inputs are vectors (any non-scalar input)
+    is_vector_input = ~(isscalar(Tamb) && isscalar(HR) && isscalar(Tin) && isscalar(q) && isscalar(w_fan));
+
+    % Compute the batch size and expand scalars to match
+    N = max([numel(Tamb), numel(HR), numel(Tin), numel(q), numel(w_fan)]);
+    Tamb_v  = expand_to_length(Tamb,  N);
+    HR_v    = expand_to_length(HR,    N);
+    Tin_v   = expand_to_length(Tin,   N);
+    q_v     = expand_to_length(q,     N);
+    w_fan_v = expand_to_length(w_fan, N);
+
+    % Prepare bounds for (optional) scalar validation
     max_values = options.ub;
     min_values = options.lb;
-    vars = ["Tamb", "HR", "Tin", "q", "w_fan"];
 
+    % Validate only in scalar mode; skip when vectorized to speed up
     valid_inputs = true;
-    for idx=1:length(vars)
-        var = vars(idx); value = eval(var);
-        if value > ceil(max_values(idx)) || value < floor(min_values(idx))
-            if options.raise_error_on_invalid_inputs
-                raise_error(var, value, min_values(idx), max_values(idx))
-            else
-                if ~options.silence_warnings
-                    warning("%s outside limits (%.2f <! %.2f <! %.2f)", var, min_values(idx), value, max_values(idx))
+    if ~is_vector_input
+        vars = ["Tamb", "HR", "Tin", "q", "w_fan"];
+        vals = [Tamb, HR, Tin, q, w_fan];
+        for idx=1:length(vars)
+            if vals(idx) > ceil(max_values(idx)) || vals(idx) < floor(min_values(idx))
+                if options.raise_error_on_invalid_inputs
+                    raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
+                else
+                    if ~options.silence_warnings
+                        warning("%s outside limits (%.2f <! %.2f <! %.2f)", vars(idx), min_values(idx), vals(idx), max_values(idx))
+                    end
+                    valid_inputs = false;
                 end
-                valid_inputs = false;
             end
         end
     end
 
     if valid_inputs
-        inputs = [Tamb, HR, Tin, q/options.n_wct, w_fan];
+        % Build input matrix with samples in rows (N x F)
+        inputs_mat = [Tamb_v, HR_v, Tin_v, q_v/options.n_wct, w_fan_v];
 
-        % Predict first variable
-        Tout = evalModel(model{1}, inputs);
-        % Predict for the second variable
-        Cw = evalModel(model{2}, [inputs, Tout]);
-        Cw = max(0.0, Cw * options.n_wct); % l/h
-        
+        % Predict first variable: Tout (N x 1)
+        Tout = evalModel(model{1}, inputs_mat);
+
+        % Predict the second variable: Cw uses inputs and Tout
+        Cw = evalModel(model{2}, [inputs_mat, Tout]);
+        Cw = max(0.0, Cw * options.n_wct); % l/h, element-wise
+
         if length(model) > 2
-            % Electrical consumption is another GPR
-            Ce = evalModel(model{3}, [inputs, [Tout, Cw]]);
+            % Electrical consumption is another model
+            Ce = evalModel(model{3}, [inputs_mat, [Tout, Cw]]);
             Ce = max(0.0, Ce);
         else
-            % Otherwise estimate consumption using the polynomium
-            Ce = options.n_wct * power_consumption(w_fan) * 1e-3; % kWe
+            % Otherwise estimate consumption using the polynomial
+            Ce = options.n_wct * power_consumption(w_fan_v) * 1e-3; % kWe
         end
-        % Pth = q/3.6*(Tin - Tout)*4.186; % Mwct: m³/h -> kg/s; % kWth
     else
-        % Skip wet cooler
-        Tout = Tin;
-        Ce = 0;
-        Cw = 0;
+        % Invalid scalar inputs: bypass wet cooler
+        Tout = Tin_v;
+        Ce   = zeros(N,1);
+        Cw   = zeros(N,1);
     end
 
     function P_fan_W = power_consumption(w_fan)
@@ -139,22 +157,41 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
         end
     end
     
-    function y = evalModel(model, x)
-        % Detect class
+    function y = evalModel(model, X)
+        % Evaluate model for vectorized inputs.
+        % X is expected to be N x F (samples in rows). This function
+        % adapts X to the required shape for each model type.
         if isa(model, 'network')
-            % Neural network expects column input
-            if isrow(x)
-                x = x';
+            % Neural networks expect inputs as features-by-N
+            if isvector(X)
+                X = X(:)'; % make it 1 x F
             end
-            y = model(x);  % same as sim(model,x)
+            X_nn = X';     % F x N
+            y_pred = model(X_nn); % usually 1 x N for regression
+            y = y_pred(:); % N x 1
         elseif isa(model, 'RegressionGP')
-            % GPR expects row input
-            if iscolumn(x)
-                x = x';
+            % GPR expects rows as samples (N x F)
+            if iscolumn(X)
+                X = X';
             end
-            y = predict(model, x);
+            y = predict(model, X);
+            if ~iscolumn(y)
+                y = y(:);
+            end
         else
             error('Unsupported model type: %s', class(model));
+        end
+    end
+
+    function v = expand_to_length(x, N)
+        % Expand scalar to length N; validate vector lengths
+        if isscalar(x)
+            v = repmat(x, N, 1);
+        else
+            if numel(x) ~= N
+                error('Inputs must be scalars or vectors of the same length.');
+            end
+            v = x(:);
         end
     end
 
