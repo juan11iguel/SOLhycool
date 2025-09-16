@@ -12,12 +12,15 @@ import warnings
 import copy
 import datetime
 from tables.exceptions import NaturalNameWarning
+import json
+import math
+from pydantic import BaseModel, Field
 
 # Always import combined_cooler before importing matlab
 import combined_cooler
 import matlab
 
-from solhycool_modeling import ModelInputsRange
+from solhycool_modeling import ModelInputsRange, MatlabOptions
 from solhycool_modeling.utils import dump_in_span
 from solhycool_optimization.utils.serialization import get_queryable_columns
 
@@ -91,13 +94,19 @@ class ValuesDecisionVariables:
         
         return cls(**{name: values_per_dv for name in fld_names})
     
-    def generate_arrays(self, ) -> "ValuesDecisionVariables":
-        inputs_range = ModelInputsRange()
-        
+    def generate_arrays(self, inputs_range: ModelInputsRange = ModelInputsRange()) -> "ValuesDecisionVariables":        
         return ValuesDecisionVariables(**{
             name: np.linspace(getattr(inputs_range, name)[0], getattr(inputs_range, name)[1], n_values) 
             for name, n_values in asdict(self).items()
         })
+        
+    def to_matlab(self) -> "ValuesDecisionVariables":
+        """ Convert all attributes to matlab.double """
+        
+        return ValuesDecisionVariables(**{k: matlab.double(v.tolist()) for k, v in asdict(self).items() if v is not None})
+        
+    def to_matlab_dict(self, ) -> dict:
+        return asdict(self.to_matlab())
         
 @dataclass
 class StaticResults:
@@ -317,20 +326,23 @@ class DayResults:
         if reduced:
             self.consumption_arrays = None
             self.pareto_idxs = None 
+            self.fitness_history = None
+            self.df_paretos = [None] * len(self.df_paretos)
             
         if self.consumption_arrays is None:
             self.consumption_arrays = [None] * len(self.df_paretos)
         
-        with pd.HDFStore(output_path, mode='a', complevel=9, complib='zlib') as store:
+        with pd.HDFStore(output_path.with_suffix(".h5"), mode='a', complevel=9, complib='zlib') as store:
             for dt, df_pareto, consumption_array in zip(
                 self.index, self.df_paretos, self.consumption_arrays
             ):
                 table_key = dt.strftime("%Y%m%dT%H%M")
 
                 # Save pareto front for this timestep
-                store.put(
-                    f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
-                )
+                if df_pareto is not None:
+                    store.put(
+                        f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
+                    )
 
                 # Save consumption array for this timestep
                 if consumption_array is not None:
@@ -368,6 +380,12 @@ class DayResults:
                     complib="zlib",
                     complevel=9,
                 )
+        
+        # Compress the .h5 file using gzip
+        if output_path.suffix == ".gz":
+            with open(output_path.with_suffix(".h5"), 'rb') as f_in, gzip.open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            output_path.with_suffix(".h5").unlink()  # Remove uncompressed .h5 file
 
         logger.info(f"Results for {self.date_str} saved to {output_path}")
         
@@ -472,3 +490,96 @@ def import_simulation_results(results_path: Path) -> pd.DataFrame:
             temp_path.unlink()  # Clean up temp .h5 file
 
     return df_results
+
+
+class AlgoParamsHorizon(BaseModel):
+    algo_id: str = Field(default="sga", description="ID of the optimization algorithm")
+    max_n_obj_fun_evals: int = Field(default=20_000, description="Max number of objective function evaluations")
+    max_n_logs: int = Field(default=300, description="Maximum number of log entries")
+    pop_size: int = Field(default=80, description="Population size for population-based algorithms")
+
+    params_dict: Optional[dict] = Field(default=None, description="Derived algorithm-specific parameters")
+    log_verbosity: Optional[int] = Field(default=None, description="Logging verbosity level")
+    gen: Optional[int] = Field(default=None, description="Number of generations")
+
+    def model_post_init(self, __context) -> None:
+        # Calculate gen and params_dict based on algo_id
+        if self.algo_id in ["gaco", "sga", "pso_gen"]:
+            self.gen = self.max_n_obj_fun_evals // self.pop_size
+            self.params_dict = {"gen": self.gen}
+
+        elif self.algo_id == "simulated_annealing":
+            self.gen = self.max_n_obj_fun_evals // self.pop_size
+            self.params_dict = {
+                "bin_size": self.pop_size,
+                "n_T_adj": self.gen
+            }
+
+        else:
+            self.pop_size = 1
+            self.gen = self.max_n_obj_fun_evals
+            self.params_dict = {"gen": self.max_n_obj_fun_evals // self.pop_size}
+
+        # Calculate default log_verbosity if not given
+        if self.log_verbosity is None:
+            self.log_verbosity = math.ceil(self.gen / self.max_n_logs)
+
+
+class EvaluationConfig(BaseModel):
+    id: str = Field(..., description="Unique identifier for the configuration", example="pilot_plant")
+    description: str
+    model_inputs_range: ModelInputsRange
+    matlab_options: MatlabOptions
+    algo_params: AlgoParamsHorizon
+    vals_dec_vars: ValuesDecisionVariables
+    load_factor: float = Field(
+        1.0,
+        description="Factor to reduce thermal load power by (1.0 = no reduction, 0.5 = half load, etc.)",
+        example=0.5,
+        ge=0.0,
+        le=1.0,
+    )
+    power_threshold: float = Field(
+        0.0, 
+        description="Load thermal power below which the cooling system is inactive, in kWth",
+        example=20.0,
+        ge=0.0,
+    )
+
+    class Config:
+        json_encoders = {Path: str}
+        arbitrary_types_allowed = True
+    
+    def to_config_file(self, path: Path) -> None:
+        
+        if isinstance(path, str):
+            path = Path(path)
+        
+        if path.exists():
+            # Read existing config, and replace or add this id
+            config = json.loads(path.read_text())
+        else:
+            config = {}
+        if self.id in config:
+            logger.warning(
+                f"Simulation ID '{self.id}' already exists in {path}, overwriting."
+            )
+        config[self.id] = self.model_dump(exclude_none=True, mode="json")
+        
+        path.write_text(json.dumps(config, indent=4))
+        logger.info(f"Wrote simulation config to {path}")
+     
+    @classmethod   
+    def from_config_file(cls, path: Path, id: str) -> "EvaluationConfig":
+        
+        if isinstance(path, str):
+            path = Path(path)
+            
+        if not path.exists():
+            raise FileNotFoundError(f"Config file {path} does not exist.")
+        config = json.loads(path.read_text())
+        if id not in config:
+            raise ValueError(f"Simulation ID '{id}' not found in {path}.")
+        
+        return cls.model_validate(config[id])
+
