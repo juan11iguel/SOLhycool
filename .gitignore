@@ -11,3 +11,4 @@ deployment/logs
 data/datasets/experimental
 *.asv
 simulation/src/solhycool_evaluation/__pycache__/__init__.cpython-312.pyc
+results_eval_at_20250916T1502_sim_results.h5

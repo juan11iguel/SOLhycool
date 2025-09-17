@@ -35,23 +35,23 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     Mwct_max = iP.Results.Mwct_max;
     params_pc2mair = iP.Results.params_pc2mair;
     
-    max_values = [50, 100, 50, Mwct_max, 100, 100];
-    min_values = [ 5,   5, 10,  Mwct_min,  20,  25];
+    max_values = [50, 100, 50, Mwct_max, 100];
+    min_values = [ 0.1,   0.1, 10,  Mwct_min,  20];
     vars = ["Tamb", "HR", "Twct_in", "Mwct", "SC_fan_wct"];
     
     valid_inputs = true;
     vals = [Tamb, HR, Twct_in, Mwct, SC_fan_wct];
     for idx=1:length(vars)
         if vals(idx) > ceil(max_values(idx)) || vals(idx) < floor(min_values(idx))
-            if options.raise_error_on_invalid_inputs
-                raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
-            else
+            % if options.raise_error_on_invalid_inputs
+            %     raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
+            % else
                 % if ~options.silence_warnings
                     warning("%s outside limits (%.2f <! %.2f <! %.2f)", vars(idx), min_values(idx), vals(idx), max_values(idx))
                 % end
                 valid_inputs = false;
-            end
         end
+            % end
     end
 
     if ~valid_inputs
@@ -79,8 +79,8 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
 
     % Calcular temperatura de salida y consumo de agua - Robust solver with multiple initial points
     options = optimset('Display', 'off', 'TolFun', 1e-6, 'TolX', 1e-6, ...
-                      'MaxIter', 50, 'MaxFunEvals', 200, ...
-                      'Algorithm', 'trust-region-dogleg');
+                      'MaxIter', 50, 'MaxFunEvals', 200);%, ...
+                      % 'Algorithm', 'trust-region-dogleg');
     
     % Create alias for Me_Poppe_cc function with fixed parameters
     Me_Poppe_func = @(Twct_out) Me_Poppe_cc(Twct_in+273.15, Twct_out+273.15, Tamb+273.15, Twb+273.15, ma, mw, 101325);
@@ -174,9 +174,9 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
         x0 = Twct_in + offset;
 
         % Skip clearly unreasonable initial points
-        %if x0 <= (Tamb - 10) || x0 >= Twct_in
-        %    continue;
-        %end
+        if x0 <= (Twb)
+           continue;
+        end
 
         try
             % Use parfeval for true timeout control

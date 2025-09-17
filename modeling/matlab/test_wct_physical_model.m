@@ -1,10 +1,12 @@
 %%
+addpath("component_models/")
+
 % Enable all warnings
 warning('on', 'all');
 
 % Condensador: (qmin, qmax) m3/h: [3456, 11880]
 % Torre (qmin, qmax) m3/h: [1152, 3960]
-clc; clear all
+% clc; clear all
 
 Tamb=23;
 HR=40;
@@ -68,3 +70,24 @@ xlim([SC_fan_wct(1) - 2, SC_fan_wct(end) + 8]) % Extend x-axis to accommodate te
 %     ub=[50.,   99.99,   55.,      3960.,   95.], ...
 %     n_wct=1 ...
 % )
+
+%% 
+
+Tamb=linspace(5, 50, 10);
+HR=linspace(10, 90, 5);
+deltaTwct_in = linspace(3, 20, 5);
+Mwct = linspace(1152, 3960, 10);
+SC_fan_wct = linspace(20, 100, 8);
+
+Twct_out = zeros(length(Mwct), length(SC_fan_wct));
+cnt=1;
+for j=1:length(Mwct)
+
+    for i=1:length(SC_fan_wct)
+        tic
+        [Twct_ou, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct(j), SC_fan_wct(i));
+        Twct_out(j, i) = Twct_ou;
+        fprintf("Completed %d/%d in %.2f sec | q = %.0f, w = %.0f --> Tout = %.2f, M_lost_wct (m³/h) = %.2f\n", cnt, length(Mwct)*length(SC_fan_wct), toc, Mwct(j), SC_fan_wct(i), Twct_ou, M_lost_wct*1e-3)
+        cnt=cnt+1;
+    end
+end

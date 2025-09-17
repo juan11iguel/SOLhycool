@@ -16,9 +16,12 @@ addpath("component_models/")
 
 % Parameters
 case_study_id = "andasol_90MW"; % "andasol_90MW"; % "pilot_plant_200kW";
+timeout = 3; % segundos
+
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/wct_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/wct_out.csv", case_study_id);
+last_i = 1;
 
 switch case_study_id
     case "pilot_plant_200kW"
@@ -33,19 +36,69 @@ end
 
 %load wct_inputs.mat;
 wct=readtable(input_data_path);
+wct=wct(:, 2:end);
+%%
+% Tamb=linspace(5, 50, 10)';
+% HR=linspace(10, 90, 5)';
+% deltaTwct_in = linspace(3, 20, 5)';
+% Mwct = linspace(1152, 3960, 7)';
+% SC_fan_wct = linspace(20, 100, 7)';
+% 
+% % Calculate wet bulb temperature for each combination of Tamb and HR
+% % We need to expand Tamb and HR to get all combinations for Twb calculation
+% [Tamb_grid, HR_grid] = meshgrid(Tamb, HR);
+% Tamb_pairs = Tamb_grid(:);
+% HR_pairs = HR_grid(:);
+% 
+% % Calculate Twb for each Tamb-HR combination
+% Twb_pairs = zeros(size(Tamb_pairs));
+% for i = 1:length(Tamb_pairs)
+%     [~, ~, ~, ~, ~, ~, Twb_pairs(i)] = Psychrometricsnew('Tdb', Tamb_pairs(i), 'phi', HR_pairs(i));
+% end
+% 
+% % Create all combinations of the 5 variables
+% % Use ndgrid to create all possible combinations
+% [Tamb_all, HR_all, deltaTwct_in_all, Mwct_all, SC_fan_wct_all] = ndgrid(Tamb, HR, deltaTwct_in, Mwct, SC_fan_wct);
+% 
+% % Flatten the grids to create vectors
+% Tamb_vec = Tamb_all(:);
+% HR_vec = HR_all(:);
+% deltaTwct_in_vec = deltaTwct_in_all(:);
+% Mwct_vec = Mwct_all(:);
+% SC_fan_wct_vec = SC_fan_wct_all(:);
+% 
+% % Calculate Twb for each combination and then Twct_in
+% Twb_vec = zeros(size(Tamb_vec));
+% for i = 1:length(Tamb_vec)
+%     [~, ~, ~, ~, ~, ~, Twb_vec(i)] = Psychrometricsnew('Tdb', Tamb_vec(i), 'phi', HR_vec(i));
+% end
+% 
+% % Calculate Twct_in = Twb + deltaTwct_in
+% Twct_in_vec = Twb_vec + deltaTwct_in_vec;
+% 
+% % Create the combinations table
+% wct = table(Tamb_vec, HR_vec, Twct_in_vec, Mwct_vec, SC_fan_wct_vec, ...
+%            'VariableNames', ["Tamb", "HR", "Twct_in", "qwct", "wwct"]);
+% 
+% fprintf('Created table with %d combinations\n', height(wct));
+% fprintf('Parameter ranges:\n');
+% fprintf('  Tamb: %.1f to %.1f °C\n', min(wct.Tamb), max(wct.Tamb));
+% fprintf('  HR: %.1f to %.1f %%\n', min(wct.HR), max(wct.HR));
+% fprintf('  Twct_in: %.1f to %.1f °C\n', min(wct.Twct_in), max(wct.Twct_in));
+% fprintf('  qwct: %.0f to %.0f m³/h\n', min(wct.qwct), max(wct.qwct));
+% fprintf('  wwct: %.1f to %.1f %%\n', min(wct.wwct), max(wct.wwct));
+
 
 %% 
 
 % Asegurarnos de que el parallel pool está activo
-if isempty(gcp('nocreate'))
-        parpool;  % Abre pool si no está
-end
+% if isempty(gcp('nocreate'))
+%         parpool;  % Abre pool si no está
+% end
 
-tic
-
-PV=ones(size(wct,1),1); % inicialmente todos son puntos válidos
-for i=1:size(wct,1)
-    pool = gcp(); % Obtener el pool de procesamiento paralelo  
+% PV=ones(size(wct,1),1); % inicialmente todos son puntos válidos
+for i=last_i:size(wct,1)
+    % pool = gcp(); % Obtener el pool de procesamiento paralelo  
     % --- Aquí va la función que podría tardar ---
     % Extraer parámetros necesarios
     Tamb     = wct.Tamb(i);
@@ -53,43 +106,48 @@ for i=1:size(wct,1)
     Twct_in  = wct.Twct_in(i);
     qwct     = wct.qwct(i);
     wwct     = wct.wwct(i);
+    
+    tic
+    [~, ~, ~, ~, ~, ~, Twb] = Psychrometricsnew('Tdb', Tamb, 'phi', HR);
+    [Tout_simu(i), Ce_kWe(i), Mw_lost_Lh(i) ] = model_fun(Tamb, HR, Twct_in, qwct, wwct);
+    fprintf("Completed %d/%d in %.2f sec | q = %.0f, w = %.0f, Twb=%.0f, Tin=%.0f --> Tout = %.2f, M_lost_wct (m³/h) = %.2f\n", i, height(wct), toc, qwct, wwct, Twb, Twct_in, Tout_simu(i), Mw_lost_Lh(i)*1e-3)
+    last_i = i;
 
     % miFuncion =  %, 80, 'c_poppe', 1.52, 'n_poppe', -0.69);    
     
     % Llamar a la función en segundo plano
-    future = parfeval(@() model_fun(Tamb, HR, Twct_in, qwct, wwct), 3);
+    % future = parfeval(@() model_fun(Tamb, HR, Twct_in, qwct, wwct), 3);
 
     % Tiempo máximo permitido
-    timeout = 5; % segundos
     % Control de tiempo manual
-    t0 = tic;
-    while ~strcmp(future.State, 'finished')
-        pause(0.1);  % Dejar respirar al sistema
-    
-        if toc(t0) > timeout
-            cancel(future);
-            disp(['⏱ Timeout alcanzado en i = ', num2str(i), '.']);
-            Tout_simu(i) = NaN;
-            Mw_lost_Lh(i) = NaN;
-            Ce_kWe(i) = NaN;
-            break
-        end
-    end
-
-    % Solo recoger resultado si terminó bien
-    if strcmp(future.State, 'finished')
-        try
-            [Tout_simu(i), Ce_kWe(i), Mw_lost_Lh(i)] = fetchOutputs(future);
-            disp(['✅ i = ', num2str(i), ' completado / ', num2str(size(wct,1))]);
-            
-        catch ME
-            disp(['❌ Error interno en función: ', ME.message]);
-            Tout_simu(i) = NaN;
-            Mw_lost_Lh(i) = NaN;
-            Ce_kWe(i) = NaN;
-            PV(i) = 0;
-        end
-    end   
+    % t0 = tic;
+    % while ~strcmp(future.State, 'finished')
+    %     pause(0.1);  % Dejar respirar al sistema
+    % 
+    %     if toc(t0) > timeout
+    %         cancel(future);
+    %         disp(['⏱ Timeout alcanzado en i = ', num2str(i), '.']);
+    %         Tout_simu(i) = NaN;
+    %         Mw_lost_Lh(i) = NaN;
+    %         Ce_kWe(i) = NaN;
+    %         break
+    %     end
+    % end
+    % 
+    % % Solo recoger resultado si terminó bien
+    % if strcmp(future.State, 'finished')
+    %     try
+    %         [Tout_simu(i), Ce_kWe(i), Mw_lost_Lh(i)] = fetchOutputs(future);
+    %         disp(['✅ i = ', num2str(i), ' completado / ', num2str(size(wct,1))]);
+    % 
+    %     catch ME
+    %         disp(['❌ Error interno en función: ', ME.message]);
+    %         Tout_simu(i) = NaN;
+    %         Mw_lost_Lh(i) = NaN;
+    %         Ce_kWe(i) = NaN;
+    %         PV(i) = 0;
+    %     end
+    % end   
 
 %     % Esperar con tiempo límite (por ejemplo, 5 segundos)
 %     tiempo_limite = 5; % segundos  
@@ -126,11 +184,11 @@ for i=1:size(wct,1)
 end
 
 %% Guardo datos con el formato deseado
-wct_out=wct(:,2:end); % la primera columna no la queremos
+wct_out=wct(1:last_i-1,2:end); % la primera columna no la queremos
 wct_out.Properties.VariableNames(3) = "Tin";
 wct_out.Properties.VariableNames(4) = "q";
-wct_out.Properties.VariableNames(5) = "w_fan";
-wct_out = removevars(wct_out, "Twb");
+wct_out.Properties.VariableNames(5) = "w_fan"; 
+% wct_out = removevars(wct_out, "Twb");
 wct_out = removevars(wct_out, "mw_ma_ratio");
 
 wct_out.Twct_out=Tout_simu';
