@@ -3,14 +3,14 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     % Model originally created by Pedro Navarro, adapted and scaled by Lidia Roca Sobrino
     % Modified by Juan Miguel Serrano:
     % Key Improvements Implemented:
-    % True Asynchronous Timeout: Replaced the timer/global flag approach with parfeval for genuine solver interruption
+    % Timer-Based Timeout Control: Replaced parfeval with timer-based approach for solver interruption
     % Robust Multi-Initial Point Solver: Uses multiple initial points (-12 to -3 in steps of 2) to find the best solution
     % How the New System Works:
-    % - Main Solver Loop: For each initial point, uses parfeval to run the solver asynchronously
-    % - True Timeout Control: Monitors the solver state and can truly cancel it if it exceeds the time limit (2 seconds per attempt)
+    % - Main Solver Loop: For each initial point, uses timer-based timeout control to interrupt solver if needed
+    % - Timeout Control: Monitors solver execution and can interrupt it if it exceeds the time limit (1 second per attempt)
     % - Best Solution Selection: Keeps track of the best solution found across all initial points
     % - Fallback Strategy: If the main loop fails, tries a single fallback attempt with relaxed tolerances (1 second timeout)
-    % - Final Fallback: If everything fails, uses a physics-based approximation based on approach temperature to wet bulb
+    % - Final Fallback: If everything fails, returns NaN values to indicate failure
     % Pe (kWe)
     % M_lost_wct (l/h)
 
@@ -163,7 +163,7 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     %     end
     % end
     
-    % Try multiple initial points for robustness using parfeval for timeout control
+    % Try multiple initial points for robustness with timeout control
     initial_offsets = -3:-2:-20; % Coarser grid for faster convergence (from -12 to -3 in steps of 2)
     best_solution = [];
     best_residual = inf;
@@ -179,37 +179,20 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
         end
 
         try
-            % Use parfeval for true timeout control
-            future = parfeval(@() solve_wct_with_initial_point(fun, x0, options), 3);
+            % Solve with timeout control using timer-based approach
+            [x_temp, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, max_solve_time);
 
-            % Wait for completion with timeout
-            t0 = tic;
-            while ~strcmp(future.State, 'finished')
-                pause(0.01); % Small pause to prevent busy waiting
+            % Check if solution is valid and better than previous attempts
+            if exitflag > 0 && abs(fval) < abs(best_residual) && ~isnan(x_temp) && ~isinf(x_temp)
+                % Additional physical constraints: outlet should be lower than inlet
+                if x_temp < Twct_in && x_temp > (Tamb - 5) % reasonable bounds
+                    best_solution = x_temp;
+                    best_residual = fval;
+                    best_exitflag = exitflag;
 
-                if toc(t0) > max_solve_time
-                    cancel(future);
-                    warning('Solver timed out for initial point %.1f', x0);
-                    break;
-                end
-            end
-
-            % Get results if completed successfully
-            if strcmp(future.State, 'finished')
-                [x_temp, fval, exitflag] = fetchOutputs(future);
-
-                % Check if solution is valid and better than previous attempts
-                if exitflag > 0 && abs(fval) < abs(best_residual) && ~isnan(x_temp) && ~isinf(x_temp)
-                    % Additional physical constraints: outlet should be lower than inlet
-                    if x_temp < Twct_in && x_temp > (Tamb - 5) % reasonable bounds
-                        best_solution = x_temp;
-                        best_residual = fval;
-                        best_exitflag = exitflag;
-
-                        % Early termination if residual is very small
-                        if abs(fval) < 1e-6
-                            break;
-                        end
+                    % Early termination if residual is very small
+                    if abs(fval) < 1e-6
+                        break;
                     end
                 end
             end
@@ -232,30 +215,12 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
                                    'MaxIter', 25, 'MaxFunEvals', 100);
         x0 = Twct_in - 10;
         try
-            % Use parfeval for fallback with shorter timeout (1 second)
-            fallback_future = parfeval(@() solve_wct_with_initial_point(fun, x0, fallback_options), 3);
+            % Use timeout-controlled solver for fallback (1 second timeout)
+            [Twct_out, fval, exitflag] = solve_wct_with_timeout(fun, x0, fallback_options, 1);
 
-            % Wait for completion with timeout
-            t0 = tic;
-            while ~strcmp(fallback_future.State, 'finished')
-                pause(0.01);
-
-                if toc(t0) > 1 % 1 second timeout
-                    cancel(fallback_future);
-                    error('Fallback solver timed out');
-                end
-            end
-
-            % Get results if completed successfully
-            if strcmp(fallback_future.State, 'finished')
-                [Twct_out, fval, exitflag] = fetchOutputs(fallback_future);
-
-                % Check if fallback solution is reasonable
-                if isnan(Twct_out) || isinf(Twct_out) || Twct_out >= Twct_in || exitflag <= 0
-                    error('Fallback solver failed validation');
-                end
-            else
-                error('Fallback solver did not complete');
+            % Check if fallback solution is reasonable
+            if isnan(Twct_out) || isinf(Twct_out) || Twct_out >= Twct_in || exitflag <= 0
+                error('Fallback solver failed validation');
             end
 
         catch
@@ -386,12 +351,12 @@ function set_timeout_flag()
     solver_timeout_flag = true;
 end
 
-function result = check_timeout_and_eval(func, Twct_out, Me_corr)
+function result = check_timeout_and_eval(func, x)
     global solver_timeout_flag;
     if solver_timeout_flag
         error('Solver timeout interrupted');
     end
-    result = func(Twct_out) - Me_corr;
+    result = func(x);
 end
 
 function [Tda_ss] = T_da_ss(h,w,pT)
@@ -820,7 +785,55 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
     
 end
 
-% Helper function to solve with a single initial point (for parfeval)
+% Helper function to solve with timeout control (replaces parfeval approach)
+function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, timeout_seconds)
+    % Initialize timeout tracking
+    global solver_timeout_flag;
+    solver_timeout_flag = false;
+    
+    % Create a timer to set timeout flag
+    timeout_timer = timer('ExecutionMode', 'singleShot', ...
+                         'StartDelay', timeout_seconds, ...
+                         'TimerFcn', @(~,~) set_timeout_flag());
+    
+    % Wrap the objective function to check for timeout
+    wrapped_fun = @(x) check_timeout_and_eval(fun, x);
+    
+    try
+        % Start the timer
+        start(timeout_timer);
+        
+        % Call the solver
+        [x, fval, exitflag] = fsolve(wrapped_fun, x0, options);
+        
+        % Stop and delete timer
+        stop(timeout_timer);
+        delete(timeout_timer);
+        
+    catch ME
+        % Clean up timer
+        if isvalid(timeout_timer)
+            stop(timeout_timer);
+            delete(timeout_timer);
+        end
+        
+        % Check if timeout occurred
+        if solver_timeout_flag || contains(ME.message, 'timeout')
+            warning('Solver timed out after %.1f seconds', timeout_seconds);
+            x = NaN;
+            fval = inf;
+            exitflag = -1;
+        else
+            % Re-throw other errors
+            rethrow(ME);
+        end
+    end
+    
+    % Reset timeout flag
+    solver_timeout_flag = false;
+end
+
+% Helper function to solve with a single initial point (kept for compatibility)
 function [x, fval, exitflag] = solve_wct_with_initial_point(fun, x0, options)
     [x, fval, exitflag] = fsolve(fun, x0, options);
 end
