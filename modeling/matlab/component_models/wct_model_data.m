@@ -169,7 +169,7 @@ function [Tout, Ce, Cw] = wct_model_data(Tamb, HR, Tin, q, w_fan, options_struct
             X_nn = X';     % F x N
             y_pred = model(X_nn); % usually 1 x N for regression
             y = y_pred(:); % N x 1
-        elseif isa(model, 'RegressionGP')
+        elseif isa(model, 'RegressionGP') || isa(model, 'classreg.learning.regr.CompactRegressionGP')
             % GPR expects rows as samples (N x F)
             if iscolumn(X)
                 X = X';

@@ -129,15 +129,36 @@ class StaticResults:
             temp_path = input_path
 
         with pd.HDFStore(temp_path, mode='r') as store:
+            # Try new flattened structure first, fallback to old structure
             df_paretos = []
             consumption_arrays = []
-            for key in store.keys():
-                if key.startswith("/pareto/"):
-                    df_paretos.append(store[key])
-                elif key.startswith("/consumption/"):
-                    consumption_arrays.append(store[key].to_numpy())
-
-            index = pd.DatetimeIndex([pd.to_datetime(key.split("/")[-1], format="%Y%m%dT%H%M") for key in store.keys() if key.startswith("/pareto/")])
+            
+            if "/pareto" in store:
+                # New flattened structure
+                pareto_df = store["/pareto"]
+                pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
+                                     for dt, group in pareto_df.groupby('timestamp')}
+                index = pd.DatetimeIndex(sorted(pareto_by_timestamp.keys()))
+                df_paretos = [pareto_by_timestamp[dt] for dt in index]
+            else:
+                # Old structure - fallback
+                for key in store.keys():
+                    if key.startswith("/pareto/"):
+                        df_paretos.append(store[key])
+                index = pd.DatetimeIndex([pd.to_datetime(key.split("/")[-1], format="%Y%m%dT%H%M") 
+                                        for key in store.keys() if key.startswith("/pareto/")])
+            
+            if "/consumption" in store:
+                # New flattened structure
+                consumption_df = store["/consumption"]
+                consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
+                                          for dt, group in consumption_df.groupby('timestamp')}
+                consumption_arrays = [consumption_by_timestamp.get(dt) for dt in index]
+            else:
+                # Old structure - fallback
+                for key in store.keys():
+                    if key.startswith("/consumption/"):
+                        consumption_arrays.append(store[key].to_numpy())
 
             pareto_idxs = [list(range(len(df))) for df in df_paretos]
 
@@ -153,21 +174,39 @@ class StaticResults:
             output_path.parent.mkdir(parents=True, exist_ok=True)
         
         with pd.HDFStore(output_path, mode='a', complevel=9, complib='zlib') as store:
-            for dt, df_pareto, consumption_array in zip(self.index, self.df_paretos, self.consumption_arrays):
-                table_key = dt.strftime("%Y%m%dT%H%M")
+            # Flatten all pareto fronts into a single table with timestamp column
+            all_paretos = []
+            for dt, df_pareto in zip(self.index, self.df_paretos):
+                df_with_timestamp = df_pareto.copy()
+                df_with_timestamp['timestamp'] = dt
+                all_paretos.append(df_with_timestamp)
+            
+            if all_paretos:
+                flattened_paretos = pd.concat(all_paretos, ignore_index=True)
+                store.put("/pareto", flattened_paretos, format="table", 
+                         data_columns=get_queryable_columns(flattened_paretos))
 
-                # Save pareto front for this timestep
-                store.put(
-                    f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
-                )
-
-                # Save consumption array for this timestep
+            # Flatten all consumption arrays into a single table with timestamp column
+            all_consumption = []
+            for dt, consumption_array in zip(self.index, self.consumption_arrays):
                 if consumption_array is not None:
                     df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
-                    store.put(f"/consumption/{table_key}", df_consumption, format="table", data_columns=True)
+                    df_consumption['timestamp'] = dt
+                    all_consumption.append(df_consumption)
+            
+            if all_consumption:
+                flattened_consumption = pd.concat(all_consumption, ignore_index=True)
+                store.put("/consumption", flattened_consumption, format="table", data_columns=True)
 
-            # Save indices of points in the pareto front
-            store.put("/paths/pareto_idxs", pd.Series(self.pareto_idxs))
+            # Save indices of points in the pareto front as flattened table
+            pareto_idx_data = []
+            for dt, pareto_idx_list in zip(self.index, self.pareto_idxs):
+                for idx, pareto_idx in enumerate(pareto_idx_list):
+                    pareto_idx_data.append({'timestamp': dt, 'step_idx': idx, 'pareto_idx': pareto_idx})
+            
+            if pareto_idx_data:
+                df_pareto_idxs = pd.DataFrame(pareto_idx_data)
+                store.put("/paths/pareto_idxs", df_pareto_idxs, format="table", data_columns=True)
 
         logger.info(f"StaticResults saved to {output_path}")
         
@@ -207,16 +246,42 @@ class DayResults:
             if date_str is None:
                 # Flat structure: use the entire index, no date-specific keys
                 filtered_index = df_results_all.index
+                
+                # Try to load from new flattened structure first, fallback to old structure
                 df_paretos, consumption_arrays = [], []
-                for dt in filtered_index:
-                    key = dt.strftime("%Y%m%dT%H%M")
-                    for name, target in [
-                        (f"/pareto/{key}", df_paretos),
-                        (f"/consumption/{key}", consumption_arrays),
-                    ]:
-                        if name in store:
-                            value = store[name]
-                            target.append(value.to_numpy() if name.startswith("/consumption/") else value)
+                
+                # New flattened structure
+                if "/pareto" in store:
+                    # Load flattened pareto data and reconstruct per-timestamp lists
+                    pareto_df = store["/pareto"]
+                    pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
+                                         for dt, group in pareto_df.groupby('timestamp')}
+                    df_paretos = [pareto_by_timestamp.get(dt) for dt in filtered_index]
+                else:
+                    # Fallback to old structure
+                    for dt in filtered_index:
+                        key = dt.strftime("%Y%m%dT%H%M")
+                        pareto_name = f"/pareto/{key}"
+                        if pareto_name in store:
+                            df_paretos.append(store[pareto_name])
+                        else:
+                            df_paretos.append(None)
+                
+                if "/consumption" in store:
+                    # Load flattened consumption data and reconstruct per-timestamp lists  
+                    consumption_df = store["/consumption"]
+                    consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
+                                              for dt, group in consumption_df.groupby('timestamp')}
+                    consumption_arrays = [consumption_by_timestamp.get(dt) for dt in filtered_index]
+                else:
+                    # Fallback to old structure
+                    for dt in filtered_index:
+                        key = dt.strftime("%Y%m%dT%H%M")
+                        consumption_name = f"/consumption/{key}"
+                        if consumption_name in store:
+                            consumption_arrays.append(store[consumption_name].to_numpy())
+                        else:
+                            consumption_arrays.append(None)
 
                 key = "/paths/fitness_history"
                 if key in store:
@@ -224,9 +289,18 @@ class DayResults:
                 else:
                     fitness_history = None
 
+                # Handle selected_pareto_idxs with new flattened structure
                 if "/paths/selected_pareto_idxs" in store:
                     try:
-                        selected_idxs = store["/paths/selected_pareto_idxs"].to_list()
+                        selected_df = store["/paths/selected_pareto_idxs"]
+                        if 'timestamp' in selected_df.columns:
+                            # New flattened structure
+                            selected_by_timestamp = {dt: group['selected_pareto_idx'].iloc[0] 
+                                                   for dt, group in selected_df.groupby('timestamp')}
+                            selected_idxs = [selected_by_timestamp.get(dt, 0) for dt in filtered_index]
+                        else:
+                            # Old structure (Series)
+                            selected_idxs = selected_df.to_list()
                     except TypeError:
                         logger.warning("Results are not date-agnostic. Likely due to forgetting specifying `single_day=False` when exporting.")
                         table_key = df_results_all.index[0].strftime("%Y%m%d")
@@ -234,11 +308,22 @@ class DayResults:
                 else:
                     selected_idxs = []
 
+                # Handle pareto_idxs with new flattened structure
                 pareto_key = "/paths/pareto_idxs"
-                pareto_idxs = (
-                    store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
-                    if pareto_key in store else None
-                )
+                if pareto_key in store:
+                    pareto_idx_df = store[pareto_key]
+                    if 'timestamp' in pareto_idx_df.columns:
+                        # New flattened structure
+                        pareto_idxs_by_timestamp = {}
+                        for dt, group in pareto_idx_df.groupby('timestamp'):
+                            sorted_group = group.sort_values('step_idx')
+                            pareto_idxs_by_timestamp[dt] = sorted_group['pareto_idx'].tolist()
+                        pareto_idxs = [pareto_idxs_by_timestamp.get(dt, []) for dt in filtered_index]
+                    else:
+                        # Old structure
+                        pareto_idxs = pareto_idx_df.apply(lambda row: [int(x) for x in row.dropna()], axis=1)
+                else:
+                    pareto_idxs = None
 
                 day_data = {
                     "index": filtered_index,
@@ -262,16 +347,45 @@ class DayResults:
                     raise ValueError(f"No results for date {date_str} in {input_path.stem}. "
                                     f"Available: {available_dates_str}")
 
+                # Try to load from new flattened structure first, fallback to old structure
                 df_paretos, consumption_arrays = [], []
-                for dt in filtered_index:
-                    key = dt.strftime("%Y%m%dT%H%M")
-                    for name, target in [
-                        (f"/pareto/{key}", df_paretos),
-                        (f"/consumption/{key}", consumption_arrays),
-                    ]:
-                        if name in store:
-                            value = store[name]
-                            target.append(value.to_numpy() if name.startswith("/consumption/") else value)
+                
+                # New flattened structure
+                if "/pareto" in store:
+                    pareto_df = store["/pareto"]
+                    # Filter by the target date
+                    date_mask = pareto_df['timestamp'].dt.date == target_date
+                    pareto_df_filtered = pareto_df[date_mask]
+                    pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
+                                         for dt, group in pareto_df_filtered.groupby('timestamp')}
+                    df_paretos = [pareto_by_timestamp.get(dt) for dt in filtered_index]
+                else:
+                    # Fallback to old structure
+                    for dt in filtered_index:
+                        key = dt.strftime("%Y%m%dT%H%M")
+                        pareto_name = f"/pareto/{key}"
+                        if pareto_name in store:
+                            df_paretos.append(store[pareto_name])
+                        else:
+                            df_paretos.append(None)
+                
+                if "/consumption" in store:
+                    consumption_df = store["/consumption"]
+                    # Filter by the target date
+                    date_mask = consumption_df['timestamp'].dt.date == target_date
+                    consumption_df_filtered = consumption_df[date_mask]
+                    consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
+                                              for dt, group in consumption_df_filtered.groupby('timestamp')}
+                    consumption_arrays = [consumption_by_timestamp.get(dt) for dt in filtered_index]
+                else:
+                    # Fallback to old structure
+                    for dt in filtered_index:
+                        key = dt.strftime("%Y%m%dT%H%M")
+                        consumption_name = f"/consumption/{key}"
+                        if consumption_name in store:
+                            consumption_arrays.append(store[consumption_name].to_numpy())
+                        else:
+                            consumption_arrays.append(None)
 
                 table_key = date_str
                 
@@ -281,16 +395,46 @@ class DayResults:
                 else:
                     fitness_history = None
 
-                if f"/paths/selected_pareto_idxs/{table_key}" in store:
-                    selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
+                # Handle selected_pareto_idxs with new flattened structure
+                if "/paths/selected_pareto_idxs" in store:
+                    selected_df = store["/paths/selected_pareto_idxs"]
+                    if 'timestamp' in selected_df.columns:
+                        # New flattened structure - filter by date
+                        date_mask = selected_df['timestamp'].dt.date == target_date
+                        selected_df_filtered = selected_df[date_mask]
+                        selected_by_timestamp = {dt: group['selected_pareto_idx'].iloc[0] 
+                                               for dt, group in selected_df_filtered.groupby('timestamp')}
+                        selected_idxs = [selected_by_timestamp.get(dt, 0) for dt in filtered_index]
+                    else:
+                        # Old structure - try date-specific path first
+                        if f"/paths/selected_pareto_idxs/{table_key}" in store:
+                            selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
+                        else:
+                            selected_idxs = []
                 else:
                     selected_idxs = []
 
-                pareto_key = f"/paths/pareto_idxs/{table_key}"
-                pareto_idxs = (
-                    store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
-                    if pareto_key in store else None
-                )
+                # Handle pareto_idxs with new flattened structure
+                if "/paths/pareto_idxs" in store:
+                    pareto_idx_df = store["/paths/pareto_idxs"]
+                    if 'timestamp' in pareto_idx_df.columns:
+                        # New flattened structure - filter by date
+                        date_mask = pareto_idx_df['timestamp'].dt.date == target_date
+                        pareto_idx_df_filtered = pareto_idx_df[date_mask]
+                        pareto_idxs_by_timestamp = {}
+                        for dt, group in pareto_idx_df_filtered.groupby('timestamp'):
+                            sorted_group = group.sort_values('step_idx')
+                            pareto_idxs_by_timestamp[dt] = sorted_group['pareto_idx'].tolist()
+                        pareto_idxs = [pareto_idxs_by_timestamp.get(dt, []) for dt in filtered_index]
+                    else:
+                        # Old structure
+                        pareto_key = f"/paths/pareto_idxs/{table_key}"
+                        pareto_idxs = (
+                            store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
+                            if pareto_key in store else None
+                        )
+                else:
+                    pareto_idxs = None
 
                 day_data = {
                     "index": filtered_index,
@@ -333,21 +477,32 @@ class DayResults:
             self.consumption_arrays = [None] * len(self.df_paretos)
         
         with pd.HDFStore(output_path.with_suffix(".h5"), mode='a', complevel=9, complib='zlib') as store:
-            for dt, df_pareto, consumption_array in zip(
-                self.index, self.df_paretos, self.consumption_arrays
-            ):
-                table_key = dt.strftime("%Y%m%dT%H%M")
+            # Flatten all pareto fronts into a single table with timestamp column
+            if any(df is not None for df in self.df_paretos):
+                all_paretos = []
+                for dt, df_pareto in zip(self.index, self.df_paretos):
+                    if df_pareto is not None:
+                        df_with_timestamp = df_pareto.copy()
+                        df_with_timestamp['timestamp'] = dt
+                        all_paretos.append(df_with_timestamp)
+                
+                if all_paretos:
+                    flattened_paretos = pd.concat(all_paretos, ignore_index=True)
+                    store.put("/pareto", flattened_paretos, format="table", 
+                             data_columns=get_queryable_columns(flattened_paretos))
 
-                # Save pareto front for this timestep
-                if df_pareto is not None:
-                    store.put(
-                        f"/pareto/{table_key}", df_pareto, format="table", data_columns=get_queryable_columns(df_pareto)
-                    )
-
-                # Save consumption array for this timestep
-                if consumption_array is not None:
-                    df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
-                    store.put(f"/consumption/{table_key}", df_consumption, format="table", data_columns=True)
+            # Flatten all consumption arrays into a single table with timestamp column
+            if any(arr is not None for arr in self.consumption_arrays):
+                all_consumption = []
+                for dt, consumption_array in zip(self.index, self.consumption_arrays):
+                    if consumption_array is not None:
+                        df_consumption = pd.DataFrame(consumption_array, columns=["Cw", "Ce"])
+                        df_consumption['timestamp'] = dt
+                        all_consumption.append(df_consumption)
+                
+                if all_consumption:
+                    flattened_consumption = pd.concat(all_consumption, ignore_index=True)
+                    store.put("/consumption", flattened_consumption, format="table", data_columns=True)
 
             # Save path selection optimization fitness history
             if self.fitness_history is not None:
@@ -361,25 +516,28 @@ class DayResults:
                 results_df = self.df_results
             store.put("/results", results_df.sort_index(), format="table", data_columns=get_queryable_columns(results_df), complib="zlib", complevel=9,)
 
-            # Save indices of points in the pareto front and the ones selected from it for each step
-            if single_day:
-                table_path = f"/paths/selected_pareto_idxs/{self.index[0].strftime('%Y%m%d')}" 
-            else:
-                table_path = "/paths/selected_pareto_idxs"
-            store.put(table_path, pd.Series(self.selected_pareto_idxs))
+            # Save indices of points selected from the pareto front for each step - flattened
+            if self.selected_pareto_idxs:
+                selected_idx_data = []
+                for dt, selected_idx in zip(self.index, self.selected_pareto_idxs):
+                    selected_idx_data.append({'timestamp': dt, 'selected_pareto_idx': selected_idx})
+                
+                df_selected_idxs = pd.DataFrame(selected_idx_data)
+                store.put("/paths/selected_pareto_idxs", df_selected_idxs, format="table", data_columns=True)
             
             if self.pareto_idxs is not None:
-                # store.put(f"/paths/pareto_idxs/{table_key}", pd.Series(self.pareto_idxs))
-                lists = [arr.tolist() if not isinstance(arr, list) else arr for arr in self.pareto_idxs]
-                max_len = max(len(lst) for lst in lists)
-                padded_pareto_idxs_df = pd.DataFrame([lst + [np.nan] * (max_len - len(lst)) for lst in lists])
-                store.put(
-                    f"/paths/pareto_idxs/{table_key}" if single_day else "/paths/pareto_idxs",
-                    padded_pareto_idxs_df,
-                    format="table",
-                    complib="zlib",
-                    complevel=9,
-                )
+                # Flatten pareto indices into a single table with timestamp column
+                pareto_idx_data = []
+                for dt, pareto_idx_list in zip(self.index, self.pareto_idxs):
+                    if pareto_idx_list is not None:
+                        idx_list = pareto_idx_list.tolist() if not isinstance(pareto_idx_list, list) else pareto_idx_list
+                        for idx, pareto_idx in enumerate(idx_list):
+                            pareto_idx_data.append({'timestamp': dt, 'step_idx': idx, 'pareto_idx': pareto_idx})
+                
+                if pareto_idx_data:
+                    df_pareto_idxs = pd.DataFrame(pareto_idx_data)
+                    store.put("/paths/pareto_idxs", df_pareto_idxs, format="table", 
+                             data_columns=True, complib="zlib", complevel=9)
         
         # Compress the .h5 file using gzip
         if output_path.suffix == ".gz":

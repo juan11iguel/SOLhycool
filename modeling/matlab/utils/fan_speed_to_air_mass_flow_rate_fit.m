@@ -14,7 +14,7 @@ function ma_kgs = fan_speed_to_air_mass_flow_rate_fit(w_pct, system)
         coeffs = [-0.0014, 0.1743, -0.7251];
         divide_by = 2; % Por alguna razón en el ajuste se dividió por 2, en lugar de hacer un ajuste normal ¿?
     elseif strcmp(system, "andasol")
-        coeffs = [-0.01032,2.43,501.1];
+        coeffs = [-0.3434,68.65,-1210];
         divide_by = 1;
     else
         error("Unsupported alternative")

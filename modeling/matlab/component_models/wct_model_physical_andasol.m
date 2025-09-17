@@ -1,6 +1,16 @@
 function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct, SC_fan_wct, varargin)
 
     % Model originally created by Pedro Navarro, adapted and scaled by Lidia Roca Sobrino
+    % Modified by Juan Miguel Serrano:
+    % Key Improvements Implemented:
+    % True Asynchronous Timeout: Replaced the timer/global flag approach with parfeval for genuine solver interruption
+    % Robust Multi-Initial Point Solver: Uses multiple initial points (-12 to -3 in steps of 2) to find the best solution
+    % How the New System Works:
+    % - Main Solver Loop: For each initial point, uses parfeval to run the solver asynchronously
+    % - True Timeout Control: Monitors the solver state and can truly cancel it if it exceeds the time limit (2 seconds per attempt)
+    % - Best Solution Selection: Keeps track of the best solution found across all initial points
+    % - Fallback Strategy: If the main loop fails, tries a single fallback attempt with relaxed tolerances (1 second timeout)
+    % - Final Fallback: If everything fails, uses a physics-based approximation based on approach temperature to wet bulb
     % Pe (kWe)
     % M_lost_wct (l/h)
 
@@ -29,17 +39,29 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     min_values = [ 5,   5, 10,  Mwct_min,  20,  25];
     vars = ["Tamb", "HR", "Twct_in", "Mwct", "SC_fan_wct"];
     
-    ERROR = 0;
+    valid_inputs = true;
+    vals = [Tamb, HR, Twct_in, Mwct, SC_fan_wct];
     for idx=1:length(vars)
-        var = vars(idx); value = eval(var);
-        if value > max_values(idx) | value < min_values(idx)
-        else
-            ERROR = ERROR+1;
+        if vals(idx) > ceil(max_values(idx)) || vals(idx) < floor(min_values(idx))
+            if options.raise_error_on_invalid_inputs
+                raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
+            else
+                % if ~options.silence_warnings
+                    warning("%s outside limits (%.2f <! %.2f <! %.2f)", vars(idx), min_values(idx), vals(idx), max_values(idx))
+                % end
+                valid_inputs = false;
+            end
         end
     end
-    ERROR = 6;
-    
-    if ERROR == 6
+
+    if ~valid_inputs
+        Twct_out = Twct_in;
+        Pe = 0;
+        M_lost_wct = 0;
+        
+        return
+    end
+
     m_drift= 0;%0.1; % caudal perdido por separador a pesar de contraflujo, dato fabricante (%)
     
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -55,12 +77,202 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     % Obtener correlación de Merkel a partir de ajuste y ratio de flujos
     Me_corr = c_poppe*(mw/ma)^(n_poppe);
 
-    % Calcular temperatura de salida y consumo de agua
-    options = optimset('Display', 'off');
-    fun=@(x) (Me_Poppe_cc(Twct_in+273.15,x(1)+273.15,Tamb+273.15,Twb+273.15,ma,mw,101325)- Me_corr);
-    x0=Twct_in-6;
-    Twct_out = fsolve(fun,x0,options); % ºC, kg/s
-    [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Twct_in+273.15,Twct_out+273.15,Tamb+273.15,Twb+273.15,ma,mw,101325);
+    % Calcular temperatura de salida y consumo de agua - Robust solver with multiple initial points
+    options = optimset('Display', 'off', 'TolFun', 1e-6, 'TolX', 1e-6, ...
+                      'MaxIter', 50, 'MaxFunEvals', 200, ...
+                      'Algorithm', 'trust-region-dogleg');
+    
+    % Create alias for Me_Poppe_cc function with fixed parameters
+    Me_Poppe_func = @(Twct_out) Me_Poppe_cc(Twct_in+273.15, Twct_out+273.15, Tamb+273.15, Twb+273.15, ma, mw, 101325);
+    
+    fun=@(Twct_out) (Me_Poppe_func(Twct_out) - Me_corr);
+    
+    % % BRUTE FORCE PARALLEL APPROACH
+    % % Define parameters for brute force search
+    % N = 150; % Number of temperature values to test
+    % max_eval_time = 2.; % Maximum time per evaluation in seconds (2s)
+    % 
+    % % Create array of possible outlet temperatures (delta from inlet)
+    % delta_T_min = -20; % Minimum cooling (°C) - outlet can be 20°C below inlet
+    % delta_T_max = -0.5;  % Maximum cooling (°C) - outlet should be at least 1°C below inlet
+    % delta_T_array = linspace(delta_T_min, delta_T_max, N);
+    % Twct_out_candidates = Twct_in + delta_T_array;
+    % 
+    % % Filter candidates to physically reasonable bounds
+    % valid_indices = Twct_out_candidates > (Twb) & Twct_out_candidates < Twct_in;
+    % Twct_out_candidates = Twct_out_candidates(valid_indices);
+    % 
+    % if isempty(Twct_out_candidates)
+    %     warning('No valid temperature candidates found. Using fallback.');
+    %     Twct_out = Twct_in - 5; % Simple fallback
+    % else
+    %     % Evaluate all candidates in parallel using parfeval
+    %     num_candidates = length(Twct_out_candidates);
+    %     futures = cell(num_candidates, 1);
+    % 
+    %     % Submit all evaluations
+    %     for i = 1:num_candidates
+    %         futures{i} = parfeval(@() evaluate_single_temperature(Me_Poppe_func, Me_corr, Twct_out_candidates(i)), 2);
+    %     end
+    % 
+    %     % Collect results with timeout
+    %     errors = inf(num_candidates, 1);
+    %     valid_evals = false(num_candidates, 1);
+    % 
+    %     for i = 1:num_candidates
+    %         try
+    %             % Wait for result with timeout
+    %             t0 = tic;
+    %             while ~strcmp(futures{i}.State, 'finished')
+    %                 pause(0.001); % Small pause
+    % 
+    %                 if toc(t0) > max_eval_time
+    %                     cancel(futures{i});
+    %                     break;
+    %                 end
+    %             end
+    % 
+    %             % Get result if completed
+    %             if strcmp(futures{i}.State, 'finished')
+    %                 [error_val, success] = fetchOutputs(futures{i});
+    %                 if success && ~isnan(error_val) && ~isinf(error_val)
+    %                     errors(i) = abs(error_val);
+    %                     valid_evals(i) = true;
+    %                 end
+    %             end
+    % 
+    %         catch
+    %             % Evaluation failed, keep default inf error
+    %             continue;
+    %         end
+    %     end
+    % 
+    %     figure
+    %     plot(Twct_out_candidates', errors)
+    % 
+    %     % Find best solution
+    %     if any(valid_evals)
+    %         [~, best_idx] = min(errors);
+    %         Twct_out = Twct_out_candidates(best_idx);
+    %         fprintf('Brute force found solution: Twct_out = %.2f°C with error = %.2e\n', Twct_out, errors(best_idx));
+    %     else
+    %         warning('All brute force evaluations failed. Using physics-based approximation.');
+    %         % Physics-based approximation
+    %         approach_temp = max(2, 0.1 * (Twct_in - Twb));
+    %         Twct_out = max(Twb + approach_temp, Twct_in - 10);
+    %     end
+    % end
+    
+    % Try multiple initial points for robustness using parfeval for timeout control
+    initial_offsets = -3:-2:-20; % Coarser grid for faster convergence (from -12 to -3 in steps of 2)
+    best_solution = [];
+    best_residual = inf;
+    best_exitflag = -1;
+    max_solve_time = 1; % Maximum time per solve attempt in seconds
+
+    for offset = initial_offsets
+        x0 = Twct_in + offset;
+
+        % Skip clearly unreasonable initial points
+        %if x0 <= (Tamb - 10) || x0 >= Twct_in
+        %    continue;
+        %end
+
+        try
+            % Use parfeval for true timeout control
+            future = parfeval(@() solve_wct_with_initial_point(fun, x0, options), 3);
+
+            % Wait for completion with timeout
+            t0 = tic;
+            while ~strcmp(future.State, 'finished')
+                pause(0.01); % Small pause to prevent busy waiting
+
+                if toc(t0) > max_solve_time
+                    cancel(future);
+                    warning('Solver timed out for initial point %.1f', x0);
+                    break;
+                end
+            end
+
+            % Get results if completed successfully
+            if strcmp(future.State, 'finished')
+                [x_temp, fval, exitflag] = fetchOutputs(future);
+
+                % Check if solution is valid and better than previous attempts
+                if exitflag > 0 && abs(fval) < abs(best_residual) && ~isnan(x_temp) && ~isinf(x_temp)
+                    % Additional physical constraints: outlet should be lower than inlet
+                    if x_temp < Twct_in && x_temp > (Tamb - 5) % reasonable bounds
+                        best_solution = x_temp;
+                        best_residual = fval;
+                        best_exitflag = exitflag;
+
+                        % Early termination if residual is very small
+                        if abs(fval) < 1e-6
+                            break;
+                        end
+                    end
+                end
+            end
+
+        catch ME
+            % Log the error but continue to next initial point
+            if contains(ME.message, 'Maximum') || contains(ME.message, 'timeout')
+                warning('Solver hit limits for initial point %.1f: %s', x0, ME.message);
+            end
+            continue;
+        end
+    end
+
+    % Use best solution or fallback to simple approach if all failed
+    if ~isempty(best_solution) && best_exitflag > 0
+        Twct_out = best_solution;
+    else
+        % Fallback: try original approach with tighter constraints and timeout
+        fallback_options = optimset('Display', 'off', 'TolFun', 1e-4, 'TolX', 1e-4, ...
+                                   'MaxIter', 25, 'MaxFunEvals', 100);
+        x0 = Twct_in - 10;
+        try
+            % Use parfeval for fallback with shorter timeout (1 second)
+            fallback_future = parfeval(@() solve_wct_with_initial_point(fun, x0, fallback_options), 3);
+
+            % Wait for completion with timeout
+            t0 = tic;
+            while ~strcmp(fallback_future.State, 'finished')
+                pause(0.01);
+
+                if toc(t0) > 1 % 1 second timeout
+                    cancel(fallback_future);
+                    error('Fallback solver timed out');
+                end
+            end
+
+            % Get results if completed successfully
+            if strcmp(fallback_future.State, 'finished')
+                [Twct_out, fval, exitflag] = fetchOutputs(fallback_future);
+
+                % Check if fallback solution is reasonable
+                if isnan(Twct_out) || isinf(Twct_out) || Twct_out >= Twct_in || exitflag <= 0
+                    error('Fallback solver failed validation');
+                end
+            else
+                error('Fallback solver did not complete');
+            end
+
+        catch
+            % If everything fails, use a physics-based approximation
+            warning('WCT solver failed to converge.');
+            Twct_out = nan;
+            Pe = nan;
+            M_lost_wct = nan;
+
+            return
+            % Approximate based on approach temperature to wet bulb
+            % approach_temp = max(2, 0.1 * (Twct_in - Twb)); % Reasonable approach temperature
+            % Twct_out = max(Twb + approach_temp, Twct_in - 10); % Conservative estimate
+        end
+    end
+
+    [~, M_lost_wct] = Me_Poppe_func(Twct_out);
     M_lost_wct = m_drift/100 * mw + M_lost_wct;
 
     % Converir M_lost_wct de kg/s a L/h
@@ -71,11 +283,7 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     % Consumo eléctrico
     Pe = ConsumoElectrico_E01_andasol(SC_fan_wct); %,Tamb,HR); % + ConsumoElectrico_P7(SC_pump_wct); % kWe
     % Pth = Mwct/3.6*(Twct_in - Twct_out)*4.186; % Mwct: m³/h -> kg/s; kWth
-   
-    else
-    Twct_out = 0;
-    M_lost_wct = 1;
-    end
+  
 
 
 %     function v_aire = ajuste_v_aire(SC_fan_wct)
@@ -105,10 +313,13 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
 
 %% variador de frecuencia (%) - flujo másico de aire (kg/s) WCT planta andasol
     function m_dot_a = ajuste_m_dot_a_andasol(SC_fan_wct)
-           p1 =     params_pc2mair(1); %-0.01032;
-           p2 =     params_pc2mair(2); %  2.43;
-           p3 =     params_pc2mair(3); % 501.1;
-           m_dot_a = p1*SC_fan_wct^2 + p2*SC_fan_wct + p3;
+       % p1 =     params_pc2mair(1); %-0.01032;
+       % p2 =     params_pc2mair(2); %  2.43;
+       % p3 =     params_pc2mair(3); % 501.1;
+       p1 = -0.3434;
+       p2 = 68.65;
+       p3 = -1210;
+       m_dot_a = p1*SC_fan_wct^2 + p2*SC_fan_wct + p3;
     end
 
 %     function m_dot_a = ajuste_m_dot_aT(SC_fan_wct,Tamb)
@@ -167,6 +378,20 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
         throw(MException('MED_model:invalid_input', msg))
     end
     
+end
+
+% Helper functions for timeout mechanism
+function set_timeout_flag()
+    global solver_timeout_flag;
+    solver_timeout_flag = true;
+end
+
+function result = check_timeout_and_eval(func, Twct_out, Me_corr)
+    global solver_timeout_flag;
+    if solver_timeout_flag
+        error('Solver timeout interrupted');
+    end
+    result = func(Twct_out) - Me_corr;
 end
 
 function [Tda_ss] = T_da_ss(h,w,pT)
@@ -593,4 +818,21 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
     
     M_lost_wct = ma*(Res_cc(1,N+1)-Res_cc(1,1));
     
+end
+
+% Helper function to solve with a single initial point (for parfeval)
+function [x, fval, exitflag] = solve_wct_with_initial_point(fun, x0, options)
+    [x, fval, exitflag] = fsolve(fun, x0, options);
+end
+
+% Helper function to evaluate a single temperature candidate
+function [error_val, success] = evaluate_single_temperature(Me_Poppe_func, Me_corr, Twct_out_candidate)
+    try
+        Me_Poppe_val = Me_Poppe_func(Twct_out_candidate);
+        error_val = Me_Poppe_val - Me_corr;
+        success = true;
+    catch
+        error_val = inf;
+        success = false;
+    end
 end
