@@ -1,5 +1,6 @@
-function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct, SC_fan_wct, varargin)
-
+function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct, SC_fan_wct, options_struct, options)
+    % WCT_MODEL_PHYSICAL_ANDASOL  Predicts outlet temperature and power consumption for the Andasol wet cooling tower.
+    % 
     % Model originally created by Pedro Navarro, adapted and scaled by Lidia Roca Sobrino
     % Modified by Juan Miguel Serrano:
     % Key Improvements Implemented:
@@ -11,47 +12,56 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     % - Best Solution Selection: Keeps track of the best solution found across all initial points
     % - Fallback Strategy: If the main loop fails, tries a single fallback attempt with relaxed tolerances (1 second timeout)
     % - Final Fallback: If everything fails, returns NaN values to indicate failure
-    % Pe (kWe)
-    % M_lost_wct (l/h)
 
-    iP = inputParser;        
-    addParameter(iP, 'c_poppe', 1.52); %1.4889)
-    addParameter(iP, 'n_poppe', -0.69); %-0.71)
-    addParameter(iP, 'Ta_out', 40)
-    addParameter(iP, 'HR2', 100)
-    
-    % Output from scaling script wct_scaling.m
-    addParameter(iP, 'Mwct_min', 320*3600/1000)
-    addParameter(iP, 'Mwct_max', 1100*3600/1000)
-    addParameter(iP, 'params_pc2mair', [-0.01032,2.43,501.1])
+    arguments (Input)
+        Tamb (1,1) double % Ambient temperature (ºC)
+        HR (1,1) double % Relative humidity (%)
+        Twct_in (1,1) double % Inlet temperature (ºC)
+        Mwct (1,1) double % Mass flow rate (kg/s)
+        SC_fan_wct (1,1) double % Fan speed control (%)
+        % Using keyword arguments does not work when exporting the model to
+        % python. Offer an alternative
+        options_struct = []
+        options.c_poppe (1,1) double = 1.52
+        options.n_poppe (1,1) double = -0.69
+        options.Ta_out (1,1) double = 40.0
+        options.HR2 (1,1) double = 100.0
+        options.Mwct_min (1,1) double = 320*3600/1000
+        options.Mwct_max (1,1) double = 1100*3600/1000
+        options.params_pc2mair (1,3) double = [-0.01032, 2.43, 501.1]
+        options.raise_error_on_invalid_inputs (1,1) logical = false
+        options.silence_warnings (1,1) logical = false
+    end
 
+    arguments (Output)
+        Twct_out (1,1) double % Outlet temperature (ºC)
+        Pe (1,1) double % Electrical power consumption (kWe)
+        M_lost_wct (1,1) double % Water consumption (l/h)
+    end
+
+    % Apply optional arguments from the alternative struct if provided
+    if ~isempty(options_struct)
+        apply_options();
+    end
     
-    parse(iP,varargin{:})
-    c_poppe = iP.Results.c_poppe;
-    n_poppe = iP.Results.n_poppe;
-    Ta_out = iP.Results.Ta_out;
-    HR2 = iP.Results.HR2;
-    Mwct_min = iP.Results.Mwct_min;
-    Mwct_max = iP.Results.Mwct_max;
-    params_pc2mair = iP.Results.params_pc2mair;
-    
-    max_values = [50, 100, 50, Mwct_max, 100];
-    min_values = [ 0.1,   0.1, 10,  Mwct_min,  20];
+    % Validate inputs
+    max_values = [50, 100, 50, options.Mwct_max, 100];
+    min_values = [0.1, 0.1, 10, options.Mwct_min, 20];
     vars = ["Tamb", "HR", "Twct_in", "Mwct", "SC_fan_wct"];
     
     valid_inputs = true;
     vals = [Tamb, HR, Twct_in, Mwct, SC_fan_wct];
     for idx=1:length(vars)
         if vals(idx) > ceil(max_values(idx)) || vals(idx) < floor(min_values(idx))
-            % if options.raise_error_on_invalid_inputs
-            %     raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
-            % else
-                % if ~options.silence_warnings
+            if options.raise_error_on_invalid_inputs
+                raise_error(vars(idx), vals(idx), min_values(idx), max_values(idx))
+            else
+                if ~options.silence_warnings
                     warning("%s outside limits (%.2f <! %.2f <! %.2f)", vars(idx), min_values(idx), vals(idx), max_values(idx))
-                % end
+                end
                 valid_inputs = false;
+            end
         end
-            % end
     end
 
     if ~valid_inputs
@@ -75,10 +85,10 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     mw = Mwct * Dens_agua /3600;
 
     % Obtener correlación de Merkel a partir de ajuste y ratio de flujos
-    Me_corr = c_poppe*(mw/ma)^(n_poppe);
+    Me_corr = options.c_poppe*(mw/ma)^(options.n_poppe);
 
     % Calcular temperatura de salida y consumo de agua - Robust solver with multiple initial points
-    options = optimset('Display', 'off', 'TolFun', 1e-6, 'TolX', 1e-6, ...
+    options_solver = optimset('Display', 'off', 'TolFun', 1e-6, 'TolX', 1e-6, ...
                       'MaxIter', 50, 'MaxFunEvals', 200);%, ...
                       % 'Algorithm', 'trust-region-dogleg');
     
@@ -180,7 +190,7 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
 
         try
             % Solve with timeout control using timer-based approach
-            [x_temp, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, max_solve_time);
+            [x_temp, fval, exitflag] = solve_wct_with_timeout(fun, x0, options_solver, max_solve_time, options.silence_warnings);
 
             % Check if solution is valid and better than previous attempts
             if exitflag > 0 && abs(fval) < abs(best_residual) && ~isnan(x_temp) && ~isinf(x_temp)
@@ -200,7 +210,9 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
         catch ME
             % Log the error but continue to next initial point
             if contains(ME.message, 'Maximum') || contains(ME.message, 'timeout')
-                warning('Solver hit limits for initial point %.1f: %s', x0, ME.message);
+                if ~options.silence_warnings
+                    warning('Solver hit limits for initial point %.1f: %s', x0, ME.message);
+                end
             end
             continue;
         end
@@ -216,7 +228,7 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
         x0 = Twct_in - 10;
         try
             % Use timeout-controlled solver for fallback (1 second timeout)
-            [Twct_out, fval, exitflag] = solve_wct_with_timeout(fun, x0, fallback_options, 1);
+            [Twct_out, fval, exitflag] = solve_wct_with_timeout(fun, x0, fallback_options, 1, options.silence_warnings);
 
             % Check if fallback solution is reasonable
             if isnan(Twct_out) || isinf(Twct_out) || Twct_out >= Twct_in || exitflag <= 0
@@ -225,7 +237,9 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
 
         catch
             % If everything fails, use a physics-based approximation
-            warning('WCT solver failed to converge.');
+            if ~options.silence_warnings
+                warning('WCT solver failed to converge.');
+            end
             Twct_out = nan;
             Pe = nan;
             M_lost_wct = nan;
@@ -248,7 +262,25 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     % Consumo eléctrico
     Pe = ConsumoElectrico_E01_andasol(SC_fan_wct); %,Tamb,HR); % + ConsumoElectrico_P7(SC_pump_wct); % kWe
     % Pth = Mwct/3.6*(Twct_in - Twct_out)*4.186; % Mwct: m³/h -> kg/s; kWth
-  
+
+    %% NESTED FUNCTIONS
+    function apply_options()
+        for field_name = fieldnames(options_struct)'
+            field_name = string(field_name);
+            % fprintf('%s\n', field_name)
+            if isfield(options_struct, field_name)
+                % fprintf('Using option from struct: %s: %s\n', field_name, options_struct.(field_name))
+                options.(field_name) = options_struct.(field_name);
+            end
+        end
+    end
+
+    function raise_error(variable, value, lower_limit, upper_limit)
+        msg = sprintf("Input %s=%.2f is outside limits (%.2f > %s > %.2f)", string(variable), value, lower_limit, string(variable), upper_limit);
+        throw(MException('model:invalid_input', msg))
+    end
+
+%% AUXILIARY FUNCTIONS
 
 
 %     function v_aire = ajuste_v_aire(SC_fan_wct)
@@ -338,12 +370,9 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
     
     end
 
-    function raise_error(variable, lower_limit, upper_limit)
-        msg = sprintf("Input %s is outside limits (%.2f > %s > %.2f)", string(variable), lower_limit, string(variable), upper_limit);
-        throw(MException('MED_model:invalid_input', msg))
-    end
-    
 end
+
+%% AUXILIARY FUNCTIONS
 
 % Helper functions for timeout mechanism
 function set_timeout_flag()
@@ -786,7 +815,7 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
 end
 
 % Helper function to solve with timeout control (replaces parfeval approach)
-function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, timeout_seconds)
+function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, solver_options, timeout_seconds, silence_warnings)
     % Initialize timeout tracking
     global solver_timeout_flag;
     solver_timeout_flag = false;
@@ -804,7 +833,7 @@ function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, timeout_
         start(timeout_timer);
         
         % Call the solver
-        [x, fval, exitflag] = fsolve(wrapped_fun, x0, options);
+        [x, fval, exitflag] = fsolve(wrapped_fun, x0, solver_options);
         
         % Stop and delete timer
         stop(timeout_timer);
@@ -819,7 +848,9 @@ function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, timeout_
         
         % Check if timeout occurred
         if solver_timeout_flag || contains(ME.message, 'timeout')
-            warning('Solver timed out after %.1f seconds', timeout_seconds);
+            if ~silence_warnings
+                warning('Solver timed out after %.1f seconds', timeout_seconds);
+            end
             x = NaN;
             fval = inf;
             exitflag = -1;
@@ -834,8 +865,8 @@ function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, options, timeout_
 end
 
 % Helper function to solve with a single initial point (kept for compatibility)
-function [x, fval, exitflag] = solve_wct_with_initial_point(fun, x0, options)
-    [x, fval, exitflag] = fsolve(fun, x0, options);
+function [x, fval, exitflag] = solve_wct_with_initial_point(fun, x0, solver_options)
+    [x, fval, exitflag] = fsolve(fun, x0, solver_options);
 end
 
 % Helper function to evaluate a single temperature candidate

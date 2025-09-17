@@ -20,7 +20,7 @@ for j=1:length(Mwct)
 
     for i=1:length(SC_fan_wct)
         tic
-        [Twct_ou, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct(j), SC_fan_wct(i));
+        [Twct_ou, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct(j), SC_fan_wct(i), silence_warnings=false);
         Twct_out(j, i) = Twct_ou;
         fprintf("Completed %d/%d in %.2f sec | q = %.0f, w = %.0f --> Tout = %.2f, M_lost_wct (m³/h) = %.2f\n", cnt, length(Mwct)*length(SC_fan_wct), toc, Mwct(j), SC_fan_wct(i), Twct_ou, M_lost_wct*1e-3)
         cnt=cnt+1;
