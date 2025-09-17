@@ -8,6 +8,17 @@ warning('on', 'all');
 % Torre (qmin, qmax) m3/h: [1152, 3960]
 % clc; clear all
 
+%% Single problematic point
+Tamb = 30.6111;
+HR = 1.4790;
+Twct_in = 26.2222;
+qwct = 1152;
+wwct = 23.8645;
+
+wct_model_physical_andasol(Tamb, HR, Twct_in, qwct, wwct, silence_warnings=false);
+
+%% Many points
+
 Tamb=23;
 HR=40;
 Twct_in = 33;
@@ -20,7 +31,7 @@ for j=1:length(Mwct)
 
     for i=1:length(SC_fan_wct)
         tic
-        [Twct_ou, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct(j), SC_fan_wct(i), silence_warnings=false);
+        [Twct_ou, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_in, Mwct(j), SC_fan_wct(i), silence_warnings=true);
         Twct_out(j, i) = Twct_ou;
         fprintf("Completed %d/%d in %.2f sec | q = %.0f, w = %.0f --> Tout = %.2f, M_lost_wct (m³/h) = %.2f\n", cnt, length(Mwct)*length(SC_fan_wct), toc, Mwct(j), SC_fan_wct(i), Twct_ou, M_lost_wct*1e-3)
         cnt=cnt+1;

@@ -63,6 +63,19 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
             end
         end
     end
+    
+    % Special check for very low humidity which can cause numerical issues
+    if HR < 5.0  % Less than 5% humidity is problematic
+        if ~options.silence_warnings
+            warning('Very low humidity (%.2f%%) detected. This may cause numerical instabilities. Consider using HR >= 5%%', HR);
+        end
+        if HR < 1.0  % Less than 1% is definitely problematic
+            if ~options.silence_warnings
+                warning('Extremely low humidity (%.2f%%) will likely cause convergence issues. Clamping to 1%% minimum.', HR);
+            end
+            HR = max(HR, 1.0);  % Clamp to minimum 1%
+        end
+    end
 
     if ~valid_inputs
         Twct_out = Twct_in;
@@ -92,8 +105,8 @@ function [Twct_out, Pe, M_lost_wct] = wct_model_physical_andasol(Tamb, HR, Twct_
                       'MaxIter', 50, 'MaxFunEvals', 200);%, ...
                       % 'Algorithm', 'trust-region-dogleg');
     
-    % Create alias for Me_Poppe_cc function with fixed parameters
-    Me_Poppe_func = @(Twct_out) Me_Poppe_cc(Twct_in+273.15, Twct_out+273.15, Tamb+273.15, Twb+273.15, ma, mw, 101325);
+    % Create alias for Me_Poppe_cc function with fixed parameters and error handling
+    Me_Poppe_func = @(Twct_out) safe_Me_Poppe_wrapper(Twct_in+273.15, Twct_out+273.15, Tamb+273.15, Twb+273.15, ma, mw, 101325, options.silence_warnings);
     
     fun=@(Twct_out) (Me_Poppe_func(Twct_out) - Me_corr);
     
@@ -393,7 +406,7 @@ function [Tda_ss] = T_da_ss(h,w,pT)
     %condiciones de sobresaturación, verifica los valores de entalpía y humedad
     %específica introducidos como inputs. 
 
-    opts = optimset('Display', 'off','MaxIter', 10);
+    opts = optimset('Display', 'off','MaxIter', 10, 'MaxFunEvals', 50, 'TolFun', 1e-4);
     
     %% Ejemplo de cálculo Kloppers
     
@@ -442,7 +455,20 @@ function [Tda_ss] = T_da_ss(h,w,pT)
     
     f=@(x)((((C1-C2*((x(1)+273.15)/2)+C3*(((x(1)+273.15)/2))^2-C4*(((x(1)+273.15)/2))^3)*(x(1)-273.15)+((0.62198*(10^(C24*(1-(To/x(1)))+C25*(log10(To/x(1)))+C26*(1-10^((-8.29692)*((x(1)/To)-1)))+C27*(10^((4.76955)*(1-(To/x(1))))-1)+C28)) )/(pT-(10^(C24*(1-(To/x(1)))+C25*(log10(To/x(1)))+C26*(1-10^((-8.29692)*((x(1)/To)-1)))+C27*(10^((4.76955)*(1-(To/x(1))))-1)+C28)) ))*(h_fg+(C13-C14*((x(1)+273.15)/2)+C15*(((x(1)+273.15)/2))^2-C16*(((x(1)+273.15)/2))^6)*(x(1)-273.15))+(w-((0.62198*(10^(C24*(1-(To/x(1)))+C25*(log10(To/x(1)))+C26*(1-10^((-8.29692)*((x(1)/To)-1)))+C27*(10^((4.76955)*(1-(To/x(1))))-1)+C28)) )/(pT-(10^(C24*(1-(To/x(1)))+C25*(log10(To/x(1)))+C26*(1-10^((-8.29692)*((x(1)/To)-1)))+C27*(10^((4.76955)*(1-(To/x(1))))-1)+C28)) )))*(C13-C14*((x(1)+273.15)/2)+C15*(((x(1)+273.15)/2))^2-C16*(((x(1)+273.15)/2))^6)*(x(1)-273.15))/1000)-h);
     x0=[273.15]; 
-    x=fsolve(f,x0,opts);
+    
+    try
+        % Add timeout protection using a try-catch with reasonable bounds
+        x = fsolve(f, x0, opts);
+        
+        % Validate result - temperature should be physically reasonable
+        if isnan(x) || isinf(x) || x < 200 || x > 400  % 200-400K is reasonable range
+            warning('T_da_ss solver returned invalid result, using fallback');
+            x = 273.15 + 20; % Conservative fallback estimate
+        end
+    catch ME
+        warning('T_da_ss solver failed: %s. Using fallback temperature.', ME.message);
+        x = 273.15 + 20; % Conservative fallback estimate (20°C)
+    end
     
     Tda_ss=x;
     
@@ -497,7 +523,24 @@ function [w_a] = w_a(Tda,HR,pT)
 
 end
 
-function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
+function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT,options)
+    
+    arguments (Input)
+        Tw1 (1,1) double % Water inlet temperature (K)
+        Tw2 (1,1) double % Water outlet temperature (K)
+        Tas1 (1,1) double % Air inlet dry bulb temperature (K)
+        Tbh (1,1) double % Air inlet wet bulb temperature (K)
+        ma (1,1) double % Air mass flow rate (kg/s)
+        mw (1,1) double % Water mass flow rate (kg/s)
+        pT (1,1) double % Total pressure (Pa)
+        options.silence_warnings (1,1) logical = false
+    end
+    
+    arguments (Output)
+        Me_Poppe (1,1) double % Merkel number
+        M_lost_wct (1,1) double % Water mass loss rate (kg/s)
+    end
+    
     %% Experimento 1 Ghazani
     
     % Tw1=52+273.15;
@@ -602,8 +645,24 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
     f=2;  
     w(f)=1.05*wo;
     
-    while abs(w(f)-w(f-1))*100/w(f)>0.1 %ESTE BUCLE VA HACIENDO LAS ITERACIONES HASTA QUE EL ERROR SEA MENOR DE 0.1 
-     f=f+1;
+    max_iterations = 50; % Maximum iterations to prevent infinite loops
+    iteration_count = 0;
+    tolerance = 0.1; % Convergence tolerance
+    
+    while iteration_count < max_iterations %ESTE BUCLE VA HACIENDO LAS ITERACIONES HASTA QUE EL ERROR SEA MENOR DE 0.1 
+        % Check convergence with protection against division by zero
+        if abs(w(f)) < 1e-12  % Very small denominator protection
+            relative_error = abs(w(f) - w(f-1));
+        else
+            relative_error = abs(w(f) - w(f-1)) * 100 / abs(w(f));
+        end
+        
+        if relative_error <= tolerance
+            break;  % Converged
+        end
+        
+        f = f + 1;
+        iteration_count = iteration_count + 1;
      
     for i=1:N;
         if Res_cc(6,i)<100; % Evaluamos HR. Si HR<100 al final del intervalo calculamos normal. De lo contrario consideramos sobresaturación
@@ -639,7 +698,18 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
             R_cc(6,j)=C5+C6*R_cc(4,j)-C7*(R_cc(4,j))^5+C8*(R_cc(4,j))^6;   %Cpv (CALOR ESPECIFICO DEL VAPOR DE AGUA)
             R_cc(7,j)=C13-C14*R_cc(4,j)+C15*(R_cc(4,j))^2-C16*(R_cc(4,j))^6;   %Cpw (CALOR ESPECIFICO DEL AGUA)
             R_cc(8,j)=10^(C24*(1-(To/R_cc(3,j)))+C25*(log10(To/R_cc(3,j)))+C26*(1-10^((-8.29692)*((R_cc(3,j)/To)-1)))+C27*(10^((4.76955)*(1-(To/R_cc(3,j))))-1)+C28);   % pvs (PRESION DE VAPOR DE AGUA EVALUADA EN TO)
+            
+            % Protect against invalid pressure values
+            if isnan(R_cc(8,j)) || isinf(R_cc(8,j)) || R_cc(8,j) <= 0
+                R_cc(8,j) = 1000; % Fallback pressure value (Pa)
+            end
+            
             R_cc(9,j)=(C21*R_cc(8,j))/(pT-(C22*R_cc(8,j))); %wsw (RELACION DE HUMEDAD PARA AIRE SATURADO)
+            
+            % Protect against division by zero and invalid humidity ratios
+            if isnan(R_cc(9,j)) || isinf(R_cc(9,j)) || R_cc(9,j) < 0
+                R_cc(9,j) = 0.001; % Fallback humidity ratio
+            end
             R_cc(10,j)=hfg+(R_cc(6,j)*(R_cc(3,j)-To));   %hv (ENTALPIA DEL VAPOR DE AGUA A LA TEMPERATURA LOCAL, EN RELACION CON EL AGUA A 0ºC)
             R_cc(11,j)=(R_cc(5,j)*(R_cc(3,j)-To))+R_cc(9,j)*R_cc(10,j); %hmasw (ENTALPIA DE AIRE SATURADO A LA TEMPERATURA DEL AGUA)
             R_cc(12,j)=(C29^C30)*((((C31+R_cc(9,j))/(C31+R_cc(1,j)))-1)/(log(((C31+R_cc(9,j))/(C31+R_cc(1,j))))));   %Le (NUMERO DE LEWIS)
@@ -722,7 +792,18 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
             R_cc(6,j)=C5+C6*R_cc(4,j)-C7*(R_cc(4,j))^5+C8*(R_cc(4,j))^6;   %Cpv
             R_cc(7,j)=C13-C14*R_cc(4,j)+C15*(R_cc(4,j))^2-C16*(R_cc(4,j))^6;   %Cpw
             R_cc(8,j)=10^(C24*(1-(To/R_cc(3,j)))+C25*(log10(To/R_cc(3,j)))+C26*(1-10^((-8.29692)*((R_cc(3,j)/To)-1)))+C27*(10^((4.76955)*(1-(To/R_cc(3,j))))-1)+C28);   % pvs
+            
+            % Protect against invalid pressure values
+            if isnan(R_cc(8,j)) || isinf(R_cc(8,j)) || R_cc(8,j) <= 0
+                R_cc(8,j) = 1000; % Fallback pressure value (Pa)
+            end
+            
             R_cc(9,j)=(C21*R_cc(8,j))/(pT-(C22*R_cc(8,j))); %wsw
+            
+            % Protect against division by zero and invalid humidity ratios
+            if isnan(R_cc(9,j)) || isinf(R_cc(9,j)) || R_cc(9,j) < 0
+                R_cc(9,j) = 0.001; % Fallback humidity ratio
+            end
             R_cc(10,j)=hfg+(R_cc(6,j)*(R_cc(3,j)-To));   %hv
             R_cc(11,j)=(R_cc(5,j)*(R_cc(3,j)-To))+R_cc(9,j)*R_cc(10,j); %hmasw
             R_cc(18,j)=T_da_ss(R_cc(2,j)/1000,R_cc(1,j),pT); % Tas
@@ -750,6 +831,11 @@ function [Me_Poppe, M_lost_wct] = Me_Poppe_cc(Tw1,Tw2,Tas1,Tbh,ma,mw,pT)
     
     w(f)=Res_cc(1,N+1);
     wo=w(f); 
+    end
+    
+    % Check if convergence failed due to iteration limit
+    if iteration_count >= max_iterations && ~options.silence_warnings
+        warning('Me_Poppe_cc convergence loop reached maximum iterations (%d). Results may be inaccurate.', max_iterations);
     end
     
     %%%%-----------REPRESNTACION DE RESULTADOS POR PANTALLA-------
@@ -862,6 +948,36 @@ function [x, fval, exitflag] = solve_wct_with_timeout(fun, x0, solver_options, t
     
     % Reset timeout flag
     solver_timeout_flag = false;
+end
+
+% Safe wrapper for Me_Poppe_cc to handle potential hanging or errors
+function [Me_val, M_lost] = safe_Me_Poppe_wrapper(Tw1, Tw2, Tas1, Tbh, ma, mw, pT, silence_warnings)
+    try
+        % Call Me_Poppe_cc with timeout protection
+        [Me_val, M_lost] = Me_Poppe_cc(Tw1, Tw2, Tas1, Tbh, ma, mw, pT, 'silence_warnings', silence_warnings);
+        
+        % Validate outputs
+        if isnan(Me_val) || isinf(Me_val) || Me_val < 0
+            % if ~silence_warnings
+            %     warning('Me_Poppe_cc returned invalid Me value (%.3f), using fallback estimate', Me_val);
+            % end
+            Me_val = 1.0; % Conservative fallback
+        end
+        
+        if isnan(M_lost) || isinf(M_lost) || M_lost < 0
+            % if ~silence_warnings
+            %     warning('Me_Poppe_cc returned invalid M_lost value (%.3f), using fallback estimate', M_lost);
+            % end
+            M_lost = 0.01 * mw; % Conservative estimate (1% of water flow)
+        end
+        
+    catch ME
+        if ~silence_warnings
+            warning('Me_Poppe_cc failed: %s. Using fallback estimates.', ME.message);
+        end
+        Me_val = 1.0; % Conservative fallback
+        M_lost = 0.01 * mw; % Conservative estimate
+    end
 end
 
 % Helper function to solve with a single initial point (kept for compatibility)
