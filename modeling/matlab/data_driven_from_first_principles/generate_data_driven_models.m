@@ -167,7 +167,8 @@ valRatio = 0.15;
 testRatio = 0.15;
 
 % Add Ce to outputs
-% output_vars_idx = [6, 7];%, 8];
+input_vars_idx = 2:6;
+output_vars_idx = [9, 10];%, 8];
 % output_var_names = ["Tout", "Mlost"]; %, "Ce"];
 
 visualize_validation = true;
