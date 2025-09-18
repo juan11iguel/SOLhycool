@@ -1,53 +1,67 @@
 """
-Python equivalent of evaluate_physical_model_wct.m
-
-Generates output dataset using physical models to create data-driven models.
-Uses parallel processing and timeout control for robust evaluation.
-
-This script should be run from the modeling directory.
-
-The script saves both raw and filtered results:
-- wct_out_raw.csv: All evaluation results including invalid ones
-- wct_out.csv: Filtered results with invalid entries removed
-
-The filtering functionality can be used independently:
-- Use WCTModelEvaluator.filter_invalid_results() static method
-- Use WCTModelEvaluator.filter_from_csv() class method
-- Use filter_existing_results() convenience function
-
-Example usage:
-    # Full evaluation workflow
-    evaluator = WCTModelEvaluator(case_study_id="andasol_90MW")
-    evaluator.run_evaluation()
-    
-    # Filter existing raw results without full initialization
-    filtered_df = WCTModelEvaluator.filter_from_csv("path/to/wct_out_raw.csv")
-    
-    # Or use convenience function
-    filter_existing_results("path/to/wct_out_raw.csv", "path/to/filtered_output.csv")
+Simplified evaluation module that closely matches the optimization pattern.
 """
 
 import time
 from pathlib import Path
 from typing import Optional, Literal
 from dataclasses import dataclass
-import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, TimeoutError, as_completed
-
+import billiard as multiprocessing
+from billiard import Pool
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import psychrolib
 from loguru import logger
 
-# Import the MATLAB exported functions (required)
-import combined_cooler
-
 # Configure psychrolib
 psychrolib.SetUnitSystem(psychrolib.SI)
+
+
+def evaluate_single_point(params: tuple) -> tuple[int, float, float, float, bool]:
+    """
+    Evaluate a single parameter combination using MATLAB functions.
+    
+    Args:
+        params: Tuple of (idx, tamb, hr, twct_in, qwct, wwct, model_type)
+        
+    Returns:
+        Tuple of (idx, twct_out, mw_lost_lh, ce_kwe, success)
+    """
+    idx, tamb, hr, twct_in, qwct, wwct, model_type = params
+    
+    try:
+        # Import MATLAB model in this process (exactly like optimization code)
+        import combined_cooler
+        cc_model = combined_cooler.initialize()
+        
+        # Use MATLAB functions
+        if model_type == "andasol":
+            twct_out, ce_kwe, mw_lost_lh = cc_model.wct_model_physical_andasol(
+                tamb, hr, twct_in, qwct, wwct, {"silence_warnings": True}, nargout=3
+            )
+        else:  # pilot_plant
+            twct_out, ce_kwe, mw_lost_lh = cc_model.wct_model_physical(
+                tamb, hr, twct_in, qwct, wwct, {"silence_warnings": True}, nargout=3
+            )
+        
+        return idx, float(twct_out), float(mw_lost_lh), float(ce_kwe), True
+        
+    except Exception as e:
+        print(f"Error in MATLAB model evaluation for {model_type}: {e}")
+        return idx, np.nan, np.nan, np.nan, False
+
+
+def test_matlab_worker():
+    """Test if MATLAB initialization works in a worker process."""
+    try:
+        import combined_cooler
+        cc_model = combined_cooler.initialize()
+        print(f"MATLAB initialization successful in worker process: {type(cc_model)}")
+        return True
+    except Exception as e:
+        print(f"MATLAB initialization failed in worker process: {e}")
+        return False
 
 
 @dataclass
@@ -56,9 +70,11 @@ class WCTModelEvaluator:
     
     # Input parameters with defaults
     case_study_id: str = "andasol_90MW"
-    timeout: float = 3.0
+    timeout: float = 30.0
     n_processes: Optional[int] = None
     base_path: Optional[Path] = None
+    save_interval: int = 50  # Robust evaluation. Save every 50 successful evaluations
+    timeout_duration: float = 60.  # Robust evaluation. 1 minute timeout
     
     # Computed attributes (initialized in __post_init__)
     model_type: Literal["pilot_plant", "andasol"] = None
@@ -82,11 +98,16 @@ class WCTModelEvaluator:
         
         # Set default for n_processes
         if self.n_processes is None:
-            self.n_processes = max(1, mp.cpu_count() - 1)
+            self.n_processes = max(1, multiprocessing.cpu_count() - 1)
         
         # Initialize MATLAB model (required)
-        self.cc_model = combined_cooler.initialize()
-        logger.info("Successfully initialized combined_cooler model")
+        try:
+            import combined_cooler
+            self.cc_model = combined_cooler.initialize()
+            logger.info("Successfully initialized combined_cooler model")
+        except Exception as e:
+            logger.error(f"Failed to initialize MATLAB model: {e}")
+            raise
         
         # Set up paths
         if self.base_path is None:
@@ -101,65 +122,7 @@ class WCTModelEvaluator:
         logger.info(f"  Timeout: {self.timeout}s")
         logger.info(f"  Parallel processes: {self.n_processes}")
         logger.info("  MATLAB model initialized: True")
-    
-    def generate_parameter_combinations(self) -> pd.DataFrame:
-        """
-        Generate all combinations of parameters for evaluation.
-        
-        Returns:
-            DataFrame with all parameter combinations
-        """
-        logger.info("Generating parameter combinations...")
-        
-        # Define parameter ranges
-        Tamb = np.linspace(5, 50, 10)  # Ambient temperature (°C)
-        HR = np.linspace(10, 90, 5)    # Relative humidity (%)
-        deltaTwct_in = np.linspace(3, 20, 5)  # Delta above wet bulb (°C)
-        Mwct = np.linspace(1152, 3960, 7)     # Water flow rate (m³/h)
-        SC_fan_wct = np.linspace(20, 100, 7)  # Fan control (%)
-        
-        # Create all combinations using meshgrid
-        tamb_grid, hr_grid, delta_grid, mwct_grid, fan_grid = np.meshgrid(
-            Tamb, HR, deltaTwct_in, Mwct, SC_fan_wct, indexing='ij'
-        )
-        
-        # Flatten arrays
-        tamb_vec = tamb_grid.ravel()
-        hr_vec = hr_grid.ravel()
-        delta_vec = delta_grid.ravel()
-        mwct_vec = mwct_grid.ravel()
-        fan_vec = fan_grid.ravel()
-        
-        # Calculate wet bulb temperature and inlet temperature
-        logger.info("Calculating wet bulb temperatures...")
-        twb_vec = np.zeros_like(tamb_vec)
-        twct_in_vec = np.zeros_like(tamb_vec)
-        
-        for i in tqdm(range(len(tamb_vec)), desc="Computing Twb"):
-            twb_vec[i] = psychrolib.GetTWetBulbFromTDryBulb(tamb_vec[i], hr_vec[i]/100, 101325)
-            twct_in_vec[i] = twb_vec[i] + delta_vec[i]
-        
-        # Create DataFrame
-        wct_df = pd.DataFrame({
-            'Tamb': tamb_vec,
-            'HR': hr_vec,
-            'Twct_in': twct_in_vec,
-            'qwct': mwct_vec,
-            'wwct': fan_vec,
-            'Twb': twb_vec,
-            'mw_ma_ratio': np.ones_like(tamb_vec)  # Placeholder
-        })
-        
-        logger.info(f"Created {len(wct_df)} parameter combinations")
-        logger.info("Parameter ranges:")
-        logger.info(f"  Tamb: {wct_df.Tamb.min():.1f} to {wct_df.Tamb.max():.1f} °C")
-        logger.info(f"  HR: {wct_df.HR.min():.1f} to {wct_df.HR.max():.1f} %")
-        logger.info(f"  Twct_in: {wct_df.Twct_in.min():.1f} to {wct_df.Twct_in.max():.1f} °C")
-        logger.info(f"  qwct: {wct_df.qwct.min():.0f} to {wct_df.qwct.max():.0f} m³/h")
-        logger.info(f"  wwct: {wct_df.wwct.min():.1f} to {wct_df.wwct.max():.1f} %")
-        
-        return wct_df
-    
+
     def load_input_data(self) -> pd.DataFrame:
         """Load input data from CSV file."""
         if not self.input_data_path.exists():
@@ -174,75 +137,351 @@ class WCTModelEvaluator:
         
         logger.info(f"Loaded {len(wct_df)} parameter combinations")
         return wct_df
-    
-    @staticmethod
-    def evaluate_single_point(params: tuple) -> tuple[float, float, float, bool]:
+
+    def check_existing_results(self, wct_df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """
-        Evaluate a single parameter combination using MATLAB functions.
+        Check for existing results and determine which evaluations still need to be completed.
         
         Args:
-            params: Tuple of (tamb, hr, twct_in, qwct, wwct, model_type, cc_model)
+            wct_df: Input parameter DataFrame
             
         Returns:
-            Tuple of (twct_out, mw_lost_lh, ce_kwe, success)
+            Tuple of (existing_results_df, indices_to_evaluate, evaluation_status)
         """
-        tamb, hr, twct_in, qwct, wwct, model_type, cc_model = params
+        raw_output_path = self.base_path / "wct_out_raw.csv"
+        n_total = len(wct_df)
+        evaluation_status = np.zeros(n_total, dtype=int)  # 0=not evaluated, 1=failed, 2=success
+        
+        if not raw_output_path.exists():
+            logger.info("No existing results found, will evaluate all combinations")
+            return pd.DataFrame(), np.arange(n_total), evaluation_status
         
         try:
-            # Use MATLAB functions
-            if model_type == "andasol":
-                # Call wct_model_physical_andasol with 5 inputs
-                twct_out, ce_kwe, mw_lost_lh = cc_model.wct_model_physical_andasol(
-                    tamb, hr, twct_in, qwct, wwct
-                )
-            else:  # pilot_plant
-                # Call wct_model_physical with 5 inputs
-                twct_out, ce_kwe, mw_lost_lh = cc_model.wct_model_physical(
-                    tamb, hr, twct_in, qwct, wwct
-                )
+            existing_results = pd.read_csv(raw_output_path)
+            logger.info(f"Found existing results file with {len(existing_results)} rows")
             
-            return float(twct_out), float(mw_lost_lh), float(ce_kwe), True
+            # Remove first column if it's an unnamed index (but keep eval_index if present)
+            if existing_results.columns[0].lower() in ['unnamed: 0']:
+                existing_results = existing_results.iloc[:, 1:]
             
+            # Check if we have evaluation_status column
+            if 'evaluation_status' in existing_results.columns and 'eval_index' in existing_results.columns:
+                # New format with explicit status tracking
+                n_existing = min(len(existing_results), n_total)
+                
+                for i in range(n_existing):
+                    if i < len(existing_results):
+                        try:
+                            # Safely convert eval_index to integer
+                            eval_idx_val = existing_results.iloc[i]['eval_index']
+                            if pd.isna(eval_idx_val):
+                                continue  # Skip rows with NaN eval_index
+                            
+                            eval_idx = int(float(eval_idx_val))  # Convert via float first to handle decimal strings
+                            if 0 <= eval_idx < n_total:
+                                # Safely get evaluation_status
+                                status_val = existing_results.iloc[i]['evaluation_status']
+                                if not pd.isna(status_val):
+                                    evaluation_status[eval_idx] = int(status_val)
+                        except (ValueError, TypeError, OverflowError) as e:
+                            logger.warning(f"Error processing row {i}: eval_index={existing_results.iloc[i]['eval_index']}, status={existing_results.iloc[i]['evaluation_status']}, error={e}")
+                            continue
+                
+                # Only re-evaluate points that haven't been attempted (status 0)
+                remaining_indices = np.where(evaluation_status == 0)[0]
+                
+                successful = (evaluation_status == 2).sum()
+                failed = (evaluation_status == 1).sum()
+                not_evaluated = (evaluation_status == 0).sum()
+                
+                logger.info(f"Existing results: {successful} successful, {failed} failed, {not_evaluated} not evaluated")
+                logger.info(f"Will only evaluate {len(remaining_indices)} unattempted combinations")
+                
+            elif 'Tout' in existing_results.columns:
+                # Legacy format - convert to new status system
+                n_existing = min(len(existing_results), n_total)
+                
+                for i in range(n_existing):
+                    if pd.isna(existing_results.iloc[i]['Tout']):
+                        evaluation_status[i] = 1  # Assume NaN means failed
+                    else:
+                        evaluation_status[i] = 2  # Valid result means success
+                
+                # Only re-evaluate points that haven't been attempted
+                remaining_indices = np.where(evaluation_status == 0)[0]
+                logger.info(f"Converted legacy format: {len(remaining_indices)} remaining combinations")
+                
+            else:
+                logger.warning("Existing results file missing required columns, will re-evaluate all")
+                remaining_indices = np.arange(n_total)
+            
+            return existing_results, remaining_indices, evaluation_status
+                
         except Exception as e:
-            logger.error(f"Error in MATLAB model evaluation: {e}")
-            return np.nan, np.nan, np.nan, False
-    
-    def evaluate_with_timeout(self, params: tuple) -> tuple[float, float, float, bool]:
+            logger.warning(f"Error reading existing results: {e}, will re-evaluate all")
+            return pd.DataFrame(), np.arange(n_total), evaluation_status
+
+    def save_partial_results(self, wct_df: pd.DataFrame, tout_simu: np.ndarray, 
+                           mw_lost_lh: np.ndarray, ce_kwe: np.ndarray, 
+                           evaluation_status: np.ndarray) -> None:
         """
-        Evaluate with timeout control.
+        Save current evaluation results to wct_out_raw.csv.
         
         Args:
-            params: Parameters for evaluation
+            wct_df: Input parameter DataFrame
+            tout_simu: Array of outlet temperatures
+            mw_lost_lh: Array of water mass lost
+            ce_kwe: Array of electrical consumption
+            evaluation_status: Array indicating evaluation status (0=not evaluated, 1=failed, 2=success)
+        """
+        # Create output DataFrame
+        wct_out = wct_df.copy()
+        wct_out.insert(0, 'eval_index', range(len(wct_df)))  # Add explicit index column
+        wct_out['Tout'] = tout_simu
+        wct_out['m_w_lost'] = mw_lost_lh
+        wct_out['evaluation_status'] = evaluation_status  # 0=not evaluated, 1=failed, 2=success
+        
+        if self.save_electrical_consumption:
+            wct_out['Ce'] = ce_kwe
+        
+        # Save to file
+        raw_output_path = self.base_path / "wct_out_raw.csv"
+        raw_output_path.parent.mkdir(parents=True, exist_ok=True)
+        wct_out.to_csv(raw_output_path, index=False)
+        
+        # Count results by status
+        not_evaluated = (evaluation_status == 0).sum()
+        failed = (evaluation_status == 1).sum()
+        successful = (evaluation_status == 2).sum()
+        logger.info(f"Saved partial results: {successful} successful, {failed} failed, {not_evaluated} not evaluated")
+
+    def evaluate_all_combinations_robust(self, wct_df: pd.DataFrame, 
+                                       indices_to_evaluate: np.ndarray = None) -> pd.DataFrame:
+        """
+        Robust evaluation with automatic restarts, timeout handling, and periodic saving.
+        
+        Args:
+            wct_df: Input parameter DataFrame
+            indices_to_evaluate: Optional array of indices to evaluate (if None, evaluates all)
             
         Returns:
-            Evaluation results with success flag
+            Complete results DataFrame
         """
-        try:
-            with ProcessPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(self.evaluate_single_point, params)
-                result = future.result(timeout=self.timeout)
-                return result
-        except TimeoutError:
-            return np.nan, np.nan, np.nan, False
-        except Exception:
-            return np.nan, np.nan, np.nan, False
-    
+        n_total = len(wct_df)
+        
+        # Initialize result arrays for the full dataset
+        tout_simu = np.full(n_total, np.nan)
+        mw_lost_lh = np.full(n_total, np.nan)
+        ce_kwe = np.full(n_total, np.nan)
+        evaluation_status = np.zeros(n_total, dtype=int)  # 0=not evaluated, 1=failed, 2=success
+        
+        # Load existing results if any
+        existing_results, remaining_indices, existing_status = self.check_existing_results(wct_df)
+        evaluation_status = existing_status.copy()
+        
+        if len(existing_results) > 0:
+            # Pre-fill arrays with existing results based on eval_index if available
+            if 'eval_index' in existing_results.columns:
+                for _, row in existing_results.iterrows():
+                    try:
+                        # Safely convert eval_index to integer
+                        eval_idx_val = row['eval_index']
+                        if pd.isna(eval_idx_val):
+                            continue
+                        
+                        eval_idx = int(float(eval_idx_val))
+                        if 0 <= eval_idx < n_total:
+                            # Only load data if the evaluation was successful (status = 2)
+                            if 'evaluation_status' in existing_results.columns:
+                                status_val = row['evaluation_status']
+                                if pd.isna(status_val) or int(status_val) != 2:
+                                    continue  # Skip failed or unevaluated entries
+                            
+                            # Safely load numerical results
+                            if 'Tout' in existing_results.columns and not pd.isna(row['Tout']):
+                                tout_simu[eval_idx] = float(row['Tout'])
+                            if 'm_w_lost' in existing_results.columns and not pd.isna(row['m_w_lost']):
+                                mw_lost_lh[eval_idx] = float(row['m_w_lost'])
+                            if 'Ce' in existing_results.columns and self.save_electrical_consumption and not pd.isna(row['Ce']):
+                                ce_kwe[eval_idx] = float(row['Ce'])
+                    except (ValueError, TypeError, OverflowError) as e:
+                        logger.warning(f"Error loading data for eval_index {row['eval_index']}: {e}")
+                        continue
+            else:
+                # Legacy format - assume sequential indices
+                n_existing = min(len(existing_results), n_total)
+                if 'Tout' in existing_results.columns:
+                    tout_simu[:n_existing] = existing_results['Tout'].values[:n_existing]
+                if 'm_w_lost' in existing_results.columns:
+                    mw_lost_lh[:n_existing] = existing_results['m_w_lost'].values[:n_existing]
+                if 'Ce' in existing_results.columns and self.save_electrical_consumption:
+                    ce_kwe[:n_existing] = existing_results['Ce'].values[:n_existing]
+        
+        # Use remaining indices if not explicitly provided
+        if indices_to_evaluate is None:
+            indices_to_evaluate = remaining_indices
+        else:
+            # Intersect provided indices with remaining indices
+            indices_to_evaluate = np.intersect1d(indices_to_evaluate, remaining_indices)
+        
+        if len(indices_to_evaluate) == 0:
+            logger.info("All evaluations already completed or attempted!")
+            wct_out = wct_df.copy()
+            wct_out.insert(0, 'eval_index', range(len(wct_df)))
+            wct_out['Tout'] = tout_simu
+            wct_out['m_w_lost'] = mw_lost_lh
+            wct_out['evaluation_status'] = evaluation_status
+            if self.save_electrical_consumption:
+                wct_out['Ce'] = ce_kwe
+            return wct_out
+        
+        logger.info(f"Starting robust evaluation of {len(indices_to_evaluate)} remaining combinations")
+        
+        # Set multiprocessing start method for MATLAB compatibility
+        multiprocessing.set_start_method("spawn", force=True)
+        
+        # Tracking variables
+        save_interval = self.save_interval
+        timeout_duration = self.timeout_duration 
+        successful_evaluations = 0
+        
+        # Convert indices to evaluate into parameter list
+        param_list = [
+            (idx, wct_df.iloc[idx].Tamb, wct_df.iloc[idx].HR, wct_df.iloc[idx].Twct_in, 
+             wct_df.iloc[idx].qwct, wct_df.iloc[idx].wwct, self.model_type)
+            for idx in indices_to_evaluate
+        ]
+        
+        # Track which parameters still need evaluation
+        remaining_params = param_list.copy()
+        
+        while remaining_params:
+            logger.info(f"Starting pool with {len(remaining_params)} remaining evaluations")
+            
+            try:
+                with Pool(processes=self.n_processes) as pool:
+                    # Submit all jobs to the pool
+                    async_results = [pool.apply_async(evaluate_single_point, (param,)) for param in remaining_params]
+                    
+                    # Track progress with periodic timeout checking
+                    completed_in_this_batch = []
+                    last_progress_time = time.time()
+                    check_interval = 5.0  # Check every 5 seconds
+                    
+                    with tqdm(total=len(remaining_params), desc="Evaluating combinations") as pbar:
+                        while async_results:
+                            current_time = time.time()
+                            
+                            # Check for completed results (non-blocking)
+                            completed_results = []
+                            for i, async_result in enumerate(async_results):
+                                if async_result.ready():
+                                    try:
+                                        result_idx, twct_out, mw_lost, ce, success = async_result.get()
+                                        completed_results.append(i)
+                                        
+                                        # Update results and status based on success
+                                        if success:
+                                            tout_simu[result_idx] = twct_out
+                                            mw_lost_lh[result_idx] = mw_lost
+                                            ce_kwe[result_idx] = ce
+                                            evaluation_status[result_idx] = 2  # Success
+                                            successful_evaluations += 1
+                                            last_progress_time = current_time
+                                        else:
+                                            # Mark as failed - don't re-evaluate
+                                            evaluation_status[result_idx] = 1  # Failed
+                                        
+                                        completed_in_this_batch.append(result_idx)
+                                        
+                                        # Periodic saving
+                                        if successful_evaluations > 0 and successful_evaluations % save_interval == 0:
+                                            self.save_partial_results(wct_df, tout_simu, mw_lost_lh, ce_kwe, evaluation_status)
+                                        
+                                        pbar.update(1)
+                                        pbar.set_postfix({
+                                            'Success': success,
+                                            'Tout': f"{twct_out:.2f}" if success else "NaN",
+                                            'Total Success': successful_evaluations
+                                        })
+                                        
+                                    except Exception as e:
+                                        logger.error(f"Error getting result: {e}")
+                                        completed_results.append(i)
+                                        # Mark as failed
+                                        param_idx = remaining_params[i][0]
+                                        evaluation_status[param_idx] = 1
+                                        pbar.update(1)
+                            
+                            # Remove completed results (in reverse order to maintain indices)
+                            for i in reversed(completed_results):
+                                async_results.pop(i)
+                            
+                            # Periodic timeout check - independent of result completion
+                            if current_time - last_progress_time > timeout_duration:
+                                logger.warning(f"No progress for {timeout_duration}s, terminating pool")
+                                pool.terminate()
+                                pool.join()
+                                # Mark remaining jobs as not evaluated (they'll be retried)
+                                for async_result in async_results:
+                                    if not async_result.ready():
+                                        # Find the corresponding parameter and mark as not evaluated
+                                        for param in remaining_params:
+                                            if evaluation_status[param[0]] == 0:  # Still not evaluated
+                                                break  # Leave as 0 for retry
+                                break
+                            
+                            # Sleep briefly to avoid busy waiting
+                            if async_results:  # Only sleep if there are still pending results
+                                time.sleep(min(check_interval, 1.0))
+                        
+                        # Update remaining parameters (remove completed ones)
+                        remaining_params = [
+                            param for param in remaining_params 
+                            if param[0] not in completed_in_this_batch
+                        ]
+                        
+                        if not remaining_params:
+                            logger.info("All evaluations completed successfully!")
+                            break
+                            
+            except Exception as e:
+                logger.error(f"Pool error: {e}, restarting...")
+                # Save current progress before restarting
+                self.save_partial_results(wct_df, tout_simu, mw_lost_lh, ce_kwe, evaluation_status)
+                time.sleep(2)  # Brief pause before restart
+        
+        # Final save
+        self.save_partial_results(wct_df, tout_simu, mw_lost_lh, ce_kwe, evaluation_status)
+        
+        # Create final output DataFrame
+        wct_out = wct_df.copy()
+        wct_out.insert(0, 'eval_index', range(len(wct_df)))
+        wct_out['Tout'] = tout_simu
+        wct_out['m_w_lost'] = mw_lost_lh
+        wct_out['evaluation_status'] = evaluation_status
+        if self.save_electrical_consumption:
+            wct_out['Ce'] = ce_kwe
+        
+        successful = (evaluation_status == 2).sum()
+        failed = (evaluation_status == 1).sum()
+        logger.info(f"Robust evaluation completed! Successful: {successful}, Failed: {failed}")
+        return wct_out
+
     def evaluate_all_combinations(self, wct_df: pd.DataFrame) -> pd.DataFrame:
         """
         Evaluate all parameter combinations in parallel.
-        
-        Args:
-            wct_df: DataFrame with parameter combinations
-            
-        Returns:
-            DataFrame with evaluation results
+        Follows the exact pattern from optimization code.
         """
+        # Set multiprocessing start method for MATLAB compatibility (like optimization code)
+        multiprocessing.set_start_method("spawn", force=True)
+        
         logger.info(f"Starting parallel evaluation with {self.n_processes} processes...")
         
         # Prepare parameters for parallel evaluation
         param_list = [
-            (row.Tamb, row.HR, row.Twct_in, row.qwct, row.wwct, self.model_type, self.cc_model)
-            for _, row in wct_df.iterrows()
+            (idx, row.Tamb, row.HR, row.Twct_in, row.qwct, row.wwct, self.model_type)
+            for idx, (_, row) in enumerate(wct_df.iterrows())
         ]
         
         # Initialize result arrays
@@ -251,40 +490,27 @@ class WCTModelEvaluator:
         mw_lost_lh = np.full(n_points, np.nan)
         ce_kwe = np.full(n_points, np.nan)
         
-        # Parallel evaluation with progress bar
+        # Use billiard Pool directly (exactly like optimization code)
         start_time = time.time()
         
-        with ProcessPoolExecutor(max_workers=self.n_processes) as executor:
-            # Submit all tasks
-            future_to_idx = {
-                executor.submit(self.evaluate_with_timeout, params): idx
-                for idx, params in enumerate(param_list)
-            }
-            
-            # Collect results with progress bar
+        with Pool(processes=self.n_processes) as pool:
+            # Use imap_unordered for parallel execution with real-time progress
+            # This yields results as they become available, allowing real-time progress tracking
             with tqdm(total=n_points, desc="Evaluating combinations") as pbar:
-                for future in as_completed(future_to_idx):
-                    idx = future_to_idx[future]
-                    try:
-                        twct_out, mw_lost, ce, success = future.result()
-                        
-                        if success:
-                            tout_simu[idx] = twct_out
-                            mw_lost_lh[idx] = mw_lost
-                            ce_kwe[idx] = ce
-                        
-                        # Update progress bar with detailed info
-                        row = wct_df.iloc[idx]
-                        pbar.set_postfix({
-                            'q': f"{row.qwct:.0f}",
-                            'w': f"{row.wwct:.0f}",
-                            'Tout': f"{twct_out:.2f}" if success else "NaN"
-                        })
-                        
-                    except Exception as e:
-                        logger.warning(f"Error processing index {idx}: {e}")
+                for result_idx, twct_out, mw_lost, ce, success in pool.imap_unordered(
+                    evaluate_single_point, param_list
+                ):
+                    if success:
+                        tout_simu[result_idx] = twct_out
+                        mw_lost_lh[result_idx] = mw_lost
+                        ce_kwe[result_idx] = ce
                     
                     pbar.update(1)
+                    # Show current result in progress bar
+                    pbar.set_postfix({
+                        'Success': success,
+                        'Tout': f"{twct_out:.2f}" if success else "NaN"
+                    })
         
         elapsed_time = time.time() - start_time
         logger.info(f"Evaluation completed in {elapsed_time:.1f} seconds")
@@ -298,306 +524,87 @@ class WCTModelEvaluator:
             wct_out['Ce'] = ce_kwe
         
         return wct_out
-    
-    @staticmethod
-    def filter_invalid_results(wct_out: pd.DataFrame, x_std: float = 0.5) -> pd.DataFrame:
-        """
-        Filter invalid results based on physical constraints.
-        
-        Args:
-            wct_out: DataFrame with evaluation results
-            x_std: Threshold parameter for outlier detection (default: 0.5)
-            
-        Returns:
-            Filtered DataFrame
-        """
-        logger.info("Filtering invalid results...")
-        
-        tol = 1e-10
-        
-        # Calculate statistics for water consumption filtering
-        m_w_lost_all = wct_out['m_w_lost'].dropna()
-        if len(m_w_lost_all) > 0:
-            median_mw = m_w_lost_all.median()
-            std_mw = m_w_lost_all.std()
-            threshold_mw = median_mw + x_std * std_mw
-        else:
-            threshold_mw = np.inf
-        
-        # Detect invalid conditions
-        invalid_nan = wct_out.isnull().any(axis=1)
-        
-        # Physical validity checks
-        invalid_phys = (
-            (np.abs(np.imag(wct_out['Tout'])) > tol) |
-            (wct_out['Tout'] < 0) |
-            (wct_out['m_w_lost'] < 0)
-        )
-        
-        # Excessive water consumption
-        invalid_mw = wct_out['m_w_lost'] > threshold_mw
-        
-        # Combine conditions
-        invalid = invalid_nan | invalid_phys | invalid_mw
-        
-        logger.info(f"Invalid rows detected: {invalid.sum()} of {len(wct_out)}")
-        
-        # Filter DataFrame
-        wct_out_filtered = wct_out[~invalid].copy()
-        
-        logger.info(f"Remaining valid rows: {len(wct_out_filtered)}")
-        
-        return wct_out_filtered
-    
-    def save_results(self, wct_out_raw: pd.DataFrame, wct_out_filtered: pd.DataFrame) -> None:
-        """Save both raw and filtered results to CSV files."""
-        # Ensure output directory exists
-        self.output_data_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Define file paths for raw and filtered results
-        raw_output_path = self.base_path / "wct_out_raw.csv"
-        filtered_output_path = self.output_data_path  # This keeps the original name for filtered results
-        
-        # Save raw results
-        wct_out_raw.to_csv(raw_output_path, index=False)
-        logger.info(f"Raw results saved to {raw_output_path}, n={len(wct_out_raw)}")
-        
-        # Save filtered results
-        wct_out_filtered.to_csv(filtered_output_path, index=False)
-        logger.info(f"Filtered results saved to {filtered_output_path}, n={len(wct_out_filtered)}")
-    
-    @classmethod
-    def filter_from_csv(cls, raw_csv_path: Path, x_std: float = 0.5) -> pd.DataFrame:
-        """
-        Load raw results from CSV and return filtered DataFrame.
-        
-        Args:
-            raw_csv_path: Path to the raw CSV file
-            x_std: Threshold parameter for outlier detection (default: 0.5)
-            
-        Returns:
-            Filtered DataFrame
-        """
-        logger.info(f"Loading raw results from {raw_csv_path}")
-        wct_out_raw = pd.read_csv(raw_csv_path)
-        
-        # Remove index column if present
-        if wct_out_raw.columns[0].lower() in ['index', 'unnamed: 0']:
-            wct_out_raw = wct_out_raw.iloc[:, 1:]
-        
-        logger.info(f"Loaded {len(wct_out_raw)} raw results")
-        
-        # Apply filtering
-        return cls.filter_invalid_results(wct_out_raw, x_std)
-    
-    def create_visualization(self, wct_out_raw: pd.DataFrame, 
-                           wct_out_filtered: pd.DataFrame) -> None:
-        """
-        Create interactive visualization of results.
-        
-        Args:
-            wct_out_raw: Raw results before filtering
-            wct_out_filtered: Filtered results
-        """
-        logger.info("Creating visualization...")
-        
-        # Create subplots
-        fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=[
-                'Temperature Results (Raw vs Filtered)',
-                'Water Loss Results (Raw vs Filtered)',
-                'Temperature vs Water Loss (Filtered)',
-                'Parameter Distribution'
-            ],
-            specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                   [{"secondary_y": False}, {"secondary_y": False}]]
-        )
-        
-        # Plot 1: Temperature results
-        indices = np.arange(len(wct_out_raw))
-        valid_indices = wct_out_raw.index.isin(wct_out_filtered.index)
-        
-        fig.add_trace(
-            go.Scatter(
-                x=indices,
-                y=wct_out_raw['Tout'],
-                mode='markers',
-                name='Tout (raw)',
-                marker=dict(color='blue', size=4, opacity=0.6),
-                showlegend=True
-            ),
-            row=1, col=1
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-                x=indices[valid_indices],
-                y=wct_out_filtered['Tout'],
-                mode='markers',
-                name='Tout (filtered)',
-                marker=dict(color='darkblue', size=6, symbol='circle-open'),
-                showlegend=True
-            ),
-            row=1, col=1
-        )
-        
-        # Plot 2: Water loss results
-        fig.add_trace(
-            go.Scatter(
-                x=indices,
-                y=wct_out_raw['m_w_lost'],
-                mode='markers',
-                name='m_w_lost (raw)',
-                marker=dict(color='red', size=4, opacity=0.6),
-                showlegend=True
-            ),
-            row=1, col=2
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-                x=indices[valid_indices],
-                y=wct_out_filtered['m_w_lost'],
-                mode='markers',
-                name='m_w_lost (filtered)',
-                marker=dict(color='darkred', size=6, symbol='circle-open'),
-                showlegend=True
-            ),
-            row=1, col=2
-        )
-        
-        # Plot 3: Scatter plot of filtered results
-        fig.add_trace(
-            go.Scatter(
-                x=wct_out_filtered['Tout'],
-                y=wct_out_filtered['m_w_lost'],
-                mode='markers',
-                name='Tout vs m_w_lost',
-                marker=dict(
-                    color=wct_out_filtered['wwct'],
-                    colorscale='Viridis',
-                    colorbar=dict(title="Fan Control (%)", x=0.47),
-                    size=6
-                ),
-                showlegend=True
-            ),
-            row=2, col=1
-        )
-        
-        # Plot 4: Parameter distribution
-        fig.add_trace(
-            go.Histogram(
-                x=wct_out_filtered['Tamb'],
-                name='Tamb distribution',
-                opacity=0.7,
-                nbinsx=20
-            ),
-            row=2, col=2
-        )
-        
-        # Update layout
-        fig.update_layout(
-            title=f'WCT Model Evaluation Results - {self.case_study_id}',
-            height=800,
-            showlegend=True
-        )
-        
-        # Update axes labels
-        fig.update_xaxes(title_text="Index", row=1, col=1)
-        fig.update_yaxes(title_text="Temperature (°C)", row=1, col=1)
-        fig.update_xaxes(title_text="Index", row=1, col=2)
-        fig.update_yaxes(title_text="Water Loss (L/h)", row=1, col=2)
-        fig.update_xaxes(title_text="Outlet Temperature (°C)", row=2, col=1)
-        fig.update_yaxes(title_text="Water Loss (L/h)", row=2, col=1)
-        fig.update_xaxes(title_text="Ambient Temperature (°C)", row=2, col=2)
-        fig.update_yaxes(title_text="Count", row=2, col=2)
-        
-        # Save plot
-        plot_path = self.base_path / 'wct_evaluation_results.html'
-        fig.write_html(plot_path)
-        logger.info(f"Visualization saved to {plot_path}")
-        
-        # Also create a simple summary plot
-        self._create_summary_plot(wct_out_filtered)
-    
-    def _create_summary_plot(self, wct_out_filtered: pd.DataFrame) -> None:
-        """Create a simple summary plot."""
-        fig = px.scatter_3d(
-            wct_out_filtered,
-            x='Tamb',
-            y='HR',
-            z='Tout',
-            color='m_w_lost',
-            size='wwct',
-            title=f'3D Parameter Space - {self.case_study_id}',
-            labels={
-                'Tamb': 'Ambient Temperature (°C)',
-                'HR': 'Relative Humidity (%)',
-                'Tout': 'Outlet Temperature (°C)',
-                'm_w_lost': 'Water Loss (L/h)',
-                'wwct': 'Fan Control (%)'
-            }
-        )
-        
-        # Save 3D plot
-        plot_3d_path = self.base_path / 'wct_3d_results.html'
-        fig.write_html(plot_3d_path)
-        logger.info(f"3D visualization saved to {plot_3d_path}")
-    
-    def run_evaluation(self, use_existing_input: bool = True) -> None:
+
+    def run_evaluation(self, use_existing_input: bool = True, use_robust_evaluation: bool = True) -> None:
         """
         Run the complete evaluation process.
         
         Args:
-            use_existing_input: If True, load input from CSV; if False, generate new combinations
+            use_existing_input: Whether to use existing input file
+            use_robust_evaluation: Whether to use robust evaluation with restarts and progress saving
         """
         logger.info(f"Starting WCT model evaluation for {self.case_study_id}")
+        logger.info(f"Robust evaluation mode: {use_robust_evaluation}")
         logger.info("=" * 60)
         
-        # Load or generate input data
+        # Load input data
         if use_existing_input and self.input_data_path.exists():
             wct_df = self.load_input_data()
         else:
-            wct_df = self.generate_parameter_combinations()
+            raise NotImplementedError("Parameter generation not implemented in simplified version")
         
         # Evaluate all combinations
-        wct_out_raw = self.evaluate_all_combinations(wct_df)
+        if use_robust_evaluation:
+            wct_out_raw = self.evaluate_all_combinations_robust(wct_df)
+        else:
+            wct_out_raw = self.evaluate_all_combinations(wct_df)
         
-        # Filter invalid results
-        wct_out_filtered = self.filter_invalid_results(wct_out_raw)
+        # Save final results (robust evaluation already saves to wct_out_raw.csv)
+        raw_output_path = self.base_path / "wct_out_raw.csv"
+        if not use_robust_evaluation:
+            raw_output_path.parent.mkdir(parents=True, exist_ok=True)
+            wct_out_raw.to_csv(raw_output_path, index=False)
         
-        # Save both raw and filtered results
-        self.save_results(wct_out_raw, wct_out_filtered)
+        logger.info(f"Final results available at {raw_output_path}, n={len(wct_out_raw)}")
         
-        # Create visualization
-        self.create_visualization(wct_out_raw, wct_out_filtered)
+        # Summary statistics
+        if 'evaluation_status' in wct_out_raw.columns:
+            successful = (wct_out_raw['evaluation_status'] == 2).sum()
+            failed = (wct_out_raw['evaluation_status'] == 1).sum()
+            not_evaluated = (wct_out_raw['evaluation_status'] == 0).sum()
+            logger.info(f"Evaluation summary: {successful} successful, {failed} failed, {not_evaluated} not evaluated")
+        else:
+            valid_results = ~wct_out_raw['Tout'].isna()
+            n_valid = valid_results.sum()
+            logger.info(f"Evaluation summary: {n_valid}/{len(wct_out_raw)} successful evaluations")
         
         logger.info("=" * 60)
         logger.info("Evaluation completed successfully!")
 
 
-def filter_existing_results(raw_csv_path: str, output_path: str = None, x_std: float = 0.5) -> None:
-    """
-    Convenience function to filter existing raw results without initializing the full evaluator.
+def test():
+    """Main function to run the evaluation."""
+    # Test MATLAB in a separate process first
+    logger.info("Testing MATLAB initialization in separate process...")
     
-    Args:
-        raw_csv_path: Path to the raw CSV file
-        output_path: Path to save filtered results (optional, defaults to same dir as raw with _filtered suffix)
-        x_std: Threshold parameter for outlier detection (default: 0.5)
-    """
-    raw_path = Path(raw_csv_path)
+    with Pool(processes=1) as pool:
+        result = pool.apply_async(test_matlab_worker)
+        try:
+            success = result.get(timeout=60)
+            if not success:
+                logger.error("MATLAB test failed, aborting evaluation")
+                return
+        except Exception as e:
+            logger.error(f"MATLAB test error: {e}")
+            return
     
-    # Generate output path if not provided
-    if output_path is None:
-        output_path = raw_path.parent / f"{raw_path.stem}_filtered{raw_path.suffix}"
-    else:
-        output_path = Path(output_path)
+    logger.info("MATLAB test passed, proceeding with evaluation...")
     
-    # Filter results using the static method
-    filtered_df = WCTModelEvaluator.filter_from_csv(raw_path, x_std)
+    # Configuration
+    case_study_id = "andasol_90MW"
+    timeout = 30.0
+    n_processes = 2  # Use fewer processes for testing
+    base_path = Path(f"/workspaces/SOLhycool/modeling/results/model_inputs_sampling/{case_study_id}")
     
-    # Save filtered results
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    filtered_df.to_csv(output_path, index=False)
-    logger.info(f"Filtered results saved to {output_path}, n={len(filtered_df)}")
+    logger.info(f"Starting evaluation with {n_processes} processes and {timeout}s timeout")
+    
+    # Create evaluator
+    evaluator = WCTModelEvaluator(
+        case_study_id=case_study_id,
+        timeout=timeout,
+        n_processes=n_processes,
+        base_path=base_path
+    )
+    
+    # Run evaluation with robust mode enabled by default
+    evaluator.run_evaluation(use_existing_input=True, use_robust_evaluation=True)

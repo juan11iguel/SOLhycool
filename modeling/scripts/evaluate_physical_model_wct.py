@@ -16,10 +16,11 @@ def main():
         timeout=timeout,
         n_processes=n_processes,
         base_path=base_path,
+        timeout_duration=10
     )
     
     # Run evaluation
-    evaluator.run_evaluation(use_existing_input=False)
+    evaluator.run_evaluation()
 
 
 if __name__ == "__main__":

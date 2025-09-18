@@ -1,12 +1,14 @@
 from dataclasses import asdict, dataclass, field
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal, Optional, ClassVar
 import inspect
 import numpy as np
 import pandas as pd
 from enum import Enum
 from iapws import IAPWS97 as w_props
+from pathlib import Path
+from pydantic import BaseModel, Field, model_validator
 
 import combined_cooler_model # Always import combined_cooler_model before importing matlab
 import matlab
@@ -22,6 +24,13 @@ class EnvIds(str, Enum):
     Pw_s2 = "water_price_alternative_eur_l"
     Vavail = "Vavail_m3"
     deltaV = "deltaV_m3_h"
+    mv = "mv_kgh"
+    
+class EnvIdsMatlab(str, Enum):
+    """ Environment variables identifiers for matlab struct """
+    HR = "HR_pp"
+    Tamb = "Tamb_C"
+    Tv = "Tv_C"
     mv = "mv_kgh"
     
 @dataclass
@@ -180,10 +189,12 @@ class EnvironmentVariables:
             deltaV=ds["deltaV_m3_h"] if "deltaV_m3_h" in ds else None 
         )
         
-    def reduce_load(self, reduction_factor: float = 0.5) -> None:
+    def reduce_load(self, reduction_factor: float = 0.5) -> "EnvironmentVariables":
         
         self.Q = self.Q * reduction_factor
         self.mv = self.mv * reduction_factor
+        
+        return self
         
     def update_available_water(self, Cw_lh: float, sample_time_h: float = 1) -> float:
         # Vavail in m^3
@@ -232,8 +243,18 @@ class EnvironmentVariables:
             for k, v in asdict(self).items()
             if v is not None
         })
+        
+    def to_matlab_dict(self) -> dict:
+        data = asdict(self.to_matlab())
+        allowed_keys = {e.name: e.value for e in EnvIdsMatlab}
+        return {
+            allowed_keys[k]: v
+            for k, v in data.items()
+            if k in allowed_keys and v is not None
+        }
     
     def constrain_to_model(self, model_inputs_range: ModelInputsRange = ModelInputsRange()) -> "EnvironmentVariables":
+    # TODO: Consider requiring to pass a ModelInputsRange instance, instead of optional
         """
         Constrain the environment variables to the model inputs range
 
@@ -495,4 +516,200 @@ class OperationPoint:
             })
         return cls(**op_dict)
         
-            
+
+class MatlabOptions(BaseModel):
+    # --- Public fields ---
+    model_type: Optional[Literal["data", "physical"]] = Field(
+        default=None,
+        description="Type of model to use (data-driven or physical)",
+        example="data",
+    )
+    
+    # DC
+    dc_lb: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Lower bounds for dry cooler inputs, same order as dc_var_ids",
+        example=[5.06, 10.0, 5.0, 11.0],
+    )
+    dc_ub: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Upper bounds for dry cooler inputs",
+        example=[50.75, 55.0, 24.5, 99.18],
+    )
+    dc_model_data_path: Optional[Path] = Field(
+        default=None,
+        description="Path to dry cooler model data file",
+        example="/workspaces/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat",
+    )
+    dc_ce_coeffs: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Dry cooler electrical consumption coefficients (polynomial). From highest to lowest degree.",
+        example=[-0.0002431, 0.04761, -2.2, 48.63, -295.6],
+    )
+    dc_n_dc: Optional[int] = Field(
+        default=None,
+        description="Number of dry cooler units in parallel",
+        example=1,
+    )
+    
+    # WCT
+    wct_lb: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Lower bounds for wet cooling tower inputs, same order as wct_var_ids",
+        example=[0.1, 0.1, 5.0, 5.0, 0.0],
+    )
+    wct_ub: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Upper bounds for wet cooling tower inputs",
+        example=[50.0, 99.99, 55.0, 24.5, 95.0],
+    )
+    wct_model_data_path: Optional[Path] = Field(
+        default=None,
+        description="Path to wet cooling tower model data file",
+        example="/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat",
+    )
+    wct_ce_coeffs: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Wet cooling tower electrical consumption coefficients (polynomial). From highest to lowest degree.",
+        example=[0.4118, -11.54, 189.4],
+    )
+    wct_n_wct: Optional[int] = Field(
+        default=None,
+        description="Number of wet cooling tower units in parallel",
+        example=1,
+    )
+    # Condenser
+    condenser_option: Optional[int] = Field(
+        default=None,
+        description="Condenser option to use",
+        example=1,
+    )
+    condenser_A: Optional[float] = Field(
+        default=None,
+        description="Condenser heat exchange area",
+        example=19.30,
+    )
+    condenser_deltaTv_cout_min: Optional[float] = Field(
+        default=None,
+        description="Minimum temperature difference between condenser outlet and vapor temperature",
+        example=1.0,
+    )
+    condenser_n_tb: Optional[int] = Field(
+        default=None,
+        description="Number of tubes in the condenser",
+        example=24,
+    )
+    # Other
+    recirculation_coeffs: Optional[tuple[float, ...]] = Field(
+        default=None,
+        description="Recirculation pump electrical consumption coefficients (polynomial). From highest to lowest degree.",
+        example=[0.1461, 5.763, -38.32, 227.8],
+    )
+    
+    # Miscellaneous
+    raise_error_on_invalid_inputs: Optional[bool] = Field(
+        default=None,
+        description="Whether to raise an error if the inputs are invalid (out of bounds)",
+        example=True,
+    )
+    silence_warnings: Optional[bool] = Field(
+        default=None,
+        description="Whether to silence warnings from the MATLAB engine",
+        example=False,
+    )
+
+    # --- Internal fields (excluded from serialization) ---
+    _dc_var_ids: ClassVar[tuple[str, ...]] = ("Tamb", "Tdc_in", "qdc", "wdc")
+    _wct_var_ids: ClassVar[tuple[str, ...]] = ("Tamb", "HR", "Twct_in", "qwct", "wwct")
+
+    class Config:
+        json_encoders = {Path: str}
+        extra='allow'
+        
+
+    # --- Validation ---
+    @model_validator(mode="after")
+    def validate_bounds(self):
+        def check_pair(lb, ub, names):
+            if lb is None or ub is None:
+                return
+            if len(lb) != len(names) or len(ub) != len(names):
+                raise ValueError(
+                    f"Expected {len(names)} bounds for {names}, got "
+                    f"{len(lb)} lower and {len(ub)} upper."
+                )
+            for i, (l, u) in enumerate(zip(lb, ub)):
+                if l is not None and u is not None and l > u:
+                    raise ValueError(
+                        f"Lower bound > upper bound for {names[i]}: {l} > {u}"
+                    )
+
+        check_pair(self.dc_lb, self.dc_ub, self._dc_var_ids)
+        check_pair(self.wct_lb, self.wct_ub, self._wct_var_ids)
+        return self
+
+    # --- Methods ---
+    def to_matlab_dict(self) -> dict:
+        import combined_cooler_model
+        import matlab
+        out = {}
+        for k, v in self.model_dump(exclude_none=True).items():
+            if isinstance(v, Path):
+                out[k] = str(v)
+            elif isinstance(v, tuple):
+                out[k] = matlab.double([v])
+            else:
+                out[k] = v
+        return out
+
+    @classmethod
+    def from_model_inputs_range(
+        cls,
+        mir: ModelInputsRange,
+        qdc: Optional[tuple[float, float]] = None,
+        qwct: Optional[tuple[float, float]] = None,
+        other_options: dict = {},
+    ) -> "MatlabOptions":
+
+        dc_lb = [None] * len(cls._dc_var_ids)
+        dc_ub = [None] * len(cls._dc_var_ids)
+        wct_lb = [None] * len(cls._wct_var_ids)
+        wct_ub = [None] * len(cls._wct_var_ids)
+
+        for key, value in asdict(mir).items():
+            if key in cls._dc_var_ids:
+                idx = cls._dc_var_ids.index(key)
+                dc_lb[idx], dc_ub[idx] = value
+            if key in cls._wct_var_ids:
+                idx = cls._wct_var_ids.index(key)
+                wct_lb[idx], wct_ub[idx] = value
+
+        dc_lb[cls._dc_var_ids.index("qdc")] = qdc[0] if qdc is not None else mir.qc[0]
+        dc_ub[cls._dc_var_ids.index("qdc")] = qdc[1] if qdc is not None else mir.qc[1]
+        wct_lb[cls._wct_var_ids.index("qwct")] = qwct[0] if qwct is not None else mir.qc[0]
+        wct_ub[cls._wct_var_ids.index("qwct")] = qwct[1] if qwct is not None else mir.qc[1]
+
+        if mir.Rp == (1, 1):
+            dc_lb[cls._dc_var_ids.index("qdc")] = 0.0
+            dc_ub[cls._dc_var_ids.index("qdc")] = 0.0
+            assert wct_ub[cls._wct_var_ids.index("qwct")] >= mir.qc[1]
+
+        elif mir.Rp == (0, 0) and mir.Rs == (0, 0):
+            wct_lb[cls._wct_var_ids.index("qwct")] = 0.0
+            wct_ub[cls._wct_var_ids.index("qwct")] = 0.0
+            assert dc_ub[cls._dc_var_ids.index("qdc")] >= mir.qc[1]
+
+        else:
+            assert (
+                dc_ub[cls._dc_var_ids.index("qdc")]
+                + wct_ub[cls._wct_var_ids.index("qwct")]
+                >= mir.qc[1]
+            )
+
+        return cls(
+            dc_lb=tuple(dc_lb),
+            dc_ub=tuple(dc_ub),
+            wct_lb=tuple(wct_lb),
+            wct_ub=tuple(wct_ub),
+            **other_options,
+        )
