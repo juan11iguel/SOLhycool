@@ -87,7 +87,7 @@ def load_optimization_results(results_path: Path, eval_time_from_parent_fn: bool
         )
     """
 
-    from solhycool_optimization import DayResults # Import here to avoid circular import issues
+    from solhycool_optimization import HorizonResults # Import here to avoid circular import issues
 
     if results_path.is_dir():
         # If results_path is a directory, assume it contains the results.h5 file directly
@@ -99,8 +99,8 @@ def load_optimization_results(results_path: Path, eval_time_from_parent_fn: bool
         
         results_h5 = h5_files[0]
         
-        # Load with DayResults.initialize
-        day_results = DayResults.initialize(results_h5)
+        # Load with HorizonResults.initialize
+        day_results = HorizonResults.initialize(results_h5)
             
     else:
         # Define a temporary extraction directory
@@ -114,8 +114,8 @@ def load_optimization_results(results_path: Path, eval_time_from_parent_fn: bool
         # Find the results.h5 file (assuming only one)
         results_h5 = next(extract_dir.rglob("results.h5"))
 
-        # Load with DayResults.initialize
-        day_results = DayResults.initialize(results_h5)
+        # Load with HorizonResults.initialize
+        day_results = HorizonResults.initialize(results_h5)
 
         # Optional: clean up extracted files after loading (uncomment to enable)
         shutil.rmtree(extract_dir)

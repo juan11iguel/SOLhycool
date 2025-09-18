@@ -1,0 +1,99 @@
+{
+    "pilot_plant_wct100": {
+        "id": "pilot_plant_wct100",
+        "description": "Only WCT in pilot plant at PSA. Use ANDASOL thermal load scaled down to 100kW",
+        "model_inputs_range": {
+            "qc": [
+                6.0,
+                24.0
+            ],
+            "Rp": [
+                1.0,
+                1.0
+            ],
+            "Rs": [
+                1.0,
+                1.0
+            ],
+            "wdc": [
+                0.0,
+                0.0
+            ],
+            "wwct": [
+                21.0,
+                93.4161
+            ],
+            "Tamb": [
+                0.1,
+                50.0
+            ],
+            "HR": [
+                0.1,
+                99.9
+            ],
+            "Tdc_in": [
+                25.0,
+                55.0
+            ],
+            "Twct_in": [
+                25.0,
+                65.0
+            ]
+        },
+        "matlab_options": {
+            "model_type": "data",
+            "dc_lb": [
+                0.1,
+                25.0,
+                0.0,
+                0.0
+            ],
+            "dc_ub": [
+                50.0,
+                55.0,
+                0.0,
+                0.0
+            ],
+            "dc_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat",
+            "dc_n_dc": 1,
+            "wct_lb": [
+                0.1,
+                0.1,
+                25.0,
+                6.0,
+                21.0
+            ],
+            "wct_ub": [
+                50.0,
+                99.9,
+                65.0,
+                24.0,
+                93.4161
+            ],
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_radial_basis2_cascade.mat",
+            "wct_n_wct": 1,
+            "silence_warnings": true,
+            "resolution_mode": "inverse"
+        },
+        "algo_params": {
+            "algo_id": "sga",
+            "max_n_obj_fun_evals": 20000,
+            "max_n_logs": 300,
+            "pop_size": 80,
+            "params_dict": {
+                "gen": 250
+            },
+            "log_verbosity": 1,
+            "gen": 250
+        },
+        "vals_dec_vars": {
+            "qc": 50,
+            "Rp": 1,
+            "Rs": 1,
+            "wdc": 1
+        },
+        "load_factor": 0.5,
+        "power_threshold": 30.0,
+        "env_id": "environment_data_psa_andasol_20220101_20241231"
+    }
+}

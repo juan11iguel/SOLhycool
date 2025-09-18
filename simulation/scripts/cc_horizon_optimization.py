@@ -17,11 +17,11 @@ import gzip
 import shutil
 
 from solhycool_modeling import EnvironmentVariables, OperationPoint
-from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, DayResults
+from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, HorizonResults, AlgoParamsHorizon as AlgoParams
 from solhycool_optimization.utils import pareto_front_indices
 from solhycool_optimization.utils.evaluation import optimize
 from solhycool_optimization.utils.serialization import get_fitness_history
-from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem, AlgoParams
+from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem
 from solhycool_optimization.problems.static import CombinedCoolerProblem
 
 multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
@@ -150,7 +150,7 @@ def evaluate_day(
     dv_values: ValuesDecisionVariables, 
     total_num_evals: int, 
     path_selector_params: AlgoParams,
-) -> DayResults:
+) -> HorizonResults:
     """ Evaluate optimization for a given day """
     
     date_str = df_day.index[0].strftime("%Y%m%d")
@@ -200,7 +200,7 @@ def evaluate_day(
     df_results = pd.DataFrame([asdict(op) for op in ops],).set_index("time", drop=True)
     logger.info(f"{date_str} | Completed evaluation in {time.time() - start_time:.1f} seconds")
     
-    return DayResults(
+    return HorizonResults(
         index=df_day.index,
         df_paretos=df_paretos,
         consumption_arrays=consumption_arrays,
@@ -278,7 +278,7 @@ def main(date_span: tuple[str, str], n_parallel_days: int, n_parallel_steps: int
                     futures[future] = date_str
 
                 for future in as_completed(futures):
-                    day_results = future.result()
+                    day_results: HorizonResults = future.result()
                     day_results.export(output_path, reduced=not full_export)
 
                     pbar.update(1)

@@ -1,10 +1,10 @@
 from pathlib import Path
 import hjson
-from solhycool_optimization import DayResults
+from solhycool_optimization import HorizonResults
 from solhycool_visualization.objects import HorizonResultsVisualizer
 
 def generate_visualizations(
-    day_results: DayResults, 
+    day_results: HorizonResults, 
     output_path: Path,
     plot_config_path = Path("/workspaces/SOLhycool/data/plot_config_day_horizon.hjson")
 ) -> None:

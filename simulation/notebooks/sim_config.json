@@ -1,0 +1,92 @@
+{
+    "example_simulation": {
+        "id": "example_simulation",
+        "description": "Example simulation configuration",
+        "model_inputs_range": {
+            "qc": [
+                6.0,
+                24.0
+            ],
+            "Rp": [
+                0.0,
+                1.0
+            ],
+            "Rs": [
+                0.0,
+                1.0
+            ],
+            "wdc": [
+                11.0,
+                99.18
+            ],
+            "wwct": [
+                21.0,
+                93.4161
+            ],
+            "Tamb": [
+                3.0,
+                50.0
+            ],
+            "HR": [
+                1.0,
+                99.0
+            ],
+            "Tdc_in": [
+                25.0,
+                55.0
+            ],
+            "Twct_in": [
+                25.0,
+                55.0
+            ]
+        },
+        "matlab_options": {
+            "dc_lb": [
+                3.0,
+                25.0,
+                0.0,
+                11.0
+            ],
+            "dc_ub": [
+                50.0,
+                55.0,
+                5.0,
+                99.18
+            ],
+            "dc_model_data_path": "/caca",
+            "wct_lb": [
+                3.0,
+                1.0,
+                25.0,
+                6.0,
+                21.0
+            ],
+            "wct_ub": [
+                50.0,
+                99.0,
+                55.0,
+                24.0,
+                93.4161
+            ]
+        },
+        "algo_params": {
+            "algo_id": "sga",
+            "max_n_obj_fun_evals": 20000,
+            "max_n_logs": 300,
+            "pop_size": 80,
+            "params_dict": {
+                "gen": 250
+            },
+            "log_verbosity": 1,
+            "gen": 250
+        },
+        "vals_dec_vars": {
+            "qc": 10,
+            "Rp": 10,
+            "Rs": 10,
+            "wdc": 10
+        },
+        "load_factor": 1.0,
+        "env_id": "caca"
+    }
+}

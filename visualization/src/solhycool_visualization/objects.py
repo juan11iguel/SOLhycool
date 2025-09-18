@@ -7,8 +7,7 @@ from loguru import logger
 from phd_visualizations.optimization import plot_obj_scape_comp_1d
 from phd_visualizations import save_figure
 
-from solhycool_optimization import DayResults
-from solhycool_optimization.problems.horizon import AlgoParams
+from solhycool_optimization import HorizonResults, AlgoParamsHorizon as AlgoParams
 from solhycool_visualization.optimization import plot_pareto_front
 from solhycool_visualization.operation import plot_results
 
@@ -17,8 +16,13 @@ class HorizonResultsVisualizer:
     """
     Class to visualize the results of the horizon optimization.
     """
-    day_results: DayResults
+    day_results: HorizonResults
     results_plot_config: dict
+    
+    def __post_init__(self):
+        if isinstance(self.results_plot_config, Path):
+            import hjson
+            self.results_plot_config = hjson.loads(self.results_plot_config.read_text())
     
     def plot_pareto_fronts(self) -> list[go.Figure]:
         """

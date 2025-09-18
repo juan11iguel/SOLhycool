@@ -211,27 +211,143 @@ class StaticResults:
         logger.info(f"StaticResults saved to {output_path}")
         
 @dataclass
-class DayResults:
+class HorizonResults:
+    """
+    Container for optimization results from horizon-based optimization problems.
+    
+    The class is designed to handle two main optimization subproblems:
+    1. Pareto front generation: Finding non-dominated solutions for each time step
+    2. Path selection: Selecting optimal points from Pareto fronts to form a path
+    
+    Data Structure:
+        The class follows a time-indexed structure where each timestamp in the index
+        corresponds to entries in the list-based attributes (df_paretos, 
+        selected_pareto_idxs, etc.).
+    
+    Attributes:
+        index: DatetimeIndex containing timestamps for the optimization horizon
+        df_results: Final optimization results with selected solutions for each timestamp
+        df_paretos: Pareto front DataFrames for each time step (one per timestamp)
+        selected_pareto_idxs: Indices of points selected from each Pareto front
+        date_str: Human-readable identifier for the date range (auto-generated if None)
+        eval_at: Timestamp when the optimization was evaluated (auto-generated if None)
+        fitness_history: Optimization fitness evolution (optional, may be None in reduced exports)
+        consumption_arrays: Raw consumption data for all feasible points (optional)
+        pareto_idxs: Indices of non-dominated points in the full solution space (optional)
+    
+    Usage Patterns:
+        - Create instances directly with optimization results
+        - Load from saved files using HorizonResults.initialize()
+        - Filter temporal subsets using HorizonResults.select()
+        - Export for storage using the export() method
+    
+    File Format:
+        When exported, data is stored in HDF5 format with a flattened structure
+        that preserves temporal relationships through timestamp columns. This
+        design enables querying and partial loading of large datasets.
+    
+    Examples:
+        # Create from optimization results
+        results = HorizonResults(
+            index=pd.date_range('2023-01-01', periods=24, freq='H'),
+            df_results=optimization_results_df,
+            df_paretos=pareto_fronts_list,
+            selected_pareto_idxs=selected_indices
+        )
+        
+        # Load from file
+        results = HorizonResults.initialize(Path("optimization_results.h5"))
+        
+        # Filter by date
+        single_day = results.select("20230101")
+        date_range = results.select(("20230101", "20230103"))
+        
+        # Export results
+        results.export(Path("results.gz"), reduced=True)
+    """
     index: pd.DatetimeIndex # Index of the results
-    df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
-    selected_pareto_idxs: list[int] # Path of indices of the selected pareto fronts
-    df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts
-    fitness_history: Optional[pd.Series] = None # Series with the fitness history of the path selection optimization
-    consumption_arrays: Optional[list[np.ndarray[float]]] = None # Array with the consumption values for the candidate operation points
-    pareto_idxs: Optional[list[int]] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
-    date_str: str = None # Date string for the results
+    df_results: pd.DataFrame # DataFrame with the final results (result of solving both subproblems)
+    df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step (result of pareto build subproblem)
+    selected_pareto_idxs: list[int] # Selected points indices for each pareto front (result of path selection subproblem)
+    
+    # Metadata
+    date_str: str = None # Identifier for the results date range, e.g. "20231001_20231007"
     eval_at: Optional[str] = None # Evaluation time, e.g. "20231001T1200"
+    
+    # Not present if reduced export
+    fitness_history: Optional[pd.Series] = None # Series with the fitness history of the path selection subproblem
+    consumption_arrays: Optional[list[np.ndarray[float]]] = None # Array with the consumption values for all feasible operation points
+    pareto_idxs: Optional[list[int]] = None # Indices of non-dominated operation points from the dataset of all feasible operation points
     
     def __post_init__(self):
         if self.date_str is None:
-            self.date_str = self.index[0].strftime("%Y%m%d")
-        # if len(self.index) != len(self.df_paretos):
-        #     raise ValueError("Length of index and df_paretos must be the same")
+            self.date_str = f'{self.index[0].strftime("%Y%m%dT%H%M")}-{self.index[-1].strftime("%Y%m%dT%H%M")}'
+
         if self.eval_at is None:
             self.eval_at = datetime.datetime.now().strftime("%Y%m%dT%H%M")
             
+        self.df_results = self.df_results.sort_index() # Ensure results are sorted by index, might not be the case if concatenated from multiple runs
+            
     @classmethod
-    def initialize(cls, input_path: Path, date_str: Optional[str] = None, log: bool = True) -> "DayResults":
+    def initialize(cls, input_path: Path, date_str: Optional[str] = None, log: bool = True) -> "HorizonResults":
+        """
+        Initialize a HorizonResults instance from a saved HDF5 file.
+        
+        This method loads optimization results from HDF5 files that were created using the
+        export method. It supports both compressed (.gz) and uncompressed (.h5) files,
+        and can load either the entire dataset or filter by a specific date.
+        
+        The method expects data to be stored in a flattened structure with the following keys:
+        - '/results': Main optimization results DataFrame
+        - '/paretos': Flattened pareto fronts with timestamp column
+        - 'selected_pareto_idxs': Selected pareto indices with timestamp column
+        - '/extended/pareto_consumption_arrays': Consumption arrays with timestamp column
+        - '/extended/pareto_idxs': Pareto indices with timestamp and step_idx columns
+        - '/extended/path_selection_fitness_history': Fitness history with timestamp column
+        
+        Args:
+            input_path: Path to the HDF5 file (.h5 or .gz). The file should contain
+                       optimization results exported using the export method.
+            date_str: Optional date string in YYYYMMDD format (e.g., "20230101").
+                     If provided, only data for that specific date will be loaded.
+                     If None, the entire dataset will be loaded.
+            log: Whether to log information about the loading process. Defaults to True.
+        
+        Returns:
+            HorizonResults instance with the loaded data. The instance will contain:
+            - index: DatetimeIndex for the loaded time range
+            - df_results: DataFrame with optimization results
+            - df_paretos: List of pareto front DataFrames for each timestamp
+            - selected_pareto_idxs: List of selected pareto indices
+            - consumption_arrays: List of consumption arrays (if available)
+            - pareto_idxs: List of pareto indices (if available)
+            - fitness_history: Optimization fitness history (if available)
+            - date_str: String identifier for the date range
+            - eval_at: Evaluation timestamp from metadata (if available)
+        
+        Raises:
+            TypeError: If the '/results' index is not a DatetimeIndex
+            ValueError: If date_str is provided but no data exists for that date
+            FileNotFoundError: If the input_path does not exist
+            
+        Examples:
+            # Load entire dataset
+            results = HorizonResults.initialize(Path("optimization_results.h5"))
+            
+            # Load specific date
+            results = HorizonResults.initialize(
+                Path("optimization_results.h5"), 
+                date_str="20230101"
+            )
+            
+            # Load compressed file without logging
+            results = HorizonResults.initialize(
+                Path("optimization_results.gz"), 
+                log=False
+            )
+        """
+        input_path = Path(input_path)
+        
         temp_path = input_path
         if input_path.suffix == ".gz":
             with gzip.open(input_path, 'rb') as f_in, tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
@@ -243,102 +359,20 @@ class DayResults:
             if not isinstance(df_results_all.index, pd.DatetimeIndex):
                 raise TypeError(f"The index of '/results' is not a DatetimeIndex, got {type(df_results_all.index)}")
 
+            # Read metadata attributes if available
+            metadata = {}
+            try:
+                metadata = store.get_storer('/results').attrs.metadata
+            except (AttributeError, KeyError):
+                metadata = {}
+
             if date_str is None:
-                # Flat structure: use the entire index, no date-specific keys
+                # Use the entire index, no date filtering
                 filtered_index = df_results_all.index
-                
-                # Try to load from new flattened structure first, fallback to old structure
-                df_paretos, consumption_arrays = [], []
-                
-                # New flattened structure
-                if "/pareto" in store:
-                    # Load flattened pareto data and reconstruct per-timestamp lists
-                    pareto_df = store["/pareto"]
-                    pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
-                                         for dt, group in pareto_df.groupby('timestamp')}
-                    df_paretos = [pareto_by_timestamp.get(dt) for dt in filtered_index]
-                else:
-                    # Fallback to old structure
-                    for dt in filtered_index:
-                        key = dt.strftime("%Y%m%dT%H%M")
-                        pareto_name = f"/pareto/{key}"
-                        if pareto_name in store:
-                            df_paretos.append(store[pareto_name])
-                        else:
-                            df_paretos.append(None)
-                
-                if "/consumption" in store:
-                    # Load flattened consumption data and reconstruct per-timestamp lists  
-                    consumption_df = store["/consumption"]
-                    consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
-                                              for dt, group in consumption_df.groupby('timestamp')}
-                    consumption_arrays = [consumption_by_timestamp.get(dt) for dt in filtered_index]
-                else:
-                    # Fallback to old structure
-                    for dt in filtered_index:
-                        key = dt.strftime("%Y%m%dT%H%M")
-                        consumption_name = f"/consumption/{key}"
-                        if consumption_name in store:
-                            consumption_arrays.append(store[consumption_name].to_numpy())
-                        else:
-                            consumption_arrays.append(None)
-
-                key = "/paths/fitness_history"
-                if key in store:
-                    fitness_history = store[key]
-                else:
-                    fitness_history = None
-
-                # Handle selected_pareto_idxs with new flattened structure
-                if "/paths/selected_pareto_idxs" in store:
-                    try:
-                        selected_df = store["/paths/selected_pareto_idxs"]
-                        if 'timestamp' in selected_df.columns:
-                            # New flattened structure
-                            selected_by_timestamp = {dt: group['selected_pareto_idx'].iloc[0] 
-                                                   for dt, group in selected_df.groupby('timestamp')}
-                            selected_idxs = [selected_by_timestamp.get(dt, 0) for dt in filtered_index]
-                        else:
-                            # Old structure (Series)
-                            selected_idxs = selected_df.to_list()
-                    except TypeError:
-                        logger.warning("Results are not date-agnostic. Likely due to forgetting specifying `single_day=False` when exporting.")
-                        table_key = df_results_all.index[0].strftime("%Y%m%d")
-                        selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
-                else:
-                    selected_idxs = []
-
-                # Handle pareto_idxs with new flattened structure
-                pareto_key = "/paths/pareto_idxs"
-                if pareto_key in store:
-                    pareto_idx_df = store[pareto_key]
-                    if 'timestamp' in pareto_idx_df.columns:
-                        # New flattened structure
-                        pareto_idxs_by_timestamp = {}
-                        for dt, group in pareto_idx_df.groupby('timestamp'):
-                            sorted_group = group.sort_values('step_idx')
-                            pareto_idxs_by_timestamp[dt] = sorted_group['pareto_idx'].tolist()
-                        pareto_idxs = [pareto_idxs_by_timestamp.get(dt, []) for dt in filtered_index]
-                    else:
-                        # Old structure
-                        pareto_idxs = pareto_idx_df.apply(lambda row: [int(x) for x in row.dropna()], axis=1)
-                else:
-                    pareto_idxs = None
-
-                day_data = {
-                    "index": filtered_index,
-                    "df_results": df_results_all,
-                    "df_paretos": df_paretos,
-                    "consumption_arrays": consumption_arrays,
-                    "fitness_history": fitness_history,
-                    "selected_pareto_idxs": selected_idxs,
-                    "pareto_idxs": pareto_idxs
-                }
-
+                df_results = df_results_all
                 date_str = f'{filtered_index[0].strftime("%Y%m%dT%H%M")}-{filtered_index[-1].strftime("%Y%m%dT%H%M")}'
-
             else:
-                # Date-specific structure
+                # Filter by specific date
                 target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
                 filtered_index = df_results_all.index[df_results_all.index.date == target_date]
                 if filtered_index.empty:
@@ -346,139 +380,162 @@ class DayResults:
                     available_dates_str = sorted(d.isoformat() for d in available_dates)
                     raise ValueError(f"No results for date {date_str} in {input_path.stem}. "
                                     f"Available: {available_dates_str}")
+                df_results = df_results_all.loc[filtered_index]
 
-                # Try to load from new flattened structure first, fallback to old structure
-                df_paretos, consumption_arrays = [], []
-                
-                # New flattened structure
-                if "/pareto" in store:
-                    pareto_df = store["/pareto"]
-                    # Filter by the target date
-                    date_mask = pareto_df['timestamp'].dt.date == target_date
-                    pareto_df_filtered = pareto_df[date_mask]
-                    pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
-                                         for dt, group in pareto_df_filtered.groupby('timestamp')}
-                    df_paretos = [pareto_by_timestamp.get(dt) for dt in filtered_index]
-                else:
-                    # Fallback to old structure
-                    for dt in filtered_index:
-                        key = dt.strftime("%Y%m%dT%H%M")
-                        pareto_name = f"/pareto/{key}"
-                        if pareto_name in store:
-                            df_paretos.append(store[pareto_name])
-                        else:
-                            df_paretos.append(None)
-                
-                if "/consumption" in store:
-                    consumption_df = store["/consumption"]
-                    # Filter by the target date
-                    date_mask = consumption_df['timestamp'].dt.date == target_date
-                    consumption_df_filtered = consumption_df[date_mask]
-                    consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
-                                              for dt, group in consumption_df_filtered.groupby('timestamp')}
-                    consumption_arrays = [consumption_by_timestamp.get(dt) for dt in filtered_index]
-                else:
-                    # Fallback to old structure
-                    for dt in filtered_index:
-                        key = dt.strftime("%Y%m%dT%H%M")
-                        consumption_name = f"/consumption/{key}"
-                        if consumption_name in store:
-                            consumption_arrays.append(store[consumption_name].to_numpy())
-                        else:
-                            consumption_arrays.append(None)
+            # Load pareto fronts from flattened structure
+            df_paretos = []
+            if "/paretos" in store:
+                pareto_df = store["/paretos"]
+                if date_str and len(date_str) == 8:  # date filtering
+                    target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
+                    pareto_df = pareto_df[pareto_df['timestamp'].dt.date == target_date]
+                    
+                pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
+                                     for dt, group in pareto_df.groupby('timestamp')}
+                df_paretos = [pareto_by_timestamp.get(dt) for dt in filtered_index]
+            else:
+                df_paretos = [None] * len(filtered_index)
 
-                table_key = date_str
-                
-                fh_key = f"/paths/fitness_history/{table_key}"
-                if fh_key in store:
-                    fitness_history = store[fh_key]
-                else:
-                    fitness_history = None
+            # Load consumption arrays from flattened structure  
+            consumption_arrays = []
+            if "/extended/pareto_consumption_arrays" in store:
+                consumption_df = store["/extended/pareto_consumption_arrays"]
+                if date_str and len(date_str) == 8:  # date filtering
+                    target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
+                    consumption_df = consumption_df[consumption_df['timestamp'].dt.date == target_date]
+                    
+                consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
+                                          for dt, group in consumption_df.groupby('timestamp')}
+                consumption_arrays = [consumption_by_timestamp.get(dt) for dt in filtered_index]
+            else:
+                consumption_arrays = [None] * len(filtered_index)
 
-                # Handle selected_pareto_idxs with new flattened structure
-                if "/paths/selected_pareto_idxs" in store:
-                    selected_df = store["/paths/selected_pareto_idxs"]
-                    if 'timestamp' in selected_df.columns:
-                        # New flattened structure - filter by date
-                        date_mask = selected_df['timestamp'].dt.date == target_date
-                        selected_df_filtered = selected_df[date_mask]
-                        selected_by_timestamp = {dt: group['selected_pareto_idx'].iloc[0] 
-                                               for dt, group in selected_df_filtered.groupby('timestamp')}
-                        selected_idxs = [selected_by_timestamp.get(dt, 0) for dt in filtered_index]
-                    else:
-                        # Old structure - try date-specific path first
-                        if f"/paths/selected_pareto_idxs/{table_key}" in store:
-                            selected_idxs = store[f"/paths/selected_pareto_idxs/{table_key}"].to_list()
-                        else:
-                            selected_idxs = []
-                else:
-                    selected_idxs = []
+            # Load selected pareto indices from flattened structure
+            selected_pareto_idxs = []
+            if "selected_pareto_idxs" in store:
+                selected_df = store["selected_pareto_idxs"]
+                if date_str and len(date_str) == 8:  # date filtering
+                    target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
+                    selected_df = selected_df[selected_df['timestamp'].dt.date == target_date]
+                    
+                selected_by_timestamp = {dt: group['selected_pareto_idx'].iloc[0] 
+                                       for dt, group in selected_df.groupby('timestamp')}
+                selected_pareto_idxs = [selected_by_timestamp.get(dt, 0) for dt in filtered_index]
+            else:
+                selected_pareto_idxs = [0] * len(filtered_index)
 
-                # Handle pareto_idxs with new flattened structure
-                if "/paths/pareto_idxs" in store:
-                    pareto_idx_df = store["/paths/pareto_idxs"]
-                    if 'timestamp' in pareto_idx_df.columns:
-                        # New flattened structure - filter by date
-                        date_mask = pareto_idx_df['timestamp'].dt.date == target_date
-                        pareto_idx_df_filtered = pareto_idx_df[date_mask]
-                        pareto_idxs_by_timestamp = {}
-                        for dt, group in pareto_idx_df_filtered.groupby('timestamp'):
-                            sorted_group = group.sort_values('step_idx')
-                            pareto_idxs_by_timestamp[dt] = sorted_group['pareto_idx'].tolist()
-                        pareto_idxs = [pareto_idxs_by_timestamp.get(dt, []) for dt in filtered_index]
-                    else:
-                        # Old structure
-                        pareto_key = f"/paths/pareto_idxs/{table_key}"
-                        pareto_idxs = (
-                            store[pareto_key].apply(lambda row: [int(x) for x in row.dropna()], axis=1)
-                            if pareto_key in store else None
-                        )
-                else:
-                    pareto_idxs = None
+            # Load fitness history
+            fitness_history = None
+            if "/extended/path_selection_fitness_history" in store:
+                fitness_df = store["/extended/path_selection_fitness_history"]
+                if not fitness_df.empty:
+                    # If there are multiple entries, take the first one (they should be the same for a single optimization run)
+                    fitness_history = fitness_df.drop(columns=['timestamp']).iloc[:, 0] if 'timestamp' in fitness_df.columns else fitness_df.iloc[:, 0]
 
-                day_data = {
-                    "index": filtered_index,
-                    "df_results": df_results_all.loc[filtered_index],
-                    "df_paretos": df_paretos,
-                    "consumption_arrays": consumption_arrays,
-                    "fitness_history": fitness_history,
-                    "selected_pareto_idxs": selected_idxs,
-                    "pareto_idxs": pareto_idxs
-                }
+            # Load pareto indices from flattened structure
+            pareto_idxs = None
+            if "/extended/pareto_idxs" in store:
+                pareto_idx_df = store["/extended/pareto_idxs"]
+                if date_str and len(date_str) == 8:  # date filtering
+                    target_date = pd.to_datetime(date_str, format="%Y%m%d").date()
+                    pareto_idx_df = pareto_idx_df[pareto_idx_df['timestamp'].dt.date == target_date]
+                    
+                pareto_idxs_by_timestamp = {}
+                for dt, group in pareto_idx_df.groupby('timestamp'):
+                    sorted_group = group.sort_values('step_idx')
+                    pareto_idxs_by_timestamp[dt] = sorted_group['pareto_idx'].tolist()
+                pareto_idxs = [pareto_idxs_by_timestamp.get(dt, []) for dt in filtered_index]
 
-            day_results = cls(**day_data, date_str=date_str)
+            hor_results = cls(
+                index=filtered_index,
+                df_results=df_results,
+                df_paretos=df_paretos,
+                consumption_arrays=consumption_arrays,
+                fitness_history=fitness_history,
+                selected_pareto_idxs=selected_pareto_idxs,
+                pareto_idxs=pareto_idxs,
+                date_str=date_str,
+                eval_at=metadata.get("eval_at")
+            )
+            
             if log:
-                logger.info(f"DayResults loaded for {date_str} from {input_path}")
-
+                logger.info(f"HorizonResults loaded for {date_str} from {input_path}")
 
         if input_path.suffix == ".gz":
             temp_path.unlink()
 
-        return day_results
+        return hor_results
         
-    def export(self, output_path: Path, reduced: bool = False, single_day: bool = True, overwrite: bool = False) -> None:
-        """ Export results to a file. """
+    def export(self, output_path: Path, reduced: bool = False) -> None:
+        """
+        Export HorizonResults to an HDF5 file with optional compression.
         
+        This method saves the optimization results to an HDF5 file using a flattened
+        structure that can be efficiently loaded by the initialize method. The data
+        is organized in hierarchical groups and can optionally be compressed using gzip.
+        
+        The exported file contains the following structure:
+        - '/results': Main optimization results DataFrame (always included)
+        - '/paretos': Flattened pareto fronts with timestamp column
+        - 'selected_pareto_idxs': Selected pareto indices with timestamp column
+        - '/extended/pareto_consumption_arrays': Consumption arrays with timestamp column
+        - '/extended/pareto_idxs': Pareto indices with timestamp and step_idx columns  
+        - '/extended/path_selection_fitness_history': Fitness history with timestamp column
+        - Metadata attributes: eval_at, exported_at stored in '/results' attributes
+        
+        Args:
+            output_path: Path where the file will be saved. The extension determines
+                        the output format:
+                        - '.h5': Uncompressed HDF5 file
+                        - '.gz': Compressed HDF5 file (recommended for storage)
+            reduced: If True, excludes extended data (fitness_history, consumption_arrays,
+                    pareto_idxs) to create a smaller file. Defaults to False.        
+        Returns:
+            None
+            
+        Raises:
+            PermissionError: If unable to write to the output path
+            OSError: If there are issues with file operations
+            
+        Notes:
+            - The method creates a deep copy of the instance to avoid modifying the original
+            - Timestamps are preserved exactly as stored in the original index
+            - Metadata includes evaluation time and export timestamp for traceability
+        
+        Examples:
+            # Export full results to compressed file
+            results.export(Path("optimization_results.gz"))
+            
+            # Export reduced results to uncompressed file
+            results.export(Path("optimization_results.h5"), reduced=True)
+            
+        """
+        
+        output_path = Path(output_path)
         self = copy.deepcopy(self) # To avoid modifying the original object
         
         if not output_path.exists():
             output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        if not single_day:
-            self.date_str = f'{self.index[0].strftime("%Y%m%dT%H%M")}-{self.index[-1].strftime("%Y%m%dT%H%M")}'
-            
         if reduced:
-            self.consumption_arrays = None
-            self.pareto_idxs = None 
             self.fitness_history = None
-            self.df_paretos = [None] * len(self.df_paretos)
-            
-        if self.consumption_arrays is None:
-            self.consumption_arrays = [None] * len(self.df_paretos)
+            self.consumption_arrays = [None] * len(self.index)
+            self.pareto_idxs = None 
         
         with pd.HDFStore(output_path.with_suffix(".h5"), mode='a', complevel=9, complib='zlib') as store:
+            
+            # Append df_results (path of selected solutions)
+            store.append(
+                "/results",
+                self.df_results,
+                format="table",
+                data_columns=get_queryable_columns(self.df_results),
+                complib="zlib",
+                complevel=9
+            )
+
             # Flatten all pareto fronts into a single table with timestamp column
-            if any(df is not None for df in self.df_paretos):
+            if any(df is not None for df in self.df_paretos): # If there is at least one pareto front
                 all_paretos = []
                 for dt, df_pareto in zip(self.index, self.df_paretos):
                     if df_pareto is not None:
@@ -488,9 +545,23 @@ class DayResults:
                 
                 if all_paretos:
                     flattened_paretos = pd.concat(all_paretos, ignore_index=True)
-                    store.put("/pareto", flattened_paretos, format="table", 
-                             data_columns=get_queryable_columns(flattened_paretos))
+                    store.append(
+                        "/paretos",
+                        flattened_paretos,
+                        format="table",
+                        data_columns=get_queryable_columns(flattened_paretos)
+                    )
+            
+            # Save indices of points selected from the pareto front for each step - flattened
+            if self.selected_pareto_idxs:
+                selected_idx_data = []
+                for dt, selected_idx in zip(self.index, self.selected_pareto_idxs):
+                    selected_idx_data.append({'timestamp': dt, 'selected_pareto_idx': selected_idx})
+                
+                df_selected_idxs = pd.DataFrame(selected_idx_data)
+                store.put("selected_pareto_idxs", df_selected_idxs, format="table", data_columns=True)
 
+            # -- extended data --
             # Flatten all consumption arrays into a single table with timestamp column
             if any(arr is not None for arr in self.consumption_arrays):
                 all_consumption = []
@@ -502,28 +573,12 @@ class DayResults:
                 
                 if all_consumption:
                     flattened_consumption = pd.concat(all_consumption, ignore_index=True)
-                    store.put("/consumption", flattened_consumption, format="table", data_columns=True)
-
-            # Save path selection optimization fitness history
-            if self.fitness_history is not None:
-                store.put("/paths/fitness_history", self.fitness_history, format="table",)
-
-            # Append df_results (path of selected solutions)
-            if "/results" in store and not overwrite:
-                existing = store["/results"]
-                results_df = pd.concat([existing, self.df_results])
-            else:
-                results_df = self.df_results
-            store.put("/results", results_df.sort_index(), format="table", data_columns=get_queryable_columns(results_df), complib="zlib", complevel=9,)
-
-            # Save indices of points selected from the pareto front for each step - flattened
-            if self.selected_pareto_idxs:
-                selected_idx_data = []
-                for dt, selected_idx in zip(self.index, self.selected_pareto_idxs):
-                    selected_idx_data.append({'timestamp': dt, 'selected_pareto_idx': selected_idx})
-                
-                df_selected_idxs = pd.DataFrame(selected_idx_data)
-                store.put("/paths/selected_pareto_idxs", df_selected_idxs, format="table", data_columns=True)
+                    store.append(
+                        "/extended/pareto_consumption_arrays",
+                        flattened_consumption,
+                        format="table",
+                        data_columns=True
+                    )
             
             if self.pareto_idxs is not None:
                 # Flatten pareto indices into a single table with timestamp column
@@ -536,8 +591,27 @@ class DayResults:
                 
                 if pareto_idx_data:
                     df_pareto_idxs = pd.DataFrame(pareto_idx_data)
-                    store.put("/paths/pareto_idxs", df_pareto_idxs, format="table", 
-                             data_columns=True, complib="zlib", complevel=9)
+                    store.put("/extended/pareto_idxs", df_pareto_idxs, format="table", 
+                            data_columns=True, complib="zlib", complevel=9)
+
+            # Save path selection optimization fitness history
+            if self.fitness_history is not None:
+                df = self.fitness_history.copy()
+                df['timestamp'] = self.date_str  # Use date_str as identifier
+                store.append(
+                    "/extended/path_selection_fitness_history",
+                    df,
+                    format="table",
+                    data_columns=df.columns  # makes all columns queryable, including timestamp
+                )
+                
+            # -- metadata --
+            metadata = {
+                "eval_at": self.eval_at,
+                "exported_at": datetime.datetime.now().strftime("%Y%m%dT%H%M%S"),
+            }
+            # Embed metadata in the HDF5 file attributes so that it can be retrived by the initialize method
+            store.get_storer('/results').attrs.metadata = metadata
         
         # Compress the .h5 file using gzip
         if output_path.suffix == ".gz":
@@ -547,107 +621,181 @@ class DayResults:
 
         logger.info(f"Results for {self.date_str} saved to {output_path}")
         
+    def select(self, date_rng: str | tuple[str, str]) -> "HorizonResults":
+        """
+        Filter HorizonResults to only include data spanning the specified date or date range.
         
-@dataclass
-class MultipleDayResults:
-    """Class for handling multiple day results."""
-    df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts joined
-    date_strs: list[str] # List of date strings for the days
-    index: list[pd.DatetimeIndex] # Index of the results
-    df_paretos: list[list[pd.DataFrame]] # List of dataframes with the pareto fronts for each step
-    fitness_history: list[pd.Series] # Series with the fitness history of the path selection optimization
-    selected_pareto_idxs: list[list[int]] # Path of indices of the selected pareto fronts
-    df_results_individual: list[pd.DataFrame] # DataFrame with the results of the path composed by the selected pareto fronts for each day
-    consumption_arrays: list[list[np.ndarray[float]]] = None # Array with the consumption values for the candidate operation points
-    pareto_idxs: list[list[int]] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
-
-    @classmethod
-    def initialize_from_file(cls, results_path: Path, date_strs: list[str]) -> "MultipleDayResults":
-        """Initialize the class from a possibly gzipped file."""
+        Args:
+            date_rng: Either a single date string (e.g., "20010101") or a tuple of 
+                     (start_date, end_date) strings (e.g., ("20010101", "20010103"))
         
-        if results_path.suffix == ".gz":
-            # Uncompress the gzip file into a temporary .h5 file
-            with gzip.open(results_path, 'rb') as f_in:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                    temp_path = Path(f_out.name)
+        Returns:
+            A new HorizonResults instance with filtered data
+        
+        Examples:
+            # Select single day
+            filtered_results = results.select("20010101")
+            
+            # Select date range
+            filtered_results = results.select(("20010101", "20010103"))
+        """
+        # Parse date range
+        if isinstance(date_rng, str):
+            # Single date
+            start_date = pd.to_datetime(date_rng, format="%Y%m%d").date()
+            end_date = start_date
+        elif isinstance(date_rng, tuple) and len(date_rng) == 2:
+            # Date range
+            start_date = pd.to_datetime(date_rng[0], format="%Y%m%d").date()
+            end_date = pd.to_datetime(date_rng[1], format="%Y%m%d").date()
         else:
-            temp_path = results_path
-
-        try:
-            day_results_list = [
-                DayResults.initialize(temp_path, date_str=date_str, log=False) for date_str in date_strs
-            ]
-        finally:
-            if results_path.suffix == ".gz":
-                temp_path.unlink()  # Clean up temp .h5 file
-
-        return cls.initialize_from_day_results(day_results_list)
-
-    @classmethod
-    def initialize_from_day_results(cls, day_results_list: list[DayResults]) -> "MultipleDayResults":
-        """Initialize the class from a list of DayResults."""
+            raise ValueError("date_rng must be either a string (single date) or tuple of two strings (date range)")
         
-        multiple_day_results = cls(
-            date_strs=[day_results.date_str for day_results in day_results_list],
-            index=[day_results.index for day_results in day_results_list],
-            df_paretos=[day_results.df_paretos for day_results in day_results_list],
-            consumption_arrays=[day_results.consumption_arrays for day_results in day_results_list],
-            fitness_history=[day_results.fitness_history for day_results in day_results_list],
-            pareto_idxs=[day_results.pareto_idxs for day_results in day_results_list],
-            selected_pareto_idxs=[day_results.selected_pareto_idxs for day_results in day_results_list],
-            df_results=pd.concat([day_result.df_results for day_result in day_results_list], axis=0).sort_index(),
-            df_results_individual=[day_result.df_results for day_result in day_results_list]
+        # Filter index by date range
+        mask = (self.index.date >= start_date) & (self.index.date <= end_date)
+        filtered_index = self.index[mask]
+        
+        if filtered_index.empty:
+            available_dates = sorted(set(self.index.date))
+            available_dates_str = [d.strftime("%Y%m%d") for d in available_dates]
+            raise ValueError(f"No data found for date range {date_rng}. Available dates: {available_dates_str}")
+        
+        # Filter all data arrays based on the mask
+        filtered_df_results = self.df_results.loc[filtered_index]
+        
+        # Filter list-based attributes by the same indices
+        filtered_df_paretos = [self.df_paretos[i] for i in range(len(self.df_paretos)) if mask[i]]
+        filtered_selected_pareto_idxs = [self.selected_pareto_idxs[i] for i in range(len(self.selected_pareto_idxs)) if mask[i]]
+        
+        # Handle optional list attributes
+        filtered_consumption_arrays = None
+        if self.consumption_arrays is not None:
+            filtered_consumption_arrays = [self.consumption_arrays[i] for i in range(len(self.consumption_arrays)) if mask[i]]
+        
+        filtered_pareto_idxs = None
+        if self.pareto_idxs is not None:
+            filtered_pareto_idxs = [self.pareto_idxs[i] for i in range(len(self.pareto_idxs)) if mask[i]]
+        
+        # Generate new date_str for the filtered range
+        if start_date == end_date:
+            new_date_str = start_date.strftime("%Y%m%d")
+        else:
+            new_date_str = f"{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
+        
+        # Create new HorizonResults instance with filtered data
+        return HorizonResults(
+            index=filtered_index,
+            df_results=filtered_df_results,
+            df_paretos=filtered_df_paretos,
+            selected_pareto_idxs=filtered_selected_pareto_idxs,
+            date_str=new_date_str,
+            eval_at=self.eval_at,
+            fitness_history=self.fitness_history,  # Keep the same fitness history (it's optimization-wide)
+            consumption_arrays=filtered_consumption_arrays,
+            pareto_idxs=filtered_pareto_idxs
         )
         
-        logger.info(f"MultipleDayResults initialized with {len(day_results_list)} days ({multiple_day_results.date_strs[0]}-{multiple_day_results.date_strs[-1]})")
         
-        return multiple_day_results
+# @dataclass
+# class MultipleHorizonResults:
+#     """Class for handling multiple day results."""
+#     df_results: pd.DataFrame # DataFrame with the results of the path composed by the selected pareto fronts joined
+#     date_strs: list[str] # List of date strings for the days
+#     index: list[pd.DatetimeIndex] # Index of the results
+#     df_paretos: list[list[pd.DataFrame]] # List of dataframes with the pareto fronts for each step
+#     fitness_history: list[pd.Series] # Series with the fitness history of the path selection optimization
+#     selected_pareto_idxs: list[list[int]] # Path of indices of the selected pareto fronts
+#     df_results_individual: list[pd.DataFrame] # DataFrame with the results of the path composed by the selected pareto fronts for each day
+#     consumption_arrays: list[list[np.ndarray[float]]] = None # Array with the consumption values for the candidate operation points
+#     pareto_idxs: list[list[int]] = None # Path of indices of the pareto fronts from the dataset of candidate operation points
+
+#     @classmethod
+#     def initialize_from_file(cls, results_path: Path, date_strs: list[str]) -> "MultipleHorizonResults":
+#         """Initialize the class from a possibly gzipped file."""
+        
+#         if results_path.suffix == ".gz":
+#             # Uncompress the gzip file into a temporary .h5 file
+#             with gzip.open(results_path, 'rb') as f_in:
+#                 with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
+#                     shutil.copyfileobj(f_in, f_out)
+#                     temp_path = Path(f_out.name)
+#         else:
+#             temp_path = results_path
+
+#         try:
+#             day_results_list = [
+#                 HorizonResults.initialize(temp_path, date_str=date_str, log=False) for date_str in date_strs
+#             ]
+#         finally:
+#             if results_path.suffix == ".gz":
+#                 temp_path.unlink()  # Clean up temp .h5 file
+
+#         return cls.initialize_from_day_results(day_results_list)
+
+#     @classmethod
+#     def initialize_from_day_results(cls, day_results_list: list[HorizonResults]) -> "MultipleHorizonResults":
+#         """Initialize the class from a list of HorizonResults."""
+        
+#         multiple_day_results = cls(
+#             date_strs=[day_results.date_str for day_results in day_results_list],
+#             index=[day_results.index for day_results in day_results_list],
+#             df_paretos=[day_results.df_paretos for day_results in day_results_list],
+#             consumption_arrays=[day_results.consumption_arrays for day_results in day_results_list],
+#             fitness_history=[day_results.fitness_history for day_results in day_results_list],
+#             pareto_idxs=[day_results.pareto_idxs for day_results in day_results_list],
+#             selected_pareto_idxs=[day_results.selected_pareto_idxs for day_results in day_results_list],
+#             df_results=pd.concat([day_result.df_results for day_result in day_results_list], axis=0).sort_index(),
+#             df_results_individual=[day_result.df_results for day_result in day_results_list]
+#         )
+        
+#         logger.info(f"MultipleHorizonResults initialized with {len(day_results_list)} days ({multiple_day_results.date_strs[0]}-{multiple_day_results.date_strs[-1]})")
+        
+#         return multiple_day_results
             
-    def export(self, output_path: Path) -> None:
-        """ Export results to a gzip-compressed file. """
+#     def export(self, output_path: Path) -> None:
+#         """ Export results to a gzip-compressed file. """
 
-        temp_h5_path = output_path.with_suffix(".h5")
+#         temp_h5_path = output_path.with_suffix(".h5")
 
-        for day_idx in range(len(self.df_results_individual)):
-            DayResults(
-                index=self.index[day_idx],
-                df_paretos=self.df_paretos[day_idx],
-                fitness_history=self.fitness_history[day_idx],
-                selected_pareto_idxs=self.selected_pareto_idxs[day_idx],
-                df_results=self.df_results_individual[day_idx],
-                consumption_arrays=self.consumption_arrays[day_idx] if self.consumption_arrays is not None else None,
-                pareto_idxs=self.pareto_idxs[day_idx] if self.pareto_idxs is not None else None,
-            ).export(temp_h5_path)
+#         for day_idx in range(len(self.df_results_individual)):
+#             HorizonResults(
+#                 index=self.index[day_idx],
+#                 df_paretos=self.df_paretos[day_idx],
+#                 fitness_history=self.fitness_history[day_idx],
+#                 selected_pareto_idxs=self.selected_pareto_idxs[day_idx],
+#                 df_results=self.df_results_individual[day_idx],
+#                 consumption_arrays=self.consumption_arrays[day_idx] if self.consumption_arrays is not None else None,
+#                 pareto_idxs=self.pareto_idxs[day_idx] if self.pareto_idxs is not None else None,
+#             ).export(temp_h5_path)
 
-        # Compress the .h5 file using gzip
-        with open(temp_h5_path, 'rb') as f_in, gzip.open(output_path.with_suffix(".h5.gz"), 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
+#         # Compress the .h5 file using gzip
+#         with open(temp_h5_path, 'rb') as f_in, gzip.open(output_path.with_suffix(".h5.gz"), 'wb') as f_out:
+#             shutil.copyfileobj(f_in, f_out)
 
-        temp_h5_path.unlink()  # Remove uncompressed .h5 file
+#         temp_h5_path.unlink()  # Remove uncompressed .h5 file
         
-        logger.info(f"Results for {self.date_strs[0]}-{self.date_strs[-1]} compressed and saved to {output_path}")
+#         logger.info(f"Results for {self.date_strs[0]}-{self.date_strs[-1]} compressed and saved to {output_path}")
 
 
-def import_simulation_results(results_path: Path) -> pd.DataFrame:
-    """ Import simulation results from a gzip-compressed file. """
+# def import_simulation_results(results_path: Path) -> pd.DataFrame:
+#     """ Import simulation results from a gzip-compressed file. """
     
-    if results_path.suffix == ".gz":
-        # Uncompress the gzip file into a temporary .h5 file
-        with gzip.open(results_path, 'rb') as f_in:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
-                shutil.copyfileobj(f_in, f_out)
-                temp_path = Path(f_out.name)
-    else:
-        temp_path = results_path
+#     if results_path.suffix == ".gz":
+#         # Uncompress the gzip file into a temporary .h5 file
+#         with gzip.open(results_path, 'rb') as f_in:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as f_out:
+#                 shutil.copyfileobj(f_in, f_out)
+#                 temp_path = Path(f_out.name)
+#     else:
+#         temp_path = results_path
 
-    try:
-        df_results = pd.read_hdf(temp_path, key="/results")
-    finally:
-        if results_path.suffix == ".gz":
-            temp_path.unlink()  # Clean up temp .h5 file
+#     try:
+#         df_results = pd.read_hdf(temp_path, key="/results")
+#     finally:
+#         if results_path.suffix == ".gz":
+#             temp_path.unlink()  # Clean up temp .h5 file
 
-    return df_results
+#     return df_results
 
 
 class AlgoParamsHorizon(BaseModel):

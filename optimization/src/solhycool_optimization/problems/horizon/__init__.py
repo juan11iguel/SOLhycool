@@ -1,8 +1,7 @@
 from typing import Optional
 from collections.abc import Iterable
 import copy
-import math
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 import pygmo as pg
 import numpy as np
 from loguru import logger
@@ -333,7 +332,7 @@ class CombinedCoolerPathFinderProblem:
     def get_bounds(self, ) -> tuple[Iterable, Iterable]:
         return ([0] * self.n_steps, [len(df_pareto)-1 for df_pareto in self.df_paretos])
     
-    def evaluate(self, ops: list[OperationPoint], update_operation_pts: bool = False) -> float | tuple[float, list[OperationPoint]]:
+    def evaluate(self, ops: list[OperationPoint | pd.DataFrame], update_operation_pts: bool = False) -> float | tuple[float, list[OperationPoint]]:
         J = 0
         Vavail = self.Vavail0  # m³
         for op_idx, op in enumerate(ops):
@@ -347,6 +346,7 @@ class CombinedCoolerPathFinderProblem:
             Cw_s2 = Cw_lh - Cw_s1
             Vavail = Vavail-(Cw_s1*1e-3*elapsed_time)
 
+            # print(f"{Ce_kWe=}, {Cw_s1=}, {Cw_s2=}, {Vavail=}, {op.Pe=}, {op.Pw_s1=}, {op.Pw_s2=}")
             J += Ce_kWe * op.Pe + Cw_s1 * op.Pw_s1 + Cw_s2 * op.Pw_s2
             
             if update_operation_pts:
@@ -358,7 +358,10 @@ class CombinedCoolerPathFinderProblem:
                 op.Jw_s1 = None
                 op.Jw_s2 = None
                 op.J = None
-                ops[op_idx] = OperationPoint(**asdict(op))
+                if not isinstance(op, OperationPoint):
+                    ops[op_idx] = OperationPoint.from_multiple_sources(op.to_dict())
+                else:
+                    ops[op_idx] = OperationPoint(**asdict(op))
             
         if update_operation_pts:
             return J, ops
@@ -374,37 +377,38 @@ class CombinedCoolerPathFinderProblem:
     
     
 
-@dataclass
-class AlgoParams:
-    algo_id: str = "sga"
-    max_n_obj_fun_evals: int = 20_000
-    max_n_logs: int = 300
-    pop_size: int = 80
-    # Vavail0: list[float] = None
+# @dataclass
+# class AlgoParams:
+#     algo_id: str = "sga"
+#     max_n_obj_fun_evals: int = 20_000
+#     max_n_logs: int = 300
+#     pop_size: int = 80
+#     # Vavail0: list[float] = None
     
-    params_dict: dict = None
-    log_verbosity: int = None
-    gen: int = None
+#     params_dict: dict = None
+#     log_verbosity: int = None
+#     gen: int = None
 
-    def __post_init__(self, ):
+#     def __post_init__(self, ):
 
-        if self.algo_id in ["gaco", "sga", "pso_gen"]:
-            self.gen = self.max_n_obj_fun_evals // self.pop_size
-            self.params_dict = {
-                "gen": self.gen,
-            }
-        elif self.algo_id == "simulated_annealing":
-            self.gen = self.max_n_obj_fun_evals // self.pop_size
-            self.params_dict = {
-                "bin_size": self.pop_size,
-                "n_T_adj": self.gen
-            }
-        else:
-            self.pop_size = 1
-            self.gen = self.max_n_obj_fun_evals
-            self.params_dict = { "gen": self.max_n_obj_fun_evals // self.pop_size }
+#         if self.algo_id in ["gaco", "sga", "pso_gen"]:
+#             self.gen = self.max_n_obj_fun_evals // self.pop_size
+#             self.params_dict = {
+#                 "gen": self.gen,
+#             }
+#         elif self.algo_id == "simulated_annealing":
+#             self.gen = self.max_n_obj_fun_evals // self.pop_size
+#             self.params_dict = {
+#                 "bin_size": self.pop_size,
+#                 "n_T_adj": self.gen
+#             }
+#         else:
+#             self.pop_size = 1
+#             self.gen = self.max_n_obj_fun_evals
+#             self.params_dict = { "gen": self.max_n_obj_fun_evals // self.pop_size }
         
-        if self.log_verbosity is None:
-            self.log_verbosity = math.ceil( self.gen / self.max_n_logs)
-    # def add_water_available_from_env(self, df_env: pd.DataFrame) -> None:
-    #     self.Vavail0 = [df_env.loc[date_str].iloc[0]["Vavail_m3"] for date_str in self.date_strs]
+#         if self.log_verbosity is None:
+#             self.log_verbosity = math.ceil( self.gen / self.max_n_logs)
+#     # def add_water_available_from_env(self, df_env: pd.DataFrame) -> None:
+#     #     self.Vavail0 = [df_env.loc[date_str].iloc[0]["Vavail_m3"] for date_str in self.date_strs]
+

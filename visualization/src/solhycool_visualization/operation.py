@@ -8,7 +8,7 @@ from loguru import logger
 import datetime
 
 from phd_visualizations.test_timeseries import experimental_results_plot
-from solhycool_optimization import DayResults, MultipleDayResults
+from solhycool_optimization import HorizonResults
 from solhycool_visualization import ComponentColors
 from solhycool_visualization.optimization import plot_pareto_front
 
@@ -242,7 +242,7 @@ def plot_results(
     df: Optional[pd.DataFrame] = None, 
     df_comp: Optional[pd.DataFrame] = None,
     comp_trace_labels: Optional[list[str]] = ["[opt]"],
-    day_results: Optional[DayResults | MultipleDayResults] = None, 
+    day_results: Optional[HorizonResults ] = None, 
     template: Optional[str] = None,
     hydraulic_distribution_dfs: Optional[list[pd.DataFrame]] = None,
     hydraulic_distribution_highlight_bar_idx: Optional[int] = None,
@@ -252,7 +252,7 @@ def plot_results(
                 #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
     supported_transplants = ["hydraulic_distribution", "paretos"]
-    assert df is not None or day_results is not None, "Either `df` Dataframe or a `DayResults` instance must be provided"
+    assert df is not None or day_results is not None, "Either `df` Dataframe or a `HorizonResults` instance must be provided"
     
     if df is None:
         df = day_results.df_results
@@ -306,11 +306,8 @@ def plot_results(
             # TODO: For some reason the pareto plot breaks when a discontinuous optimization is provided
             # assert df_paretos is not None, "Pareto front dataframes must be provided"
             # assert pareto_idxs is not None, "Pareto front indices must be provided"
-            assert day_results is not None, "DayResults object must be provided"
-            
-            if isinstance(day_results, MultipleDayResults):
-                logger.warning("currently not supported for multiple days")
-                continue
+            assert day_results is not None, "HorizonResults object must be provided"
+    
             
             fig = organ_transplant(
                 fig=fig,
