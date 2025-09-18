@@ -13,6 +13,9 @@ import pandas as pd
 from tqdm.auto import tqdm
 import psychrolib
 from loguru import logger
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 
 # Configure psychrolib
 psychrolib.SetUnitSystem(psychrolib.SI)
@@ -570,6 +573,247 @@ class WCTModelEvaluator:
         
         logger.info("=" * 60)
         logger.info("Evaluation completed successfully!")
+        
+    @staticmethod
+    def filter_invalid_results(wct_out: pd.DataFrame, x_std: Optional[float] = 0.5) -> pd.DataFrame:
+        """
+        Filter invalid results based on physical constraints.
+        
+        Args:
+            wct_out: DataFrame with evaluation results
+            x_std: Threshold parameter for outlier detection (default: 0.5)
+            
+        Returns:
+            Filtered DataFrame
+        """
+        logger.info("Filtering invalid results...")
+        
+        tol = 1e-10
+        
+        # Calculate statistics for water consumption filtering
+        m_w_lost_all = wct_out['m_w_lost'].dropna()
+        if x_std is not None and len(m_w_lost_all) > 0:
+            median_mw = m_w_lost_all.median()
+            std_mw = m_w_lost_all.std()
+            threshold_mw = median_mw + x_std * std_mw
+        else:
+            threshold_mw = np.inf
+        
+        # Detect invalid conditions
+        invalid_nan = wct_out.isnull().any(axis=1)
+        
+        # Physical validity checks
+        invalid_phys = (
+            (np.abs(np.imag(wct_out['Tout'])) > tol) |
+            (wct_out['Tout'] < 0) |
+            (wct_out['m_w_lost'] < 0)
+        )
+        
+        # Excessive water consumption
+        invalid_mw = wct_out['m_w_lost'] > threshold_mw
+        
+        # Combine conditions
+        invalid = invalid_nan | invalid_phys | invalid_mw
+        
+        logger.info(f"Invalid rows detected: {invalid.sum()} of {len(wct_out)}")
+        
+        # Filter DataFrame
+        wct_out_filtered = wct_out[~invalid].copy()
+        
+        logger.info(f"Remaining valid rows: {len(wct_out_filtered)}")
+        
+        return wct_out_filtered
+    
+    def save_results(self, wct_out: pd.DataFrame, filename: str = "wct_out.csv") -> None:
+        """Save results to CSV file."""
+        # Ensure output directory exists
+        self.base_path.mkdir(parents=True, exist_ok=True)
+        
+        # Save results
+        wct_out.to_csv(self.base_path / filename, index=False)
+        logger.info(f"Filtered results saved to {self.base_path / filename}, n={len(wct_out)}")
+    
+    @classmethod
+    def filter_from_csv(cls, raw_csv_path: Path, x_std: float = 0.5) -> pd.DataFrame:
+        """
+        Load raw results from CSV and return filtered DataFrame.
+        
+        Args:
+            raw_csv_path: Path to the raw CSV file
+            x_std: Threshold parameter for outlier detection (default: 0.5)
+            
+        Returns:
+            Filtered DataFrame
+        """
+        logger.info(f"Loading raw results from {raw_csv_path}")
+        wct_out_raw = pd.read_csv(raw_csv_path)
+        
+        # Remove index column if present
+        if wct_out_raw.columns[0].lower() in ['index', 'unnamed: 0']:
+            wct_out_raw = wct_out_raw.iloc[:, 1:]
+        
+        logger.info(f"Loaded {len(wct_out_raw)} raw results")
+        
+        # Apply filtering
+        return cls.filter_invalid_results(wct_out_raw, x_std)
+    
+    def create_visualization(self, wct_out_raw: pd.DataFrame, wct_out_filtered: pd.DataFrame) -> tuple[go.Figure, go.Figure]:
+        """
+        Create interactive visualization of results.
+        
+        Args:
+            wct_out_raw: Raw results before filtering
+            wct_out_filtered: Filtered results
+        """
+        logger.info("Creating visualization...")
+        
+        # Create subplots
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=[
+                'Temperature Results (Raw vs Filtered)',
+                'Water Loss Results (Raw vs Filtered)',
+                'Temperature vs Water Loss (Filtered)',
+                'Parameter Distribution'
+            ],
+            # specs=[[{"secondary_y": False}, {"secondary_y": False}],
+            #        [{"secondary_y": False}, {"secondary_y": False}]]
+        )
+        
+        # Plot 1: Temperature results
+        indices = np.arange(len(wct_out_raw))
+        valid_indices = wct_out_raw.index.isin(wct_out_filtered.index)
+        
+        fig.add_trace(
+            go.Scatter(
+                x=indices,
+                y=wct_out_raw['Tout'],
+                mode='markers',
+                name='Tout (raw)',
+                marker=dict(color='blue', size=4, opacity=0.6),
+                showlegend=True
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=indices[valid_indices],
+                y=wct_out_filtered['Tout'],
+                mode='markers',
+                name='Tout (filtered)',
+                marker=dict(color='darkblue', size=6, symbol='circle-open'),
+                showlegend=True
+            ),
+            row=1, col=1
+        )
+        
+        # Plot 2: Water loss results
+        fig.add_trace(
+            go.Scatter(
+                x=indices,
+                y=wct_out_raw['m_w_lost'],
+                mode='markers',
+                name='m_w_lost (raw)',
+                marker=dict(color='red', size=4, opacity=0.6),
+                showlegend=True
+            ),
+            row=1, col=2
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=indices[valid_indices],
+                y=wct_out_filtered['m_w_lost'],
+                mode='markers',
+                name='m_w_lost (filtered)',
+                marker=dict(color='darkred', size=6, symbol='circle-open'),
+                showlegend=True
+            ),
+            row=1, col=2
+        )
+        
+        # Plot 3: Scatter plot of filtered results
+        fig.add_trace(
+            go.Scatter(
+                x=wct_out_filtered['Tout'],
+                y=wct_out_filtered['m_w_lost'],
+                mode='markers',
+                name='Tout vs m_w_lost',
+                marker=dict(
+                    color=wct_out_filtered['wwct'],
+                    colorscale='Viridis',
+                    colorbar=dict(title="Fan Control (%)", x=0.47),
+                    size=6
+                ),
+                showlegend=True
+            ),
+            row=2, col=1
+        )
+        
+        # Plot 4: Parameter distribution
+        fig.add_trace(
+            go.Histogram(
+                x=wct_out_filtered['Tamb'],
+                name='Tamb distribution',
+                opacity=0.7,
+                nbinsx=20
+            ),
+            row=2, col=2
+        )
+        
+        # Update layout
+        fig.update_layout(
+            title=f'WCT Model Evaluation Results - {self.case_study_id}',
+            height=800,
+            showlegend=True
+        )
+        
+        # Update axes labels
+        fig.update_xaxes(title_text="Index", row=1, col=1)
+        fig.update_yaxes(title_text="Temperature (°C)", row=1, col=1)
+        fig.update_xaxes(title_text="Index", row=1, col=2)
+        fig.update_yaxes(title_text="Water Loss (L/h)", row=1, col=2)
+        fig.update_xaxes(title_text="Outlet Temperature (°C)", row=2, col=1)
+        fig.update_yaxes(title_text="Water Loss (L/h)", row=2, col=1)
+        fig.update_xaxes(title_text="Ambient Temperature (°C)", row=2, col=2)
+        fig.update_yaxes(title_text="Count", row=2, col=2)
+        
+        # Save plot
+        plot_path = self.base_path / 'wct_evaluation_results.html'
+        fig.write_html(plot_path)
+        logger.info(f"Visualization saved to {plot_path}")
+        
+        # Also create a simple summary plot
+        fig_summary = self._create_summary_plot(wct_out_filtered)
+    
+        return fig, fig_summary
+    
+    def _create_summary_plot(self, wct_out_filtered: pd.DataFrame) -> go.Figure:
+        """Create a simple summary plot."""
+        fig = px.scatter_3d(
+            wct_out_filtered,
+            x='Tamb',
+            y='HR',
+            z='Tout',
+            color='m_w_lost',
+            size='wwct',
+            title=f'3D Parameter Space - {self.case_study_id}',
+            labels={
+                'Tamb': 'Ambient Temperature (°C)',
+                'HR': 'Relative Humidity (%)',
+                'Tout': 'Outlet Temperature (°C)',
+                'm_w_lost': 'Water Loss (L/h)',
+                'wwct': 'Fan Control (%)'
+            }
+        )
+        
+        # Save 3D plot
+        plot_3d_path = self.base_path / 'wct_3d_results.html'
+        fig.write_html(plot_3d_path)
+        logger.info(f"3D visualization saved to {plot_3d_path}")
+        
+        return fig
 
 
 def test():
