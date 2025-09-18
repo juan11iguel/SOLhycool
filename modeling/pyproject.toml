@@ -5,10 +5,8 @@ description = "Variety of models of a combined cooling system composed by a wet 
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "kaleido==0.2.1",
     "numpy>=1.0.0",
     "pandas>=2.2.3",
-    "plotly>=5.24.1,<6.0.0",
     "pydantic>=2.10.3",
     "phd-visualizations",
     "solhycool-visualization",

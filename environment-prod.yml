@@ -18,6 +18,8 @@ dependencies:
   - pip
   - airflow==3.0.3
   - billiard>=4.2.1
+  - pydantic>=2.11.7
+  - python-kaleido>=1.0.0
   - pip:
       # WARNING: conda env update does not update git packages, see https://github.com/conda/conda/issues/6863
       # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
