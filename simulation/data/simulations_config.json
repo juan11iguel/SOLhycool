@@ -191,43 +191,43 @@
         },
         "load_factor": 1.0,
         "power_threshold": 30.0,
-        "env_id": "environment_data_andasol_downscaled_20220101_20241231"
+        "env_id": "environment_data_psa_andasol_20220101_20241231"
     },
     "andasol_wct100": {
         "id": "andasol_wct100",
-        "description": "WCT only at Andasol",
+        "description": "WCT only at Andasol - pilot plant",
         "model_inputs_range": {
             "qc": [
-                1107.0,
-                3960.0
+                6.0,
+                24.0
             ],
             "Rp": [
-                1.0,
+                0.0,
                 1.0
             ],
             "Rs": [
-                1.0,
+                0.0,
                 1.0
             ],
             "wdc": [
-                0.0,
-                0.0
+                10.0,
+                99.0
             ],
             "wwct": [
                 20.0,
-                100.0
+                95.0
             ],
             "Tamb": [
                 0.1,
                 50.0
             ],
             "HR": [
-                0.1,
-                99.9
+                1.0,
+                99.0
             ],
             "Tdc_in": [
                 25.0,
-                65.0
+                55.0
             ],
             "Twct_in": [
                 25.0,
@@ -240,45 +240,44 @@
                 0.1,
                 25.0,
                 0.0,
-                0.0
+                10.0
             ],
             "dc_ub": [
                 50.0,
-                65.0,
+                55.0,
                 0.0,
-                0.0
+                99.0
             ],
             "dc_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat",
             "wct_lb": [
                 0.1,
-                0.1,
+                1.0,
                 25.0,
-                1107.0,
+                6.0,
                 20.0
             ],
             "wct_ub": [
                 50.0,
-                99.9,
+                99.0,
                 65.0,
-                3960.0,
-                100.0
+                24.0,
+                95.0
             ],
-            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_radial_basis2_cascade.mat",
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_radial_basis2_cascade.ma",
             "wct_ce_coeffs": [
-                5.35e-05,
-                0.01149,
-                -0.0141,
-                0.1433
+                0.4118,
+                -11.54,
+                189.4
             ],
-            "wct_n_wct": 3,
+            "wct_n_wct": 1,
             "condenser_option": 6,
-            "condenser_A": 22502.0,
-            "condenser_n_tb": 26973,
+            "condenser_A": 19.3,
+            "condenser_n_tb": 24,
             "recirculation_coeffs": [
-                1.011e-10,
-                3.587e-07,
-                0.002,
-                0.08816
+                7.905e-05,
+                0.0005727,
+                0.006141,
+                0.001099
             ],
             "silence_warnings": true,
             "resolution_mode": "inverse"
@@ -295,14 +294,14 @@
             "gen": 250
         },
         "vals_dec_vars": {
-            "qc": 6,
-            "Rp": 6,
-            "Rs": 6,
-            "wdc": 10
+            "qc": 30,
+            "Rp": 1,
+            "Rs": 1,
+            "wdc": 1
         },
         "load_factor": 1.0,
-        "power_threshold": 30000.0,
-        "env_id": "environment_data_andasol_20220101_20241231"
+        "power_threshold": 30.0,
+        "env_id": "environment_data_andasol_pilot_plant_20220101_20231231"
     },
     "andasol_wct100_dc25": {
         "id": "andasol_wct100_dc25",
@@ -375,7 +374,7 @@
                 3960.0,
                 100.0
             ],
-            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_radial_basis2_cascade.mat",
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_gaussian_cascade.mat",
             "wct_ce_coeffs": [
                 5.35e-05,
                 0.01149,
@@ -487,7 +486,7 @@
                 3960.0,
                 100.0
             ],
-            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_radial_basis2_cascade.mat",
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_gaussian_cascade.mat",
             "wct_ce_coeffs": [
                 5.35e-05,
                 0.01149,
@@ -599,7 +598,7 @@
                 3960.0,
                 100.0
             ],
-            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_radial_basis2_cascade.mat",
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_gaussian_cascade.mat",
             "wct_ce_coeffs": [
                 5.35e-05,
                 0.01149,
@@ -639,5 +638,115 @@
         "load_factor": 1.0,
         "power_threshold": 30000.0,
         "env_id": "environment_data_andasol_20220101_20241231"
+    },
+    "andasol_pilot_plant_wct100": {
+        "id": "andasol_pilot_plant_wct100",
+        "description": "WCT only at Andasol - pilot plant",
+        "model_inputs_range": {
+            "qc": [
+                6.0,
+                24.0
+            ],
+            "Rp": [
+                1.0,
+                1.0
+            ],
+            "Rs": [
+                1.0,
+                1.0
+            ],
+            "wdc": [
+                0.0,
+                0.0
+            ],
+            "wwct": [
+                21.0,
+                93.4161
+            ],
+            "Tamb": [
+                0.1,
+                50.0
+            ],
+            "HR": [
+                0.1,
+                99.9
+            ],
+            "Tdc_in": [
+                25.0,
+                55.0
+            ],
+            "Twct_in": [
+                25.0,
+                65.0
+            ]
+        },
+        "matlab_options": {
+            "model_type": "data",
+            "dc_lb": [
+                0.1,
+                25.0,
+                0.0,
+                0.0
+            ],
+            "dc_ub": [
+                50.0,
+                55.0,
+                0.0,
+                0.0
+            ],
+            "dc_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_gaussian_cascade.mat",
+            "wct_lb": [
+                0.1,
+                0.1,
+                25.0,
+                6.0,
+                21.0
+            ],
+            "wct_ub": [
+                50.0,
+                99.9,
+                65.0,
+                24.0,
+                93.4161
+            ],
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_radial_basis2_cascade.mat",
+            "wct_ce_coeffs": [
+                0.4118,
+                -11.54,
+                189.4
+            ],
+            "wct_n_wct": 1,
+            "condenser_option": 6,
+            "condenser_A": 19.3,
+            "condenser_n_tb": 24,
+            "recirculation_coeffs": [
+                7.905e-05,
+                0.0005727,
+                0.006141,
+                0.001099
+            ],
+            "silence_warnings": true,
+            "resolution_mode": "inverse"
+        },
+        "algo_params": {
+            "algo_id": "sga",
+            "max_n_obj_fun_evals": 20000,
+            "max_n_logs": 300,
+            "pop_size": 80,
+            "params_dict": {
+                "gen": 250
+            },
+            "log_verbosity": 1,
+            "gen": 250
+        },
+        "vals_dec_vars": {
+            "qc": 30,
+            "Rp": 1,
+            "Rs": 1,
+            "wdc": 1
+        },
+        "load_factor": 1.0,
+        "power_threshold": 30.0,
+        "env_id": "environment_data_andasol_pilot_plant_20220101_20231231"
     }
 }
