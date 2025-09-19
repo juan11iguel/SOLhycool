@@ -8,9 +8,8 @@ from airflow.sdk import dag, task
 from loguru import logger
 from dataclasses import asdict
 
-from solhycool_optimization import DayResults, ValuesDecisionVariables
+from solhycool_optimization import HorizonResults, ValuesDecisionVariables, EvaluationConfig
 from solhycool_optimization.problems.horizon.evaluation import evaluate_day
-from solhycool_optimization.problems.horizon import AlgoParams
 from solhycool_visualization.utils import generate_visualizations
 from solhycool_deployment.webdav import init_file_system
 from solhycool_deployment import cleanup_paths, welcome_message
@@ -19,15 +18,17 @@ from solhycool_deployment import cleanup_paths, welcome_message
 @dag(
     schedule=None,
     catchup=False,
-    tags=["solhycool"],
+    tags=["solhycool", "experimental"],
 )
-def horizon_optimization(
+def experimental_horizon_optimization(
     data_url: str = "https://collab.psa.es/s/WR6MxyJsnZWi9xH",
     env_file_id: str = "environment",
     out_file_id: str = "optimization_results",
+    optim_id: str = "pilot_plant",
     n_parallel_steps: int = 24,
-    values_per_decision_variable: int = 8,
-    plt_config_path: str = "./data/plot_config_day_horizon.hjson"
+    values_per_decision_variable: int | None = None,
+    plt_config_path: str = "./data/plot_config_day_horizon.hjson",
+    optim_config_path: str = "./optimization/data/optimization_config.json",
 ):
     """
     ### Experimental evaluation of Horizon Optimization DAG
@@ -46,6 +47,8 @@ def horizon_optimization(
         - results plots both in png and html format
         - some json files with results objects
         
+    
+        
     """
     @task() # multiple_outputs=True
     def evaluate_optimization(
@@ -53,16 +56,38 @@ def horizon_optimization(
         file_id_env: str,
         file_id_results: str,
         n_parallel_steps: int,
-        values_per_decision_variable: int,
-        algo_params: AlgoParams = AlgoParams(),
+        values_per_decision_variable: int | None,
+        optim_config_path: str,
+        optim_id: str,
     ) -> str:
         """
         #### Transform task
         In theory this task should call the horizon optimization and then return the results.
         However, for the sake of this example, we will just return precomputed values.
-        Initializes DayResults and writes it to a temporary file.
+        Initializes HorizonResults and writes it to a temporary file.
         Returns the path to the temp file.
+        
+        **Args:**
+            data_url (str): URL to the remote data storage (e.g., WebDAV endpoint).
+            file_id_env (str): Identifier (base filename) for the environment CSV file.
+            file_id_results (str): Identifier (base filename) for the output results CSV file.
+            n_parallel_steps (int): Number of parallel evaluations to run during optimization.
+            values_per_decision_variable (int | None): Number of discrete values to sample per decision variable. 
+                If None, uses values from the optimization config.
+            optim_config_path (str): Path to the optimization configuration file.
+            optim_id (str): Identifier for the optimization configuration within the config file.
+
+        **Returns:**
+            str: Path to the temporary HDF5 file containing the optimization results.
+            
+        **Test this DAG:""
+            ```
+            airflow dags test experimental_horizon_optimization --conf '{"values_per_decision_variable":4, "plt_config_path":"/workspaces/SOLhycool/data/plot_config_day_horizon.hjson", "optim_config_path": "/workspaces/SOLhycool/optimization/data/optimization_config.json"}'
+            ```
         """
+        # Load optimization config
+        optim_config: EvaluationConfig = EvaluationConfig.from_config_file(Path(optim_config_path), id=optim_id)
+        
         # Initialize WebDAV file system
         fs = init_file_system(data_url)
 
@@ -71,9 +96,12 @@ def horizon_optimization(
         
         # df_env.index = pd.to_datetime(df_env.index)
         # date_str = df_env.index[0].strftime("%Y%m%d")
-        dv_values=ValuesDecisionVariables.initialize(
-            values_per_dv=values_per_decision_variable
-        ).generate_arrays()
+        if values_per_decision_variable is not None:
+            dv_values=ValuesDecisionVariables.initialize(
+                values_per_dv=values_per_decision_variable
+            ).generate_arrays(optim_config.model_inputs_range)
+        else:
+            dv_values=optim_config.vals_dec_vars.generate_arrays(optim_config.model_inputs_range)
         
         # print(dv_values)
         
@@ -85,7 +113,7 @@ def horizon_optimization(
             df_day=df_env, 
             dv_values=dv_values, 
             total_num_evals=total_num_evals, 
-            path_selector_params=algo_params,
+            config=optim_config,
         )
         
         # Initialize WebDAV file system
@@ -109,7 +137,7 @@ def horizon_optimization(
         """
         
         # Load results
-        day_results = DayResults.initialize(Path(export_path))
+        day_results = HorizonResults.initialize(Path(export_path))
         
         # Create filename with timestamp
         date_str = day_results.index[0].strftime("%Y%m%d") # datetime.datetime.now().strftime("%Y%m%d")
@@ -154,7 +182,9 @@ def horizon_optimization(
         file_id_env=env_file_id,
         file_id_results=out_file_id, 
         n_parallel_steps=n_parallel_steps,
-        values_per_decision_variable=values_per_decision_variable
+        values_per_decision_variable=values_per_decision_variable,
+        optim_config_path=optim_config_path,
+        optim_id=optim_id
     )
         
     create_results_report_task = create_results_report(export_path, out_url=data_url, plt_config_path=plt_config_path)
@@ -162,4 +192,4 @@ def horizon_optimization(
     # Set cleanup dependency
     [export_path, create_results_report_task] >> cleanup([export_path])
 
-horizon_optimization()
+experimental_horizon_optimization()

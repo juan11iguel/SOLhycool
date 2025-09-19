@@ -19,7 +19,7 @@ import hjson
 from airflow.sdk import dag, task
 from loguru import logger
 
-from solhycool_optimization import DayResults
+from solhycool_optimization import HorizonResults
 from solhycool_visualization.objects import HorizonResultsVisualizer
 
 # Defining functions outside the DAG to demonstrate how they could just be 
@@ -64,13 +64,13 @@ def build_file_url(
     else: # When downloading from webdav
         return f"https://{domain}/public.php/dav/files/{share_id}/{file_id}.{ext}"
 
-def create_mock_day_results(date_str: str, template_path: Path, template_date_str: str = "20220501") -> DayResults:
+def create_mock_day_results(date_str: str, template_path: Path, template_date_str: str = "20220501") -> HorizonResults:
     """
-    Create a new DayResults object with the same content as the template,
+    Create a new HorizonResults object with the same content as the template,
     but with timestamps shifted to match the given date_str.
     """
     # 1. Load from existing file
-    original = DayResults.initialize(template_path, date_str=template_date_str)
+    original = HorizonResults.initialize(template_path, date_str=template_date_str)
 
     # 2. Convert new date_str to datetime
     new_date = pd.to_datetime(date_str, format="%Y%m%d")
@@ -87,7 +87,7 @@ def create_mock_day_results(date_str: str, template_path: Path, template_date_st
     if isinstance(fitness_history.index, pd.DatetimeIndex):
         fitness_history.index = fitness_history.index + pd.Timedelta(days=delta_days)
 
-    return DayResults(
+    return HorizonResults(
         index=new_index,
         df_paretos=original.df_paretos,  # usually per-timestep, no timestamp inside
         fitness_history=fitness_history,
@@ -99,7 +99,7 @@ def create_mock_day_results(date_str: str, template_path: Path, template_date_st
     )
 
 def generate_visualizations(
-    day_results: DayResults, 
+    day_results: HorizonResults, 
     output_path: Path,
     plot_config_path = Path("/workspaces/SOLhycool/data/plot_config_day_horizon.hjson")
 ) -> None:
@@ -173,7 +173,7 @@ def basic_etl(
         #### Transform task
         In theory this task should call the horizon optimization and then return the results.
         However, for the sake of this example, we will just return precomputed values.
-        Initializes DayResults and writes it to a temporary file.
+        Initializes HorizonResults and writes it to a temporary file.
         Returns the path to the temp file.
         """
         # df_env.index = pd.to_datetime(df_env.index)
@@ -203,7 +203,7 @@ def basic_etl(
         A simple Load task which takes in the result of the Transform task and
         instead of saving it to end user review, just logger.infos it out.
         
-        Reads DayResults from the given file and uploads results as CSV.
+        Reads HorizonResults from the given file and uploads results as CSV.
         
         WARNING: Using the local file system for temporary storage. 
         This is not recommended for production use.
@@ -219,7 +219,7 @@ def basic_etl(
             ext="csv"
         )
         
-        day_results = DayResults.initialize(Path(export_path), date_str=date_str)
+        day_results = HorizonResults.initialize(Path(export_path), date_str=date_str)
 
         # Create a temporary directory for results
         # Generate visualization and report files
@@ -254,7 +254,7 @@ def basic_etl(
             temp_dir_path = Path(temp_dir)
 
             # Load and generate
-            day_results = DayResults.initialize(Path(export_path), date_str=date_str)
+            day_results = HorizonResults.initialize(Path(export_path), date_str=date_str)
             generate_visualizations(day_results=day_results, output_path=temp_dir_path)
 
             # Save the day results

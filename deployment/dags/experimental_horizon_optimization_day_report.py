@@ -22,9 +22,9 @@ from phd_visualizations import save_figure
 @dag(
     schedule=None,
     catchup=False,
-    tags=["solhycool"],
+    tags=["solhycool", "experimental"],
 )
-def horizon_optimization_day_report(
+def experimental_horizon_optimization_day_report(
     optimization_url: str = "https://collab.psa.es/s/WR6MxyJsnZWi9xH",
     test_data_url: str = "https://collab.psa.es/s/CcosLNJKw4Dbg9C",
     test_data_fn: str = f"{datetime.datetime.now().strftime("%Y%m%d")}_process_timeseries",
@@ -343,4 +343,4 @@ def horizon_optimization_day_report(
         max_n_plot_points=max_n_plot_points
     )
     
-horizon_optimization_day_report()
+experimental_horizon_optimization_day_report()

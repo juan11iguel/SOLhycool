@@ -8,19 +8,18 @@ from dataclasses import asdict
 from loguru import logger
 from airflow.sdk import dag, task
 
-from solhycool_optimization import DayResults, ValuesDecisionVariables
-from solhycool_optimization.problems.horizon.evaluation import evaluate_day
-from solhycool_optimization.problems.horizon import AlgoParams
+from solhycool_optimization import HorizonResults
+from solhycool_optimization import AlgoParamsHorizon as AlgoParams
 from solhycool_visualization.utils import generate_visualizations
 from solhycool_deployment.webdav import init_file_system
 
-def create_mock_day_results(date_str: str, template_path: Path, template_date_str: str = "20220501") -> DayResults:
+def create_mock_day_results(date_str: str, template_path: Path, template_date_str: str = "20220501") -> HorizonResults:
     """
-    Create a new DayResults object with the same content as the template,
+    Create a new HorizonResults object with the same content as the template,
     but with timestamps shifted to match the given date_str.
     """
     # 1. Load from existing file
-    original = DayResults.initialize(template_path, date_str=template_date_str)
+    original = HorizonResults.initialize(template_path, date_str=template_date_str)
 
     # 2. Convert new date_str to datetime
     new_date = pd.to_datetime(date_str, format="%Y%m%d")
@@ -40,7 +39,7 @@ def create_mock_day_results(date_str: str, template_path: Path, template_date_st
     else:
         fitness_history = None
 
-    return DayResults(
+    return HorizonResults(
         index=new_index,
         df_paretos=original.df_paretos,  # usually per-timestep, no timestamp inside
         fitness_history=fitness_history,
@@ -96,7 +95,7 @@ def horizon_optimization_test(
         #### Transform task
         In theory this task should call the horizon optimization and then return the results.
         However, for the sake of this example, we will just return precomputed values.
-        Initializes DayResults and writes it to a temporary file.
+        Initializes HorizonResults and writes it to a temporary file.
         Returns the path to the temp file.
         """
         # Initialize WebDAV file system
@@ -140,7 +139,7 @@ def horizon_optimization_test(
         output_dir = f"{date_str}/optimization_results_eval_at_{current_time}/"
 
         # Load results
-        day_results = DayResults.initialize(Path(export_path))
+        day_results = HorizonResults.initialize(Path(export_path))
         
         with tempfile.TemporaryDirectory() as temp_dir:
             

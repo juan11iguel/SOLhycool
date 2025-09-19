@@ -86,7 +86,7 @@ It will raise any errors preventing the dag from being loaded, but no runtime er
 
 ## Complete test
 
-Run `airflow test dag_id`. To specify some parameters different to the default one, add them as a `json` string:
+Run `airflow dags test DAG_ID`. To specify some parameters different to the default one, add them as a `json` string:
 
 ```bash
 airflow dags test horizon_optimization_day_report --conf '{"plt_config_path":"../data/plot_config_day_test.hjson"}'
