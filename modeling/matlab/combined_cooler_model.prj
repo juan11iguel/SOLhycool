@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="4179067949" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
+  <configuration build-checksum="1774060712" file="/home/patomareao/development/SOLhycool/modeling/matlab/combined_cooler_model.prj" location="/home/patomareao/development/SOLhycool/modeling/matlab" name="combined_cooler_model" preferred-package-location="/home/patomareao/development/SOLhycool/modeling/matlab/exports/for_redistribution" preferred-package-type="package.type.install" target="target.ezdeploy.library" target-name="Library Compiler">
     <param.appname>combined_cooler</param.appname>
     <param.icon />
     <param.icons />
@@ -176,12 +176,12 @@ For details, see GettingStarted.html, distributed with this package, or the offi
       <file>${PROJECT_ROOT}/utils/validate_struct.m</file>
     </fileset.resources>
     <fileset.depfun>
-      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/Psychrometrics plot/Psychrometricsnew.m</file>
-      <file>/home/patomareao/Nextcloud2/E47/E47_TECHNICAL/Software/Matlab/xsteamPSA/XSteam.m</file>
       <file>${PROJECT_ROOT}/component_models/SurfaceCondeser_v4.m</file>
       <file>${PROJECT_ROOT}/component_models/inverse_wct_model_data.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_dc.m</file>
       <file>${PROJECT_ROOT}/utils/calculo_w_wct.m</file>
+      <file>${PROJECT_ROOT}/utils/psychrometrics/Psychrometricsnew.m</file>
+      <file>${PROJECT_ROOT}/utils/xsteamPSA/XSteam.m</file>
     </fileset.depfun>
     <fileset.package>
       <file>${PROJECT_ROOT}/README.md</file>

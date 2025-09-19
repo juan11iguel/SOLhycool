@@ -34,6 +34,7 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
+        options.Qcc_Qc_relative_tol (1,1) double = 0.15
         options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'inverse'
         options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data'})} = 'data'
         % DC               "Tamb",    "Tin",   "q", "w_fan"
@@ -195,11 +196,14 @@ function [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(Tamb_C, HR_pp, mv
     [Ce_kWe, Cw_lh, detailed] = combined_cooler_model(Tamb_C, HR_pp, mv_kgh, qc_m3h, Rp, Rs, wdc, wwct, Tv_C, options);
 
     % Validation
-    if abs( detailed.Qcc - detailed.Qc_released) > 15
+    diff_rel = abs(detailed.Qcc - detailed.Qc_released) / max(abs(detailed.Qcc), abs(detailed.Qc_released));
+
+    if diff_rel > options.Qcc_Qc_relative_tol
         valid = false;
         if ~silence_warnings
-            fprintf('DEBUG: Heat balance validation failed - |Qcc - Qc_released| > 10: |%.2f - %.2f| = %.2f\n', ...
-                    detailed.Qcc, detailed.Qc_released, abs(detailed.Qcc - detailed.Qc_released));
+            fprintf(['DEBUG: Heat balance validation failed - ' ...
+                     'Relative difference > %.0f%%: |%.2f - %.2f| / max(...) = %.2f%%\n'], ...
+                     options.Qcc_Qc_relative_tol*100, detailed.Qcc, detailed.Qc_released, options.Qcc_Qc_relative_tol*100);
         end
     end
 
