@@ -71,11 +71,18 @@ def evaluate_decision_variables(
                         
                 pbar.update(len(dv_values.Rs) * len(dv_values.wdc)) # len(dv_values.Rp)
                 pbar.set_postfix(valid_candidates=len(dv_list))
-            
+
+
     # At least one point should be found, otherwise fallback
     # to static optimization
     if len(dv_list) < 1:
-        raise ValueError(f"{date_str} - step {step_idx:02d} | Not a single point was found during decision variables evaulation")
+        logger.error(f"{date_str} - step {step_idx:02d} | Not a single point was found during decision variables evaulation")
+    
+        return None, None
+    
+        # dv_list.append(DecisionVariables(qc=np.nan, Rp=np.nan, Rs=np.nan, wdc=np.nan, wwct=np.nan))
+        # consumption_list[0].append(np.nan)
+        # consumption_list[1].append(np.nan)
         # problem = CombinedCoolerProblem(env_vars=ev)
         # logger.warning(f"{date_str} - step {step_idx:02d} | Not a single point was found during decision variables evaulation. Trying to find one by performing a static optimization")
         # # Parameters taken from simulation/scripts/yearly_simulation_static.py
@@ -164,16 +171,16 @@ def get_pareto_front(
     return pareto_idxs, df_paretos
 
 # TODO: This should not be in this module
-@retry(
-    stop=stop_after_attempt(3),  # Retry up to 3 times
-    wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
-    retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
-)
+# @retry(
+#     stop=stop_after_attempt(3),  # Retry up to 3 times
+#     wait=wait_exponential(multiplier=2, min=1, max=10),  # Exponential backoff
+#     retry=retry_if_exception_type(SystemError),  # Retry only on MATLAB runtime errors
+# )
 def generate_set_of_paretos(
     n_parallel_evals: int,
     df_env: pd.DataFrame, 
     dv_values: ValuesDecisionVariables, 
-    matlab_options: Optional[MatlabOptions] = None,
+    eval_config: EvaluationConfig,
 ) -> StaticResults:
     """ Generate pareto fronts for the given environment """
     
@@ -192,7 +199,7 @@ def generate_set_of_paretos(
     with ProcessPoolExecutor(max_workers=n_parallel_evals) as executor:
         futures = {
             executor.submit(
-                evaluate_decision_variables, step_idx, ds, dv_values, total_num_evals, date_str, matlab_options
+                evaluate_decision_variables, step_idx, ds, dv_values, total_num_evals, date_str, eval_config
             ): step_idx 
             for step_idx, (dt, ds) in enumerate(df_env.iterrows())
         }
@@ -201,12 +208,13 @@ def generate_set_of_paretos(
             step_idx = futures[future]
             dv_list, consumption_list = future.result()
             
-            # 2. Generate pareto front
-            consumption_array = np.array(consumption_list).transpose()
-            pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_env, step_idx)
-            df_paretos.append(df_pareto) 
-            consumption_arrays.append(consumption_array)
-            pareto_idxs_list.append(pareto_idxs)
+            if dv_list is not None:
+                # 2. Generate pareto front
+                consumption_array = np.array(consumption_list).transpose()
+                pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_env, step_idx, matlab_options=eval_config.matlab_options)
+                df_paretos.append(df_pareto) 
+                consumption_arrays.append(consumption_array)
+                pareto_idxs_list.append(pareto_idxs)
     
     # Sort the pareto fronts and consumption arrays by time
     # Step 1: Get the time keys for sorting
@@ -264,7 +272,7 @@ def evaluate_day(
     # models_input_range: ModelInputsRange,
     # matlab_options: Optional[MatlabOptions] = None,
     # load_factor: float = 1.0,
-) -> HorizonResults:
+) -> Optional[HorizonResults]:
     """ Evaluate optimization for a given day """
     
     multiprocessing.set_start_method("spawn", force=True) # MATLAB Engine Cannot Be Used in Forked Processes
@@ -276,6 +284,7 @@ def evaluate_day(
     df_paretos = []
     consumption_arrays = []
     pareto_idxs_list = []
+    drop_idx = []
     with ProcessPoolExecutor(max_workers=n_parallel_evals) as executor:
         futures = {
             executor.submit(
@@ -289,11 +298,27 @@ def evaluate_day(
             dv_list, consumption_list = future.result()
             
             # 2. Generate pareto front
-            consumption_array = np.array(consumption_list).transpose()
-            pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_day, step_idx, config.matlab_options)
-            df_paretos.append(df_pareto) 
-            consumption_arrays.append(consumption_array)
-            pareto_idxs_list.append(pareto_idxs)
+            # Check at least one point was found
+            if dv_list is not None:
+                consumption_array = np.array(consumption_list).transpose()
+                pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_day, step_idx, config.matlab_options)
+                df_paretos.append(df_pareto) 
+                consumption_arrays.append(consumption_array)
+                pareto_idxs_list.append(pareto_idxs)
+            else:
+                drop_idx.append(step_idx)
+    
+    # Drop steps where no point was found
+    if drop_idx:
+        logger.warning(f"{date_str} | Dropping {len(drop_idx)} steps (out of {len(df_day) + len(drop_idx)}) due to no valid operation points: {drop_idx}")
+    
+    for step_idx in sorted(drop_idx, reverse=True):            
+        df_day = df_day.drop(df_day.index[step_idx])
+    
+    # Check if any valid steps remain after dropping
+    if df_day.empty or len(df_paretos) == 0:
+        logger.error(f"{date_str} | All steps dropped - no valid operation points found for entire day")
+        return None
     
     # Sort the pareto fronts and consumption arrays by time
     # Step 1: Get the time keys for sorting

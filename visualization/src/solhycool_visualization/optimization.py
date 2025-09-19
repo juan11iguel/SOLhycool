@@ -8,8 +8,8 @@ from dataclasses import asdict, fields
 import plotly
 
 from solhycool_modeling import OperationPoint
+from solhycool_optimization import DecisionVariables
 from phd_visualizations.constants import color_palette, plt_colors, default_fontsize, newshape_style
-import plotly.graph_objects as go
 
 from packaging import version
 

@@ -649,6 +649,10 @@ class MatlabOptions(BaseModel):
         return self
 
     # --- Methods ---
+    # def model_post_init(self, context):
+        
+    #     # Scale 
+    
     def to_matlab_dict(self) -> dict:
         import combined_cooler_model
         import matlab
@@ -692,19 +696,11 @@ class MatlabOptions(BaseModel):
         if mir.Rp == (1, 1):
             dc_lb[cls._dc_var_ids.index("qdc")] = 0.0
             dc_ub[cls._dc_var_ids.index("qdc")] = 0.0
-            assert wct_ub[cls._wct_var_ids.index("qwct")] >= mir.qc[1]
-
+            
         elif mir.Rp == (0, 0) and mir.Rs == (0, 0):
             wct_lb[cls._wct_var_ids.index("qwct")] = 0.0
             wct_ub[cls._wct_var_ids.index("qwct")] = 0.0
-            assert dc_ub[cls._dc_var_ids.index("qdc")] >= mir.qc[1]
 
-        else:
-            assert (
-                dc_ub[cls._dc_var_ids.index("qdc")]
-                + wct_ub[cls._wct_var_ids.index("qwct")]
-                >= mir.qc[1]
-            )
 
         return cls(
             dc_lb=tuple(dc_lb),

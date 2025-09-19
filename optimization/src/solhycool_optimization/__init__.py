@@ -15,6 +15,7 @@ from tables.exceptions import NaturalNameWarning
 import json
 import math
 from pydantic import BaseModel, Field
+import plotly.graph_objects as go
 
 # Always import combined_cooler before importing matlab
 import combined_cooler
@@ -209,6 +210,35 @@ class StaticResults:
                 store.put("/paths/pareto_idxs", df_pareto_idxs, format="table", data_columns=True)
 
         logger.info(f"StaticResults saved to {output_path}")
+        
+    def visualize(self, ) -> go.Figure:
+        
+        from solhycool_visualization.optimization import plot_pareto_front
+
+        return plot_pareto_front(
+            ops_list=self.df_paretos,
+            full_legend=True,
+            showlegend=True,
+            date_fmt='%Y%m%d',
+            objective_keys=('Cw', 'Ce'),
+            yaxis_label="<b>Electricity consumption</b> (KW<sub>e</sub>)",
+            xaxis_label="<b>Water consumption</b> (l/h)",
+            mode="overlap",
+            simple_colors=True,
+            template="plotly_white",
+            title_text="<b>Pareto fronts</b> <span style='font-size:16px'> in different representative scenarios</span>",
+            title_y=0.95,
+            legend=dict(
+                yanchor="top",
+                xanchor="left",
+                x=0.01,
+                y=1.52  ,
+            ),
+            margin=dict(t=170, b=5, l=20, r=5),
+            width=600,
+            # xaxis_range=[-5, 310],
+            xaxis_domain=[0.12, 1],
+        )
         
 @dataclass
 class HorizonResults:

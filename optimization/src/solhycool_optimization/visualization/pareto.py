@@ -1,13 +1,24 @@
 from dataclasses import asdict, fields
 import numpy as np
 import pandas as pd
+import plotly
 
 from solhycool_modeling import OperationPoint
 from solhycool_optimization import DecisionVariables
 
-from plotly.validators.scatter.marker import SymbolValidator
 from phd_visualizations.constants import color_palette, plt_colors, default_fontsize, newshape_style
 import plotly.graph_objects as go
+
+from packaging import version
+if version.parse(plotly.__version__) >= version.parse("6.0.0"):
+    # Plotly 6+
+    from plotly.validator_cache import ValidatorCache
+    SymbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
+    symbols = SymbolValidator.values
+else:
+    # Plotly 5.x and below
+    from plotly.validators.scatter.marker import SymbolValidator
+    symbols = SymbolValidator().values  # May need filtering depending on internal format
 
 import warnings
 
