@@ -16,6 +16,9 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options_struct, opt
     %       .lb, .ub (double vectors)
     %       .silence_warnings (logical)
     %       .ce_coeffs (double vector)
+    %       .Lt (tube length - m)
+    %       .Aa (air area - m2)
+    %       .nf (fan number relative to pilot plant)
     %
     % Outputs:
     %   Tout    - Outlet temperature (ºC)
@@ -29,13 +32,18 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options_struct, opt
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
-        options.n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
+        options.n_dc (1,1) double {mustBePositive} = 1
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = "NOT_USED_KEPT_FOR_SIMILAR_INTERFACE_WITH_DATA_DRIVEN_VERSION"
         options.silence_warnings logical = false
         options.lb (1,4) double = 0.99*[3.0      25.0,    6.0,  11];
         options.ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
         options.ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
+        options.Lt (1,1) double {mustBePositive} = 3.6;
+        options.Aa (1,1) double {mustBePositive} = 4.32;
+        options.nf (1,1) double {mustBePositive} = 1;
+        
+        
     end
 
     arguments (Output)
@@ -93,7 +101,7 @@ dif_Q_lim=0.1; % Criterio de convergencia calor. Diferencia relativa (%) entre c
 dif_T_lim=0.001; % Criterio de convergencia temperatura. Diferencia (ºC) entre temperatura calculada y estimación previa 
 
 % PARÁMETROS GEOMÉTRICOS DEL INTERCAMBIADOR
-A_pa=4.32;
+A_pa=options.Aa; %4.32;
 cat=0.0327;
 D_e=0.0127;
 D_i=0.0094;
@@ -105,7 +113,7 @@ k_fin=237;
 k_tube=350;
 L_1=0.0186;
 L_2=0.0356;
-L_te=3.6;
+L_te=options.Lt; %3.6;
 n_tb=60;
 n_wp=3;
 t_fin=2.1e-04;
@@ -241,7 +249,7 @@ end
 % T_air_o;   % Temperatura de salida del aire (ºC)
 % Q_law;     % Calor intercambiado (W)
 
-Ce = options.n_dc * power_consumption(w_fan) * 1e-3; % kW
+Ce = options.n_dc * options.nf * power_consumption(w_fan) * 1e-3; % kW
 Tout = Tout_DC;
 
 % END OF MAIN FUNCTION ----------------------------------------------------
