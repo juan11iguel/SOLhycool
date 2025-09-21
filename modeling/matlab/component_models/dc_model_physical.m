@@ -41,7 +41,7 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options_struct, opt
         options.ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
         options.Lt (1,1) double {mustBePositive} = 3.6;
         options.Aa (1,1) double {mustBePositive} = 4.32;
-        options.nf (1,1) double {mustBePositive} = 1;
+        options.nf (1,1) double {mustBePositive} = 1; % N fans (1 is equivalent to 2 fans of the pilot plant), for 1 fan write 0.5
     end
 
     arguments (Output)

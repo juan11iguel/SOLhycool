@@ -30,7 +30,7 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options_struc
         % Using keyword arguments does not work when exporting the model to
         % python. Offer an alternative
         options_struct = []
-        options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'direct'
+        options.resolution_mode (1,:) char {mustBeMember(options.resolution_mode, {'inverse', 'direct'})} = 'inverse'
         options.model_type (1,:) char {mustBeMember(options.model_type, {'physical', 'data', 'data_direct'})} = 'data'
         options.n_wct (1,1) double {mustBeInteger,mustBePositive} = 1
         options.ce_coeffs (1,:) double = [0.4118, -11.54, 189.4]; % Default quadratic coefficients

@@ -9,8 +9,7 @@ for i=1:height(data)
     if ~(data.qwct(i) > 0.5)
         continue
     end
-    [wwct, valid] = wct_inverse_model(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i), ...
-        model_data_path=parameters.wct_model_data_path, silence_warnings=false, lb=p.wct_lb, ub=p.wct_ub);
+    [wwct, valid] = wct_inverse_model(data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i));
 
     fprintf("Point %d | wwct model: %.2f, wwct experimental: %.2f | Valid: %s\n", i, wwct, data.wwct(i), string(valid))
     fprintf("Tamb=%.2f, HR=%.2f, Twct_in=%.2f, qwct=%.2f, Twct_out=%.2f\n", data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i))
@@ -30,7 +29,7 @@ for i=1:height(data)
     clear evaluate_operation
 
     [Ce_kWe, Cw_lh, detailed, valid] = evaluate_operation(data.Tamb(i), data.HR(i), data.mv(i), data.qc(i), data.Rp(i), data.Rs(i), data.wdc(i), data.Tv(i), ...
-        condenser_option=6, wct_model_data_path="/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat");
+        condenser_option=6, wct_model_data_path="/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat", dc_nf=1);
     
     fprintf("Point %d | Valid: %s | wwct model: %.2f, wwct experimental: %.2f \n", i, string(valid), detailed.wwct, data.wwct(i))
     fprintf("Experimental data: Tamb=%.2f, HR=%.2f, Twct_in=%.2f, qwct=%.2f, Twct_out=%.2f\n", data.Tamb(i), data.HR(i), data.Twct_in(i), data.qwct(i), data.Twct_out(i))

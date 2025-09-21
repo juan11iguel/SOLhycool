@@ -31,6 +31,7 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options_struct, options
         % python. Offer an alternative
         options_struct = []
         options.n_dc (1,1) double {mustBeInteger,mustBePositive} = 1
+        options.nf (1,1) double {mustBePositive} = 1; % N fans (1 is equivalent to 2 fans of the pilot plant), for 1 fan write 0.5
         options.raise_error_on_invalid_inputs (1,1) logical = false
         options.model_data_path string = fullfile(fileparts(mfilename('fullpath')), "dc_model_data.mat")
         options.silence_warnings logical = false
