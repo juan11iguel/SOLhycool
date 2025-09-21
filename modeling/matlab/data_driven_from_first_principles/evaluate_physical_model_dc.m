@@ -15,7 +15,9 @@ addpath("component_models/")
 %% Parameters
 
 n_dc = 1; % 231; % 115; % 1 % 346
-case_study_id = "pilot_plant_200kW"; % "andasol_25_90MW"; % "pilot_plant_200kW";
+Lt=1.3;
+Aa=1.5665;
+case_study_id = "dc_reduced"; % "andasol_25_90MW"; % "pilot_plant_200kW";
 
 input_data_path = sprintf("../results/model_inputs_sampling/%s/dc_in.csv", case_study_id);
 output_data_path = sprintf("../results/model_inputs_sampling/%s/dc_out.csv", case_study_id);
@@ -43,7 +45,7 @@ for i=1:size(dc,1)
     wdc      = dc.wdc(i);
     
 %     % Llamar a la función en segundo plano
-     future = parfeval(@() dc_model_physical(Tamb, Tdc_in, qdc, wdc, n_dc), 1);
+     future = parfeval(@() dc_model_physical(Tamb, Tdc_in, qdc, wdc, [], Lt=1.3, Aa=1.5665, n_dc=n_dc), 1);
 %     Tout_simu(i)= fetchOutputs(future);
 
     % Tiempo máximo permitido

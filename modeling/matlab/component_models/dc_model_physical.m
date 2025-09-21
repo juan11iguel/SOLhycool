@@ -42,8 +42,6 @@ function [Tout, Ce] = dc_model_physical(Tamb, Tin, q, w_fan, options_struct, opt
         options.Lt (1,1) double {mustBePositive} = 3.6;
         options.Aa (1,1) double {mustBePositive} = 4.32;
         options.nf (1,1) double {mustBePositive} = 1;
-        
-        
     end
 
     arguments (Output)

@@ -40,7 +40,8 @@
         options.dc_ub (1,4) double = 1.01*[50.0     55.0,    24.0, 99.1800];
         % wdc (%) -> Ce_dc (W)
         options.dc_ce_coeffs (1,:) double = [-0.0002431, 0.04761, -2.2, 48.63, -295.6];
-        options.dc_n_dc  (1,1) double {mustBeInteger,mustBePositive} = 1;
+        options.dc_n_dc (1,1) double {mustBeInteger,mustBePositive} = 1;
+        options.dc_nf (1,1) double {mustBePositive} = 1;
         
         % WCT                              "Tamb",     "HR",    "Tin",      "q",     "w_fan"
         options.wct_lb (1,5) double = 0.99*[3.0       1.0      25.0        6.0       21.0];
@@ -163,7 +164,8 @@
         lb=options.dc_lb, ...
         ub=options.dc_ub, ...
         ce_coeffs=options.dc_ce_coeffs, ...
-        n_dc=options.dc_n_dc  ...
+        n_dc=options.dc_n_dc, ...
+        nf=options.dc_nf ...
     );
 
     % Solve WCT input mixer

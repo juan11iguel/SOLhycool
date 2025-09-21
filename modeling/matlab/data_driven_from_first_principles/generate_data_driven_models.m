@@ -66,6 +66,20 @@ visualize_validation = true;
 
 run("batch_training.m")
 
+%% 1.3. DC - pilot plant  reduced using generated samples from first-principles model
+
+set_common_parameters
+set_dc_common_parameters
+
+% Parameters
+configuration_types = ["cascade"];
+alternatives = ["gaussian"]; %#ok<*NBRAK2> 
+auxiliary_id = "fp_pilot_plant_reduced_";
+filename_to_test = "dc_reduced/dc_out"; 
+visualize_validation = true;
+
+run("batch_training.m")
+
 %% 1.4. DC - commercial CSP using generated samples from first-principles model
 % Nothing to evaluate! The scaled model is the same as the pilot plant just
 % with more in parallel!!

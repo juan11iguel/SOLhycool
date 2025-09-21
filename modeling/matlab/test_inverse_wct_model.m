@@ -1,15 +1,15 @@
 clc; close all
 
-Tamb = 25;
-HR = 50;
-Tin = 32.8421;
-q = 6;
-Tout = 21.3105;
+Tamb = 45;
+HR = 60;
+Tin = 40;
+q = 24;
+Tout = 38;
 
 lb_x = 20;
 ub_x = 90;
 
-model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_andasol_gaussian_cascade.mat";
+model_data_path = "/home/patomareao/development/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat";
 N = 1000;
 
 tic
@@ -32,10 +32,10 @@ for i=1:length(N)
 end
 figure
 scatter(X, fvals)
-figure
-plot(N, elapsed_time)
-hold on
-plot(N, best_fval)
+% figure
+% plot(N, elapsed_time)
+% hold on
+% plot(N, best_fval)
 
 function residual = wct_residual(wwct, Tamb, HR, Tin, q, Tout, model_data_path)
     Twct_out = wct_model_data(Tamb, HR, Tin, q, wwct, ...

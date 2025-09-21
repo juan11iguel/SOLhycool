@@ -115,7 +115,7 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options_struc
     end
 
     if ~valid && ~options.silence_warnings
-        fprintf("No feasible fan speed found: fval=%.3f > tol=%.3f or exit flag=%d > 0\n", fval, options.tolerance, exitflag)
+        fprintf("No feasible fan speed found: wmin=%.0f -> error=%.2f, wmax=%.0f -> error=%.2f > tol=%.3f\n", lb_x, inner_model_raw(lb_x), ub_x, inner_model_raw(ub_x), options.tolerance)
     end
 
     function residual = inner_model(wwct)
@@ -133,6 +133,23 @@ function [wwct, valid] = wct_inverse_model(Tamb, HR, Tin, q, Tout, options_struc
         
         % Compute squared residual
         residual = abs(Tout - Twct_out);
+    end
+
+    function residual = inner_model_raw(wwct)
+        % Compute the output temperature using the WCT model
+        Twct_out = wct_model_fun(Tamb, HR, Tin, q, wwct, ...
+            model_data_path=options.model_data_path, ...
+            lb=options.lb, ...
+            ub=options.ub, ...
+            silence_warnings=options.silence_warnings, ...
+            ce_coeffs=options.ce_coeffs, ...
+            raise_error_on_invalid_inputs=options.raise_error_on_invalid_inputs, ...
+            n_wct=options.n_wct, ...
+            model=options.model ...
+        );
+        
+        % Compute squared residual
+        residual = Tout - Twct_out;
     end
 
     function apply_options()

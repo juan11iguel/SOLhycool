@@ -77,7 +77,7 @@ function [Tout, Ce] = dc_model_data(Tamb, Tin, q, w_fan, options_struct, options
 
     if valid_inputs
         [Tout, ~, ~] = predict(model, [Tamb, Tin, w_fan, q/options.n_dc]);
-        Ce = options.n_dc * power_consumption(w_fan) * 1e-3; % kW
+        Ce = options.n_dc * options.nf * power_consumption(w_fan) * 1e-3; % kW
     else
         Tout = Tin;
         Ce = 0;
