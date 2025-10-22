@@ -9,6 +9,7 @@ from enum import Enum
 from iapws import IAPWS97 as w_props
 from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
+from typing import get_origin, get_args, Union
 
 import combined_cooler_model # Always import combined_cooler_model before importing matlab
 import matlab
@@ -551,6 +552,12 @@ class MatlabOptions(BaseModel):
         description="Number of dry cooler units in parallel",
         example=1,
     )
+    dc_nf: Optional[float] = Field(
+        default=None,
+        description="Number of fans in the dry cooler (pilot plant has 2, which is the default for the power consumption correlation). If one fan set to 0.5",
+        example=1,
+        gt=0,
+    )
     
     # WCT
     wct_lb: Optional[tuple[float, ...]] = Field(
@@ -709,3 +716,161 @@ class MatlabOptions(BaseModel):
             wct_ub=tuple(wct_ub),
             **other_options,
         )
+        
+
+def is_optional_type(tp) -> bool:
+    """Return True if the given type annotation is Optional[...]"""
+    return get_origin(tp) is Union and type(None) in get_args(tp)
+
+
+@dataclass
+class Scalator:
+    """
+    Parameters for scaling the system.
+    Ratios are in format: target (nominal or max) value / base (nominal or max) value
+    
+    target_value = target_nominal_value / base_nominal_value x base_value
+    
+    
+    NOTE: Default values correspond to, target=andasol, base=PSA pilot plant
+    Andasol values from Table 7 in:
+    
+    Asfand, F., Palenzuela, P., Roca, L., Caron, A., Lemarié, C.-A., 
+    Gillard, J., Turner, P., & Patchigolla, K. (2020). 
+    Thermodynamic Performance and Water Consumption of Hybrid Cooling 
+    System Configurations for Concentrated Solar Power Plants. 
+    Sustainability, 12(11), 4739. https://doi.org/10.3390/su12114739 
+    
+    (Vapor temperature needs to be estimated since they say 41ºC but thats unfeasible given the ambient conditions)
+    """
+
+    thermal_power: float = 90_000 / 200
+    water_consumption: float = 276_840.0 / 156 # Andasol: 76.9 kg/s at Tamb=45ºC, HR=60%, Tv=44ºC
+    wct_electricity_consumption: float = 500 / 2.8 # Andasol: 4 fans/tower x 3 towers x 41.5 kw/fan = 498 kw
+    dc_electricity_consumption: float = 2500 / 5.8 # 
+    recirculation_electricity_consumption: float = 250 / 1.57 # Andasol: using value provided by Villena. Pilot plant: recirculation adjusted to same ratio compared to wct as in andasol
+    recirculation_flow_rate: float = 11880 / 24 # Andasol: 11880 m3/h, Pilot plant: 24 m3/h
+    
+    
+    _fix_recirculation: bool = True # TODO: This should not be needed
+    _fields_to_update: list[str] = field(default_factory=lambda: [
+        "mv", 
+        "qc", "qdc", "qwct_s", "qwct_p", "qdc_only", 
+        "Qc_released", "Qc_absorbed", "Qc_transfered", "Qdc", "Qwct",
+        "Ce_wct", "Ce_dc", "Ce_c", 
+        "Cw_wct", "Cw_s1", "Cw_s2",
+    ])
+    _op_pt_optional_fields: list[str] = field(
+        default_factory=lambda: [k for k, v in OperationPoint.__annotations__.items() if is_optional_type(v)]
+    )
+    
+    def scale_operation_point(self, op: OperationPoint) -> OperationPoint:
+        """Scales an operation point according to the scaling ratios defined in the dataclass.
+
+        Args:
+            op (OperationPoint): Operation point to be scaled.
+
+        Returns:
+            OperationPoint: Scaled operation point.
+        """
+        
+        # Procedure: create a new OperationPoint instance with the updated values for
+        # self._fields_to_update, leave untouched the others which are not Optional fields.
+        # The optional fields should be recalculated using the updated values.
+        
+        
+        op_pt_unchanged_fields = {
+            k:v
+            for k, v in asdict().items() \
+            if k not in self._fields_to_update and k not in self._op_pt_optional_fields
+        }
+        
+        updated_fields = {
+            "mv": op.mv * self.thermal_power,
+            
+            "qc": op.qc * self.recirculation_flow_rate,
+            "qdc": op.qdc * self.recirculation_flow_rate,
+            "qwct": op.qwct * self.recirculation_flow_rate,
+            "qwct_s": op.qwct_s * self.recirculation_flow_rate,
+            "qwct_p": op.qwct_p * self.recirculation_flow_rate,
+            
+            "Qc_released": op.Qc_released * self.thermal_power,
+            "Qc_absorbed": op.Qc_absorbed * self.thermal_power,
+            "Qc_transfered": op.Qc_transfered * self.thermal_power,
+            "Qdc": op.Qdc * self.thermal_power,
+            "Qwct": op.Qwct * self.thermal_power,
+            
+            "Ce_wct": op.Ce_wct * self.wct_electricity_consumption,
+            "Ce_dc": op.Ce_dc * self.dc_electricity_consumption,
+            "Ce_c": op.Ce_c * self.recirculation_electricity_consumption if not self._fix_recirculation else op.Ce_c * self.recirculation_electricity_consumption * 1000,
+            
+            "Cw_wct": op.Cw_wct * self.water_consumption,
+            "Cw_s1": op.Cw_s1 * self.water_consumption,
+            "Cw_s2": op.Cw_s2 * self.water_consumption,
+        }
+        assert list(updated_fields.keys()) == self._fields_to_update, "Updated fields do not match the fields to update"
+        
+        return OperationPoint(
+            **updated_fields,
+            **op_pt_unchanged_fields
+        )
+        
+    def scale_dataframe(self, df_op: pd.DataFrame) -> pd.DataFrame:
+        """Scales a dataframe of operation points according to the scaling ratios defined in the dataclass.
+        
+        NOTE: This method, different from `scale_operation_point`, does not recalculate 
+        the optional fields, leaving some inconsistencies in the results.
+
+        Args:
+            df_op (pd.DataFrame): Dataframe of operation points to be scaled.
+
+        Returns:
+            pd.DataFrame: Scaled dataframe of operation points.
+        """
+        
+        df_scaled = df_op.copy()
+        
+        for fld in self._fields_to_update:
+            if fld in df_scaled.columns:
+                if fld == "mv":
+                    df_scaled[fld] = df_scaled[fld] * self.thermal_power
+                elif fld.startswith("q"): # qc, qdc, qwct_s, qwct_p
+                    df_scaled[fld] = df_scaled[fld] * self.recirculation_flow_rate
+                elif fld.startswith("Q"): # Qc_released, Qc_absorbed, Qc_transfered, Qdc, Qwct
+                    df_scaled[fld] = df_scaled[fld] * self.thermal_power
+                elif fld in ["Ce_wct"]:
+                    df_scaled[fld] = df_scaled[fld] * self.wct_electricity_consumption
+                elif fld in ["Ce_dc"]:
+                    df_scaled[fld] = df_scaled[fld] * self.dc_electricity_consumption
+                elif fld in ["Ce_c"]:
+                    df_scaled[fld] = df_scaled[fld] * self.recirculation_electricity_consumption * 1000 if self._fix_recirculation else df_scaled[fld] * self.recirculation_electricity_consumption
+                elif fld.startswith("Cw"): # Cw_wct, Cw_s1, Cw_s2
+                    df_scaled[fld] = df_scaled[fld] * self.water_consumption
+                else:
+                    raise ValueError(f"Field {fld} not recognized for scaling.")
+            else:
+                print(f"Field {fld} not found in dataframe columns, skipping scaling for this field.")
+                
+        # Compute wct from series and parallel components
+        df_scaled["qwct"] = df_scaled["qwct_p"] + df_scaled["qwct_s"]
+                
+        # Update costs
+        cost_consumption_price: list[tuple[str, str]] = [
+            *[(col_id.replace("C", "J"), col_id, "Pe") for col_id in list(df_scaled.columns) if col_id.startswith("Ce_")],
+            ("Jw_s1", "Cw_s1", "Pw_s1"),
+            ("Jw_s2", "Cw_s2", "Pw_s2"),
+        ]
+        
+        for cost_col, consumption_col, price_col in cost_consumption_price:
+            if consumption_col in df_scaled.columns and cost_col in df_scaled.columns:
+                df_scaled[cost_col] = df_scaled[consumption_col] * df_scaled[price_col]
+        
+        df_scaled["Jw"] = df_scaled[["Jw_s1", "Jw_s2"]].sum(axis=1, skipna=True)
+        df_scaled["J"] = df_scaled[["Je", "Jw"]].sum(axis=1, skipna=True)
+        # Je
+        Ce_cols = [col for col in df_scaled.columns if col.startswith("Ce_")]
+        df_scaled["Je"] = df_scaled[Ce_cols].sum(axis=1, skipna=True)
+        
+        
+        return df_scaled
+    

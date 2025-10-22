@@ -1,0 +1,121 @@
+{
+    "andasol_pilot_plant_wct100_dc75": {
+        "id": "andasol_pilot_plant_wct100_dc75",
+        "description": "CC: 100% WCT and 75% DC at Andasol (pilot plant scale)",
+        "model_inputs_range": {
+            "qc": [
+                6.0,
+                24.0
+            ],
+            "Rp": [
+                0.0,
+                1.0
+            ],
+            "Rs": [
+                0.0,
+                1.0
+            ],
+            "wdc": [
+                10.0,
+                99.0
+            ],
+            "wwct": [
+                20.0,
+                95.0
+            ],
+            "Tamb": [
+                0.1,
+                50.0
+            ],
+            "HR": [
+                1.0,
+                99.0
+            ],
+            "Tdc_in": [
+                25.0,
+                55.0
+            ],
+            "Twct_in": [
+                25.0,
+                65.0
+            ]
+        },
+        "matlab_options": {
+            "model_type": "data",
+            "dc_lb": [
+                0.1,
+                25.0,
+                6.0,
+                10.0
+            ],
+            "dc_ub": [
+                50.0,
+                55.0,
+                24.0,
+                99.0
+            ],
+            "dc_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_dc_fp_pilot_plant_reduced_gaussian_cascade.mat",
+            "dc_ce_coeffs": [
+                -0.0002431,
+                0.04761,
+                -2.2,
+                48.63,
+                -295.6
+            ],
+            "dc_n_dc": 1,
+            "dc_nf": 0.5,
+            "wct_lb": [
+                0.1,
+                1.0,
+                25.0,
+                6.0,
+                20.0
+            ],
+            "wct_ub": [
+                50.0,
+                99.0,
+                65.0,
+                24.0,
+                95.0
+            ],
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_radial_basis2_cascade.mat",
+            "wct_ce_coeffs": [
+                0.4118,
+                -11.54,
+                189.4
+            ],
+            "wct_n_wct": 1,
+            "condenser_option": 6,
+            "condenser_A": 19.3,
+            "condenser_n_tb": 24,
+            "recirculation_coeffs": [
+                7.905e-05,
+                0.0005727,
+                0.006141,
+                0.001099
+            ],
+            "silence_warnings": true,
+            "resolution_mode": "inverse"
+        },
+        "algo_params": {
+            "algo_id": "sga",
+            "max_n_obj_fun_evals": 20000,
+            "max_n_logs": 300,
+            "pop_size": 80,
+            "params_dict": {
+                "gen": 250
+            },
+            "log_verbosity": 1,
+            "gen": 250
+        },
+        "vals_dec_vars": {
+            "qc": 7,
+            "Rp": 6,
+            "Rs": 6,
+            "wdc": 7
+        },
+        "load_factor": 1.0,
+        "power_threshold": 30.0,
+        "env_id": "environment_data_andasol_pilot_plant_20220101_20231231"
+    }
+}

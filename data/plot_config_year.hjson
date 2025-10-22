@@ -74,7 +74,7 @@
       ylabels_right: ["ºC"],
       ylabels_left: ["<b>Load conditions</b><br>kW<sub>th</sub>"],
       ylims_right: 'manual',
-      ylims_left: [0, 250],
+      // ylims_left: [0, 250],
       showlegend: true,
       legend_position: "top",
 
@@ -127,7 +127,7 @@
       ylabels_right: ["€/kW<sub>e</sub>", "€/l"],
       // ylims_left: [0, 5000],
       ylims_left: 'manual_from_zero',
-      ylims_right: 'manual',
+      ylims_right: ['manual', 'manual'],
       showlegend: true,
       legend_position: "top",
 
@@ -263,7 +263,8 @@
       row_height: 1,
       bg_color: "bg_gray",
       ylabels_left: ["<b>Cooling power</b><br>kW<sub>th</sub>"],
-      ylims_left: [0, 300],
+      // ylims_left: [0, 300],
+      ylims_left: "manual_from_zero",
       showlegend: true,
       legend_position: "top",
 
@@ -322,7 +323,8 @@
       row_height: 1,
       bg_color: "bg_gray",
       ylabels_left: ["<b>Hydraulic distribution</b><br>m<sup>3</sup>/h"],
-      ylims_left: [0, 25],
+      // ylims_left: [0, 25],
+      ylims_left: "manual_from_zero",
       showlegend: true,
       legend_position: "top",
 

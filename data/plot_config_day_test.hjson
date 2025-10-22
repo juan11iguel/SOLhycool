@@ -20,7 +20,9 @@
 
   vertical_highlights: {
     "var_id": "optim_eval",
-  }
+  },
+  "legend_fontsize": 14,
+  "font_size": 14,
 
   # Individual plot attributes
   # First specify the plot attributes
@@ -615,7 +617,7 @@
         },
         {
           var_id: "qdc_sp",
-          name: "q<sub>dc,sp</sub>",
+          name: "q<sup>DC</sup><sub>dc</sub>",
           mode: "lines",
           color: "dc_green",
           width: 4,

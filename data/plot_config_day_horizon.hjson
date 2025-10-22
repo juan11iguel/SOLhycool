@@ -10,17 +10,17 @@
   height: 1200,
   width: 1000,
   margin: {
-    l:20,
-    r:20,
+    l:5,
+    r:0,
     t:150,
-    b:20,
-    pad:5
+    b:5,
+    pad:0
   },
   vertical_spacing: 0.05,
   xdomain: [0, 0.9],
   // yaxis_right_pos
   xminor: true,
-  xaxis_nticks: 24,
+  xaxis_nticks: 16,
 
   # Individual plot attributes
   # First specify the plot attributes
@@ -28,7 +28,7 @@
   plots: {
     environment: {
       title: "<b>Environment</b>",
-      row_height: 1,
+      row_height: 0.5,
       // bg_color: "steelblue",
       ylabels_left: ["<b>Weather<br>conditions</b><br>ºC"],
       ylabels_right: ["Relative<br>humidity (%)"], # As many as n_yaxis-1
@@ -126,7 +126,7 @@
       traces_left: [
         {
           var_id: "Vavail",
-          name: "V<sub>available</sub> (m³)",
+          name: "V<sub>avail</sub>",
           mode: "lines",
           color: "plotly_cyan",
           width: 3,
@@ -138,7 +138,7 @@
         [
           {
             var_id: "Pe",
-            name: "Electricity price (€/kW<sub>e</sub>)", # "T<sub>amb,ts</sub>",
+            name: "Electricity", # "T<sub>amb,ts</sub>",
             mode: "lines",
             color: "plotly_yellow",
             width: 3,
@@ -148,7 +148,7 @@
         [
           {
             var_id: "Pw_s1",
-            name: "Water price - source 1 (€/l)",
+            name: "Water - src 1",
             mode: "lines",
             color: "turquesa",
             dash: "solid",
@@ -157,7 +157,7 @@
           },
           {
             var_id: "Pw_s2",
-            name: "Water price - source 2 (€/l)",
+            name: "Water - src 2",
             mode: "lines",
             color: "turquesa",
             dash: "dash",
@@ -206,7 +206,7 @@
           // },
           {
             var_id: "Je_wct",
-            name: "J<sub>e,wct</sub> (€/h)",
+            name: "J<sub>e,wct</sub>",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -215,7 +215,7 @@
           },
           {
             var_id: "Je_dc",
-            name: "J<sub>e,dc</sub> (€/h)",
+            name: "J<sub>e,dc</sub>",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -224,7 +224,7 @@
           },
           {
             var_id: "Je_c",
-            name: "J<sub>e,c</sub> (€/h)",
+            name: "J<sub>e,c</sub>",
             mode: "lines",
             color: "plotly_yellow",
             fill: "tonexty",
@@ -233,7 +233,7 @@
           },
           {
             var_id: "Jw_s2",
-            name: "J<sub>w,s2</sub> (€/h)",
+            name: "J<sub>w,s2",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -242,7 +242,7 @@
           },
           {
             var_id: "Jw_s1",
-            name: "J<sub>w,s1</sub> (€/h)",
+            name: "J<sub>w,s1",
             mode: "lines",
             color: "turquesa",
             fill: "tonexty",
@@ -259,7 +259,7 @@
       showlegend: true,
       legend_position: "top",
       traces_left: [],
-      independent_xaxis: true,
+      independent_xaxis: false,
       xminor: false, # To override the global xminor setting
     },
 
@@ -277,7 +277,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -286,7 +286,7 @@
         },
         {
           var_id: "Qwct",
-          name: "Q<sub>wct</sub> (kW<sub>th</sub>)",
+          name: "Q<sub>wct</sub>",
           mode: "lines",
           color: "wct_purple",
           width: 3,
@@ -298,7 +298,7 @@
         [
           {
             var_id: "Twct_in",
-            name: "T<sub>wct,in</sub> (ºC)",
+            name: "T<sub>wct,in</sub>",
             mode: "markers+lines",
             color: "plotly_red",
             width: 3,
@@ -306,7 +306,7 @@
           },
           {
             var_id: "Twct_out",
-            name: "T<sub>wct,out</sub> (ºC)",
+            name: "T<sub>wct,out</sub>",
             mode: "markers+lines",
             color: "plotly_blue",
             width: 3,
@@ -316,7 +316,7 @@
         [
           {
             var_id: "wwct",
-            name: "w<sub>wct</sub> (%)",
+            name: "w<sub>wct</sub>",
             mode: "markers+lines",
             color: "cool_red",
             width: 0.5,
@@ -339,7 +339,7 @@
       traces_left: [
         {
           var_id: "Qc_released",
-          name: "Q<sub>c</sub> (kW<sub>th</sub>)", # "T<sub>amb,ts</sub>",
+          name: "Q<sub>c</sub>", # "T<sub>amb,ts</sub>",
           mode: "lines",
           color: "bg_gray",
           width: 3,
@@ -348,7 +348,7 @@
         },
         {
           var_id: "Qdc",
-          name: "Q<sub>dc</sub> (kW<sub>th</sub>)",
+          name: "Q<sub>dc</sub>",
           mode: "lines",
           color: "dc_green",
           width: 3,
@@ -360,7 +360,7 @@
         [
           {
             var_id: "Tdc_in",
-            name: "T<sub>dc,in</sub> (ºC)",
+            name: "T<sub>dc,in</sub>",
             mode: "markers+lines",
             color: "plotly_red",
             width: 3,
@@ -368,7 +368,7 @@
           },
           {
             var_id: "Tdc_out",
-            name: "T<sub>dc,out</sub> (ºC)",
+            name: "T<sub>dc,out</sub>",
             mode: "markers+lines",
             color: "plotly_blue",
             width: 3,
@@ -378,7 +378,7 @@
         [
           {
             var_id: "wdc",
-            name: "w<sub>dc</sub> (%)",
+            name: "w<sub>dc</sub>",
             mode: "markers+lines",
             color: "cool_red",
             width: 0.5,
