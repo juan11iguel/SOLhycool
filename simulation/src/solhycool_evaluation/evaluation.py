@@ -176,7 +176,7 @@ def evaluate_optimization_robust(
             logger.info("Evaluation completed successfully!")
             return
             
-        except (ProcessLookupError, BrokenPipeError, ConnectionError, SystemError) as e:
+        except (ProcessLookupError, BrokenPipeError, ConnectionError, SystemError, TypeError) as e:
             retry_count += 1
             n_completed_dates = len(get_completed_dates_from_results(full_output_path))
             logger.error(f"SystemError encountered (attempt {retry_count + 1}): {e}")

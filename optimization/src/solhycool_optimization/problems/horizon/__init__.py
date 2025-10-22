@@ -311,10 +311,16 @@ class CombinedCoolerPathFinderProblem:
             assert isinstance(df_paretos.index, pd.DatetimeIndex), "The index of the pareto front series must be a DatetimeIndex."
             assert df_paretos.index.is_monotonic_increasing, "The index of the pareto front series must be monotonic increasing."
             
-            # Calculate elapsed time between steps
-            self.elapsed_time_between_steps = pd.Series(np.diff(df_paretos.index)).dt.total_seconds().div(3600).tolist()
-            # Add the last step duration with the same as the previous one
-            self.elapsed_time_between_steps.append(self.elapsed_time_between_steps[-1])
+            try:
+                # Calculate elapsed time between steps
+                self.elapsed_time_between_steps = pd.Series(np.diff(df_paretos.index)).dt.total_seconds().div(3600).tolist()
+                # Add the last step duration with the same as the previous one
+                self.elapsed_time_between_steps.append(self.elapsed_time_between_steps[-1])
+            except AttributeError: # Only one point, fallback to sample_time if available
+                if sample_time_h is None:
+                    raise ValueError("Only one point in the path and no sample time, cannot compute water consumed without knowing period")
+                else:
+                    self.elapsed_time_between_steps = [sample_time_h] * (self.n_steps)
         else:
             assert sample_time_h is not None, "If df_paretos is a list of DataFrames, sample_time_h must be provided."
         

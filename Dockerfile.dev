@@ -1,0 +1,19 @@
+# syntax = devthefuture/dockerfile-x
+INCLUDE ./Dockerfile.base
+
+# Create a development entrypoint script
+COPY deployment/scripts/dev-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh
+
+# Set default conda environment
+ENV PATH="/miniconda3/envs/${CONDA_ENV_NAME}/bin:$PATH"
+SHELL ["/bin/zsh", "-c"]
+
+# Set the entrypoint to our development script
+# This script basically initializes the conda environment which can later be 
+# used by airflow
+ENTRYPOINT ["/usr/local/bin/dev-entrypoint.sh"]
+# CMD ["airflow", "standalone"]
+
+# Run the container indefinitely to keep it alive for development
+CMD ["tail", "-f", "/dev/null"]

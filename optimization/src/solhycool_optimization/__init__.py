@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 import combined_cooler
 import matlab
 
-from solhycool_modeling import ModelInputsRange, MatlabOptions
+from solhycool_modeling import ModelInputsRange, MatlabOptions, Scalator
 from solhycool_modeling.utils import dump_in_span
 from solhycool_optimization.utils.serialization import get_queryable_columns
 
@@ -724,6 +724,28 @@ class HorizonResults:
             consumption_arrays=filtered_consumption_arrays,
             pareto_idxs=filtered_pareto_idxs
         )
+        
+    def scale(self, scalator: Scalator = Scalator()) -> "HorizonResults":
+        """
+        Scale all DataFrame attributes using the provided Scalator instance.
+        Args:
+            scalator: Scalator instance with fit parameters. Defaults to a new Scalator.
+        Returns:
+            A new HorizonResults instance with scaled DataFrames.
+        """
+        
+        return HorizonResults(
+            index=self.index,
+            df_results=scalator.scale_dataframe(self.df_results),
+            df_paretos=[scalator.scale_dataframe(df) if df is not None else None for df in self.df_paretos],
+            selected_pareto_idxs=self.selected_pareto_idxs,
+            date_str=self.date_str,
+            eval_at=self.eval_at,
+            fitness_history=self.fitness_history,
+            consumption_arrays=self.consumption_arrays,
+            pareto_idxs=self.pareto_idxs
+        )
+        
         
         
 # @dataclass

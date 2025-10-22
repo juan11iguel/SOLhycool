@@ -35,11 +35,15 @@ plot_metadata = {
     },
 }
 
-def year_pie_plot(ds: pd.Series, 
-                  theme_color: Literal['light', 'dark'] = 'light', 
-                  element_ids: list[Literal["costs", "electrical_consumptions", "cooling_power", "hydraulic_configuration"]] = None,
-                  title_value_type: Literal["absolute", "specific"] | None = "absolute",
-                  base_var_id: str = "Qc_released") -> go.Figure:
+def year_pie_plot(
+    ds: pd.Series, 
+    theme_color: Literal['light', 'dark'] = 'light', 
+    element_ids: list[Literal["costs", "electrical_consumptions", "cooling_power", "hydraulic_configuration"]] = None,
+    title_value_type: Literal["absolute", "specific"] | None = "absolute",
+    base_var_id: str = "Qc_released",
+    title_text: str = "<b>Year averages</b>",
+    width: int = 1400,
+) -> go.Figure:
     
     if element_ids is None:
         element_ids = list(plot_metadata.keys())
@@ -73,8 +77,10 @@ def year_pie_plot(ds: pd.Series,
                             line=dict(color=el_data.get("line_colors", ["rgba(0,0,0,0)"]*len(el_data["colors"])), width=3),
                             pattern=dict(bgcolor=el_data["colors"], fgcolor=el_data.get("pattern_colors", ["rgba(0,0,0,0)"]*len(el_data["colors"])), shape="/"),),
                 showlegend=False,
-                title=f'<b>{el_data["title"]["text"]}</b>{title_aux}',
-                titlefont_size=20,
+                title=dict(
+                    text=f'<b>{el_data["title"]["text"]}</b>{title_aux}',
+                    font=dict(size=20),
+                ),
                 hole=.5,
                 textposition='auto', # ['inside', 'outside', 'auto', 'none']
                 texttemplate='<b>%{label}</b><br>%{value:.1f} %</br>',
@@ -89,11 +95,11 @@ def year_pie_plot(ds: pd.Series,
 
     # Update layout
     fig.update_layout(
-        title_text='Year averages',
+        title_text=title_text,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         height=400,
-        width=1000,
+        width=width,
         # autosize=True,
         margin=dict(t=50, b=0, l=5, r=5),
         template='ggplot2' if theme_color == 'light' else 'plotly_dark',

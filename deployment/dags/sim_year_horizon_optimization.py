@@ -1,25 +1,28 @@
 from pathlib import Path
 import datetime
 from airflow.sdk import dag, task
-from loguru import logger
+from pendulum import duration
 
-from solhycool_evaluation.evaluation import evaluate_optimization as evaluate
 from solhycool_deployment import welcome_message
-
 
 @dag(
     schedule=None,
     catchup=False,
     tags=["solhycool", "simulation"],
+    default_args={
+        "retries": 10,
+        "retry_delay": duration(seconds=5),
+    },
 )
 def sim_year_horizon_optimization(
-    sim_id: str = None,
+    sim_id: str = "andasol_pilot_plant_wct100dcXX",
     sim_config_path: str = "/workspaces/SOLhycool/simulation/data/simulations_config.json",
     env_path: str = "/workspaces/SOLhycool/data/datasets/",
     output_path: str = "/workspaces/SOLhycool/simulation/results/", 
     date_span: tuple[str, str] = ("20220101", "20221231"),
     n_parallel_steps: int = 24,
     n_parallel_days: int = 5,
+    previous_results_id: str = 'sim_results' # to continue from previous results (if they exist)
 ):
     """
     ### Annual simulation of the horizon optimization strategy DAG
@@ -31,7 +34,7 @@ def sim_year_horizon_optimization(
     ```
         
     """
-    @task() # multiple_outputs=True
+    @task.external_python(task_id="use_conda_environment", python="/miniconda3/envs/conda-env/bin/python")
     def evaluate_optimization(
         sim_config_path: str,
         env_path: str,
@@ -40,7 +43,9 @@ def sim_year_horizon_optimization(
         date_span: tuple[str, str],
         n_parallel_steps: int,
         n_parallel_days: int,
+        previous_results_id: str,
     ) -> None:
+
         """
         #### Transform task
         In theory this task should call the horizon optimization and then return the results.
@@ -49,14 +54,49 @@ def sim_year_horizon_optimization(
         Returns the path to the temp file.
         """
         
+        from loguru import logger
+        from solhycool_evaluation.evaluation import evaluate_optimization_robust as evaluate
+        from solhycool_deployment import welcome_message
+        
+        # Pipeline logic
+        welcome_message()
+        
+        logger.info(
+            f"Starting evaluation of the horizon optimization for simulation id: "
+            f"{sim_id} from {date_span[0]} to {date_span[1]}"
+        )
+
+        sim_parent = Path(sim_config_path).parent
+        env_parent = Path(env_path).parent
+
+        logger.info(
+            f"Using simulation config path: {sim_config_path}. "
+            f"Available configurations: {[p.name for p in sim_parent.iterdir()]}"
+        )
+        logger.info(
+            f"Using environment data path: {env_path}. "
+            f"Available datasets: {[p.name for p in env_parent.iterdir()]}"
+        )
+        logger.info(f"Output path: {output_path}")
+        logger.info(f"Number of parallel steps: {n_parallel_steps}")
+        logger.info(f"Number of parallel days: {n_parallel_days}")
+
+        if previous_results_id:
+            prev_results_path = Path(output_path) / previous_results_id
+            exists_text = "do" if prev_results_path.exists() else "do not"
+            logger.info(f"Previous results id: {previous_results_id}. They {exists_text} exist.")
+        else:
+            logger.info("No previous results id provided.")
+
         evaluate(
+            sim_id=sim_id,
             sim_config_path=sim_config_path,
             env_path=env_path,
             output_path=output_path,
-            sim_id=sim_id,
             date_span=date_span,
             n_parallel_steps=n_parallel_steps,
             n_parallel_days=n_parallel_days,
+            file_id=previous_results_id
         )
         
     # @task()
@@ -102,9 +142,6 @@ def sim_year_horizon_optimization(
     #     This runs after both load and visualization tasks are complete.
     #     """
     #     cleanup_paths(paths)
-        
-    # Pipeline logic
-    welcome_message()
     
     evaluate_optimization(
         sim_id=sim_id,
@@ -113,7 +150,8 @@ def sim_year_horizon_optimization(
         output_path=output_path, 
         date_span=date_span,
         n_parallel_steps=n_parallel_steps,
-        n_parallel_days=n_parallel_days
+        n_parallel_days=n_parallel_days,
+        previous_results_id=previous_results_id
     )
         
     # create_results_report_task = create_results_report(export_path, out_url=data_url, plt_config_path=plt_config_path)

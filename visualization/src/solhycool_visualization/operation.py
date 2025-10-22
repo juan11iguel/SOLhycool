@@ -10,7 +10,9 @@ import datetime
 from phd_visualizations.test_timeseries import experimental_results_plot
 from solhycool_optimization import HorizonResults
 from solhycool_visualization import ComponentColors
+from solhycool_visualization.utils import adapt_dataframe
 from solhycool_visualization.optimization import plot_pareto_front
+
 
 
 def plot_hydraulic_distribution(
@@ -24,6 +26,7 @@ def plot_hydraulic_distribution(
     pad_value: float = np.nan,
     pad_side: Literal["left", "right"] = "left",
     highlight_bar_idx: Optional[int] = None,
+    showlegend: bool = True,
 ) -> go.Figure:
     
     # Ensure all inputs are lists
@@ -93,7 +96,7 @@ def plot_hydraulic_distribution(
         fig.add_trace(go.Bar(
             x=x,
             y=np.where(valid_mask, qdc_only, None),  # Use None for invalid data points
-            showlegend=True if i == 0 else False,
+            showlegend=True if (i == 0 and showlegend) else False,
             # legendgroup=legend_id,
             name='DC //',
             offsetgroup=label,
@@ -108,7 +111,7 @@ def plot_hydraulic_distribution(
             x=x,
             y=np.where(valid_mask, qwct_s, None),
             name='DC - WCT',
-            showlegend=True if i == 0 else False,
+            showlegend=True if (i == 0 and showlegend) else False,
             # legendgroup=legend_id,
             offsetgroup=label,
             base=np.where(valid_mask, qdc_only, None),
@@ -130,7 +133,7 @@ def plot_hydraulic_distribution(
             x=x,
             y=np.where(valid_mask, qwct_p, None),
             name='WCT //',
-            showlegend=True if i == 0 else False,
+            showlegend=True if (i == 0 and showlegend) else False,
             # legendgroup="hydraulic_distribution",
             offsetgroup=label,
             base=np.where(valid_mask, qdc_only + qwct_s, None),
@@ -248,6 +251,7 @@ def plot_results(
     hydraulic_distribution_highlight_bar_idx: Optional[int] = None,
     hydraulic_distribution_labels: Optional[list[str]] = None,
     hydraulic_distribution_transplant_xaxis: bool = False,
+    adapt_data: bool = True,
 ) -> go.Figure:
                 #  df_paretos: list[pd.DataFrame] = None, pareto_idxs:  list[int] | list[list[int]] = None, ) -> go.Figure:
     
@@ -256,11 +260,16 @@ def plot_results(
     
     if df is None:
         df = day_results.df_results
+        
+    if adapt_data:
+        df = adapt_dataframe(df.resample("h").asfreq())
+        if df_comp is not None:
+            df_comp = adapt_dataframe(df_comp.resample("h").asfreq())
     
     fig = experimental_results_plot(
         plot_config, 
-        df=df, 
-        df_comp=df_comp, 
+        df=adapt_dataframe(df), 
+        df_comp=adapt_dataframe(df_comp) if df_comp is not None else None, 
         resample=False, 
         template=template, 
         comp_trace_labels=comp_trace_labels,
@@ -296,6 +305,7 @@ def plot_results(
                     showticklabels=hydraulic_distribution_transplant_xaxis, 
                     highlight_bar_idx=hydraulic_distribution_highlight_bar_idx,
                     labels=hydraulic_distribution_labels,
+                    showlegend=plot_config["plots"][plot_id].get("showlegend", True)
                 ),
                 plot_id=plot_id,
                 transplant_xaxis=hydraulic_distribution_transplant_xaxis

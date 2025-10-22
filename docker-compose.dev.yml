@@ -1,0 +1,39 @@
+name: solhycool-deployment-dev
+
+volumes:
+  airflow_config:
+  airflow_logs:
+  airflow_plugins:
+
+services:
+  airflow-dev:
+    container_name: solhycool-airflow-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env.dev
+    working_dir: ${AIRFLOW_HOME}
+    restart: unless-stopped
+    command: tail -f /dev/null
+    volumes:
+      # Bind mount the deployment configs and logs
+      - airflow_config:${AIRFLOW_HOME}/config
+      - airflow_logs:${AIRFLOW_HOME}/logs
+      - airflow_plugins:${AIRFLOW_HOME}/plugins
+      - ./deployment/dags:${AIRFLOW_HOME}/dags
+      - ./deployment/scripts:${AIRFLOW_HOME}/scripts
+      # Bind mount data directory (read-only)
+      - ./data:/workspaces/SOLhycool/data:ro
+      # Bind mount the subproject directories for editable installs
+      - ./modeling:/workspaces/SOLhycool/modeling
+      - ./optimization:/workspaces/SOLhycool/optimization
+      - ./simulation:/workspaces/SOLhycool/simulation
+      - ./visualization:/workspaces/SOLhycool/visualization
+      - ./deployment:/workspaces/SOLhycool/deployment
+      # Mount the environment.yml file for development
+      - ./environment-dev.yml:/workspaces/SOLhycool/environment.yml
+    ports:
+      - "8090:${AIRFLOW__WEBSERVER__WEB_SERVER_PORT:-8090}"
+    environment:
+      - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=${AIRFLOW__WEBSERVER__WEB_SERVER_PORT:-8090}

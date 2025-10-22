@@ -1,5 +1,9 @@
 name: solhycool-deployment
 
+volumes:
+  airflow_logs:
+  airflow_plugins:
+
 services:
   airflow:
     container_name: solhycool-airflow
@@ -12,10 +16,11 @@ services:
     working_dir: ${AIRFLOW_HOME}
     command: airflow standalone
     volumes:
+      - airflow_logs:${AIRFLOW_HOME}/logs
+      - airflow_plugins:${AIRFLOW_HOME}/plugins
       - ./deployment/config:${AIRFLOW_HOME}/config
       - ./deployment/dags:${AIRFLOW_HOME}/dags
-      - ./deployment/logs:${AIRFLOW_HOME}/logs
-      - ./deployment/plugins:${AIRFLOW_HOME}/plugins
       - ./data:${AIRFLOW_HOME}/data:ro
+      - ./simulation:${AIRFLOW_HOME}/simulation
     ports:
       - "8080:8080"

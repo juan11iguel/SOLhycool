@@ -24,3 +24,6 @@
 !deployment/README.md
 !deployment/src/
 !deployment/pyproject.toml
+
+# Keep the scripts folder
+!deployment/scripts/

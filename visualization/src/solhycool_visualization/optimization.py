@@ -25,9 +25,9 @@ else:
 
 # TODO: Esta función tiene que unirse y hacerse compatible con la del módulo de optimización
 
-symbols = copy.deepcopy(symbols)[2::12]
-symbols_open = copy.deepcopy(symbols)[3::12]
-symbols_filled = copy.deepcopy(symbols)[4::12]
+symbols = copy.deepcopy(symbols)[2::12] * 10  # Take every 12th symbol to avoid similar ones, skip first two (circles)
+symbols_open = copy.deepcopy(symbols)[3::12] * 10  # Open version of the symbols
+symbols_filled = copy.deepcopy(symbols)[4::12] * 10  # Filled version of the symbols
 
 # Precompute field metadata lookup dictionary
 OPERATION_PT_FIELD_METADATA = {fld.name: fld.metadata for fld in fields(OperationPoint)}
@@ -60,6 +60,8 @@ def plot_pareto_front(
     simple_colors: bool = False,
     xaxis_label: Optional[str] = None,
     yaxis_label: Optional[str] = None,
+    legend_labels: Optional[str] = None,
+    group_colors_by: int = 1, # 1: every pareto different color, 2: every two pareto different color, etc.
     **kwargs,
 ) -> go.Figure:
     """
@@ -76,9 +78,10 @@ def plot_pareto_front(
         opacity = 1 if highlight_idx is None or pareto_idx == highlight_idx else 0.3
         if highlight_idx is None:
             if simple_colors:
-                color = plt_colors[pareto_idx]
+                color = plt_colors[pareto_idx // group_colors_by]
             else:
-                color = f'rgba({pareto_idx * 30 % 255}, {100 + pareto_idx * 20 % 155}, {200 - pareto_idx * 20 % 200}, 0.7)'
+                pareto_idx_ = pareto_idx // group_colors_by
+                color = f'rgba({pareto_idx_ * 30 % 255}, {100 + pareto_idx_ * 20 % 155}, {200 - pareto_idx_ * 20 % 200}, 0.7)'
         else:
             if pareto_idx == highlight_idx:
                 color = plt_colors[pareto_idx]
@@ -105,8 +108,12 @@ def plot_pareto_front(
         if pareto_idx > 0:
             x0_values_list.append(x_values[0])
         
-        name = f'{idx_str} | T<sub>amb</sub>={op["Tamb"]:.1f} °C, HR={op["HR"]:.0f} %, T<sub>v</sub>={op["Tv"]:.1f} °C, Q̇={op["Qc_released"]:.0f} kW<sub>th</sub>' if full_legend else idx_str # ɸ
-        
+        if legend_labels is None:
+            name = f'{idx_str} | T<sub>amb</sub>={op["Tamb"]:.1f} °C, HR={op["HR"]:.0f} %, T<sub>v</sub>={op["Tv"]:.1f} °C, Q̇={op["Qc_released"]:.0f} kW<sub>th</sub>' if full_legend else idx_str # ɸ
+        else:
+            assert len(legend_labels) == len(ops_list), "Length of legend_labels must match number of Pareto fronts."
+            name = legend_labels[pareto_idx]
+            
         # custom_data, hover_text = generate_tooltip_data(ops)
         custom_data, hover_text = None, None
         
@@ -233,8 +240,12 @@ def plot_pareto_front(
         title_text=f"{objective_keys[0]} ({OPERATION_PT_FIELD_METADATA[objective_keys[0]].get('units', '')})" if xaxis_label is None else xaxis_label, 
         title_font=dict(size=default_fontsize),
         zeroline=False,
-        range=(-x_offset, minor_xticks[-1]+x_offset) if mode=="side_by_side" else (0, max([ops[objective_keys[0]].max() for ops in ops_list])*1.05) # So it's available when transplanting to other axis
-        )
+        range=(
+            -x_offset, minor_xticks[-1]+x_offset
+        ) if mode=="side_by_side" else (
+            0, max([ops[objective_keys[0]].max() for ops in ops_list])*1.05
+        ) # So it's available when transplanting to other axis
+    )
     fig.update_yaxes(
         title_text=f"{objective_keys[1]} ({OPERATION_PT_FIELD_METADATA[objective_keys[1]].get('units', '')})" if yaxis_label is None else yaxis_label, 
         title_font=dict(size=default_fontsize),

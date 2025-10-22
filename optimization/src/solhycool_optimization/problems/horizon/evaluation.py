@@ -335,7 +335,8 @@ def evaluate_day(
     problem = CombinedCoolerPathFinderProblem(
         # Attach index to df_paretos so time between steps can be calculated
         df_paretos=pd.Series(df_paretos, index=df_day.index),
-        Vavail0=df_day.iloc[0]["Vavail_m3"]
+        Vavail0=df_day.iloc[0]["Vavail_m3"],
+        sample_time_h=1, # Fallback in case only one point is available
     )
     logger.info(f"{date_str} | Started evaluation of best path of pareto front points")
     selected_pareto_idxs, fitness_history = path_selector(config.algo_params, problem)

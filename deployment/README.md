@@ -32,6 +32,22 @@ docker exec -d CONTAINER_NAME bash -c "source /miniconda3/bin/activate conda-env
 Though the web interface will only be available if forwarding the 8080 port. This can be done in VSCode in the ports settings.
 ![alt text](../data/assets/port-forwarding-vscode.png)
 
+### Development deployment
+
+This allows to make use of the development conda environment which changes dynamically with changes to the codebase.
+Just find the devcontainer image name with `docker images` and replace it in the following command:
+
+```bash
+docker compose -f SOLhycool/docker-compose.dev.yml up -d --build
+```
+
+Check the password:
+```bash
+docker exec solhycool-airflow-dev /bin/zsh -c "cat simple_auth_manager_passwords.json.generated"
+```
+
+(We use 8090 to avoid potential conflicts if the "production" deployment is also running)
+
 ### Production deployment
 
 (Proably calling it production is a bit far fetched)
@@ -91,3 +107,25 @@ Run `airflow dags test DAG_ID`. To specify some parameters different to the defa
 ```bash
 airflow dags test horizon_optimization_day_report --conf '{"plt_config_path":"../data/plot_config_day_test.hjson"}'
 ```
+
+To test the annual simulation:
+```bash
+airflow dags test sim_year_horizon_optimization \
+  --conf '{
+    "sim_id": "andasol_pilot_plant_wct100",
+    "sim_config_path": "/workspaces/SOLhycool/simulation/data/simulations_config.json",
+    "env_path": "/workspaces/SOLhycool/data/datasets/",
+    "output_path": "/workspaces/SOLhycool/simulation/results/",
+    "date_span": ["20220101", "20221231"],
+    "n_parallel_steps": 24,
+    "n_parallel_days": 5,
+    "previous_results_id": "sim_results"
+  }'
+  ```
+
+```bash
+airflow dags test sim_year_horizon_optimization \
+  --conf '{
+    "sim_id": "andasol_pilot_plant_wct100"
+  }'
+  ```

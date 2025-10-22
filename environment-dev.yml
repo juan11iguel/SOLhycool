@@ -12,22 +12,19 @@ dependencies:
   - pyarrow=18.0.0
   - pygmo=2.19.7
   - bayesian-optimization=2.0.3
-  - jupyter>=1.1.1
   - pytables=3.10.2
   - h5py=3.12.1
   - pip
-  - airflow==3.0.6
   - billiard>=4.2.1
   - pydantic>=2.11.7
+  - plotly>=6.3.0
   - python-kaleido>=1.0.0
   - pip:
-  
       # WARNING: conda env update does not update git packages, see https://github.com/conda/conda/issues/6863
       # Update manually with pip install --force-reinstall git+https://github.com/juan11iguel/phd_visualizations
+      # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
       - iapws @ git+https://github.com/jjgomera/iapws@16b4806d00aabd5c031452222387902f2b02d1db
       - phd-visualizations @ git+https://github.com/juan11iguel/phd_visualizations
-
-      # Conda can't use uv sources in modeling's pyproject.toml, so they need to be defined here 
       - ./modeling/matlab/exports/for_redistribution_files_only
       - -e ./modeling
       - -e ./visualization
