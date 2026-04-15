@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from solhycool_modeling import EnvironmentVariables
 from solhycool_optimization import ValuesDecisionVariables, StaticResults, EvaluationConfig
+from solhycool_modeling import EnvironmentVariables
 from solhycool_optimization.problems.horizon.evaluation import generate_set_of_paretos
 from phd_visualizations import save_figure
-from IPython.display import Image
 
 import combined_cooler
 import matlab
@@ -15,29 +14,33 @@ import matlab
 if __name__ == "__main__":
     results_path = Path("../results")
 
-    case_study_id = "andasol_wct100" # Check case studies in `sim_config_path`
+    case_study_id = "andasol_pilot_plant_wct100_dc100" # Check case studies in `sim_config_path`
 
     case_studies_dict = {
-        "pilot_plant": {
+        # "pilot_plant": {
+        #     "Qnominal_kW": 200,
+        #     "Tv_C": 42,
+        # },
+        # "andasol_wct100": {
+        #     "Qnominal_kW": 95*10**3, # 95 MWth
+        #     "Tv_C": 41.5,
+        # },
+        # "andasol_25_dc": {
+        #     "Qnominal_kW": 95*10**3, # 95 MWth
+        #     "Tv_C": 41.5,
+        # },
+        # "andasol_50_dc": {
+        #     "Qnominal_kW": 95*10**3, # 95 MWth
+        #     "Tv_C": 41.5,
+        # },
+        # "andasol_75_dc": {
+        #     "Qnominal_kW": 95*10**3, # 95 MWth
+        #     "Tv_C": 41.5,
+        # },
+        "andasol_pilot_plant_wct100_dc100":{
             "Qnominal_kW": 200,
             "Tv_C": 42,
-        },
-        "andasol_wct100": {
-            "Qnominal_kW": 95*10**3, # 95 MWth
-            "Tv_C": 41.5,
-        },
-        "andasol_25_dc": {
-            "Qnominal_kW": 95*10**3, # 95 MWth
-            "Tv_C": 41.5,
-        },
-        "andasol_50_dc": {
-            "Qnominal_kW": 95*10**3, # 95 MWth
-            "Tv_C": 41.5,
-        },
-        "andasol_75_dc": {
-            "Qnominal_kW": 95*10**3, # 95 MWth
-            "Tv_C": 41.5,
-        },
+        } 
     }
 
     sim_config_path = "/workspaces/SOLhycool/simulation/data/simulations_config.json"

@@ -195,7 +195,7 @@
     },
     "andasol_wct100": {
         "id": "andasol_wct100",
-        "description": "WCT only at Andasol - pilot plant",
+        "description": "WCT only at Andasol but at pilot plant scale. Use ANDASOL thermal load scaled down",
         "model_inputs_range": {
             "qc": [
                 6.0,
@@ -263,7 +263,7 @@
                 24.0,
                 95.0
             ],
-            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_radial_basis2_cascade.ma",
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/data/models_data/model_data_wct_fp_pilot_plant_gaussian_cascade.mat",
             "wct_ce_coeffs": [
                 0.4118,
                 -11.54,
