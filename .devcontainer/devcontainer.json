@@ -9,6 +9,9 @@
 		"vscode": {
 			"settings": {
 				"html.format.templating": true,
+				"python.defaultInterpreterPath": "/miniconda3/envs/conda-env/bin/python",
+				"python.terminal.activateEnvironment": false,
+				"python.terminal.activateEnvInCurrentTerminal": false,
 				"terminal.integrated.defaultProfile.linux": "zsh",
 				"editor.tabSize": 4,
 				"terminal.integrated.profiles.linux": {
@@ -43,7 +46,7 @@
 				"h5web.vscode-h5web"
 			],
 			"containerEnv": {
-				"ENVIRONMENT": "container",
+				"ENVIRONMENT": "container"
 			}
 		}
 	},
@@ -53,4 +56,10 @@
 		// "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
 		// "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
 	},
+
+	// Additional commands or steps to run after the container is created.
+	// Only run once when the container is created
+	"postCreateCommand": "./.devcontainer/postCreate.sh"
+	// Run every time the container is attached to, such as when you open a new terminal or reopen the workspace.
+	// "postAttachCommand": ""
 }

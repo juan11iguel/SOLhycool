@@ -17,6 +17,7 @@ Open (clone) the repository with VSCode and `CTRL+SHIFT+P` to open the command p
 
 #### Setting up the development environment from within the container
 
+Optional step if using the provided devcontainer configuration (it already runs these commands upon container creation / attachment)
 Once inside the container, set up a new conda environment with the necessary dependencies:
 
 ```bash
