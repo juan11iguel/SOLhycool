@@ -16,8 +16,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import gzip
 import shutil
 
-from solhycool_modeling import EnvironmentVariables, OperationPoint
 from solhycool_optimization import DecisionVariables, ValuesDecisionVariables, HorizonResults, AlgoParamsHorizon as AlgoParams
+from solhycool_modeling import EnvironmentVariables, OperationPoint
 from solhycool_optimization.utils import pareto_front_indices
 from solhycool_optimization.utils.evaluation import optimize
 from solhycool_optimization.utils.serialization import get_fitness_history

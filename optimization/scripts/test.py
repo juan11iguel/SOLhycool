@@ -9,8 +9,8 @@ import pandas as pd
 from loguru import logger
 import pygmo as pg
 
-from solhycool_modeling import OperationPoint, EnvironmentVariables
 from solhycool_optimization.utils.evaluation import optimize, evaluate_global_algos
+from solhycool_modeling import OperationPoint, EnvironmentVariables
 from solhycool_optimization.utils import CustomEncoder
 from solhycool_optimization.visualization import plot_algo_comparison
 from solhycool_visualization.diagrams import WascopStateVisualizer

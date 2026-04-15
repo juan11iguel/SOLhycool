@@ -11,9 +11,9 @@ import math
 import pygmo as pg
 import datetime
 
-from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
 from solhycool_optimization.problems.horizon import CombinedCoolerPathFinderProblem
 from solhycool_optimization import DecisionVariables, ValuesDecisionVariables
+from solhycool_modeling import EnvironmentVariables, OperationPoint, ModelInputsRange
 from solhycool_optimization.utils import extract_prefix
 from solhycool_evaluation.utils.serialization import export_evaluation_results, get_fitness_history
 

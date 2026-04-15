@@ -4,8 +4,8 @@ Example script to evaluate single or multiple decision variable sets for the com
 from dataclasses import asdict
 import numpy as np
 
-from solhycool_modeling import EnvironmentVariables
 from solhycool_optimization import ValuesDecisionVariables, EvaluationConfig, DecisionVariables
+from solhycool_modeling import EnvironmentVariables
 from solhycool_optimization.problems.horizon.evaluation import evaluate_decision_variables
 
 import combined_cooler

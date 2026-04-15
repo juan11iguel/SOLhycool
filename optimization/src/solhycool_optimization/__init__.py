@@ -16,14 +16,15 @@ import json
 import math
 from pydantic import BaseModel, Field
 import plotly.graph_objects as go
-
-# Always import combined_cooler before importing matlab
-import combined_cooler
-import matlab
-
+from solhycool_optimization.utils.serialization import get_queryable_columns
 from solhycool_modeling import ModelInputsRange, MatlabOptions, Scalator
 from solhycool_modeling.utils import dump_in_span
-from solhycool_optimization.utils.serialization import get_queryable_columns
+
+def _get_matlab_module():
+    """Import MATLAB runtime bindings lazily to avoid early native-lib side effects."""
+    import combined_cooler  # noqa: F401  # Required before importing matlab.
+    import matlab
+    return matlab
 
 warnings.filterwarnings("ignore", category=NaturalNameWarning)
 
@@ -63,6 +64,7 @@ class DecisionVariables:
         """
         dump =  {name: np.asarray(value)[idx] for name, value in asdict(self).items() if value is not None}
         if return_format == "matlab":
+            matlab = _get_matlab_module()
             dump = {k: matlab.double([v]) for k, v in dump.items()}
 
         return dump if return_dict else DecisionVariables(**dump)
@@ -76,7 +78,7 @@ class DecisionVariables:
 
     def to_matlab(self) -> "DecisionVariables":
         """ Convert all attributes to matlab.double """
-        
+        matlab = _get_matlab_module()
         return DecisionVariables(**{k: matlab.double(v) for k, v in asdict(self).items() if v is not None})
 
 @dataclass
@@ -103,7 +105,7 @@ class ValuesDecisionVariables:
         
     def to_matlab(self) -> "ValuesDecisionVariables":
         """ Convert all attributes to matlab.double """
-        
+        matlab = _get_matlab_module()
         return ValuesDecisionVariables(**{k: matlab.double(v.tolist()) for k, v in asdict(self).items() if v is not None})
         
     def to_matlab_dict(self, ) -> dict:
