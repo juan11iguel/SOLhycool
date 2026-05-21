@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.2.3",
     "tables>=3.10.2",
     "tqdm>=4.67.1",
+    "pygmo>=2.19.8",
     # "solhycool-visualization",
     # "solhycool-modeling",
     # "bayesian-optimization>=2.0.3",

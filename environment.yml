@@ -10,8 +10,8 @@ dependencies:
   - numpy=2.2.4
   - pandas=2.2.2
   - pyarrow=18.0.0
-  - pygmo=2.19.7
   - bayesian-optimization=2.0.3
+  # - pygmo>=2.19.8
   - jupyter>=1.1.1
   - pytables=3.10.2
   - h5py=3.12.1
