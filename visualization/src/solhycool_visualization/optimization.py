@@ -48,6 +48,7 @@ def generate_tooltip_data(ops: pd.DataFrame | list[OperationPoint]) -> tuple[np.
 
 def plot_pareto_front(
     ops_list: list[pd.DataFrame],
+    compare_ops: list[pd.DataFrame] | None = None,
     objective_keys: tuple[str, str] = ('Cw', 'Ce'),
     additional_pts: np.ndarray = None,
     full_legend: bool = False,
@@ -61,6 +62,7 @@ def plot_pareto_front(
     xaxis_label: Optional[str] = None,
     yaxis_label: Optional[str] = None,
     legend_labels: Optional[str] = None,
+    compare_legend_label: Optional[str] = None,
     group_colors_by: int = 1, # 1: every pareto different color, 2: every two pareto different color, etc.
     **kwargs,
 ) -> go.Figure:
@@ -69,6 +71,21 @@ def plot_pareto_front(
     """
     
     fig = go.Figure()
+    # If a comparison set is provided (e.g. grid search), plot it first in muted colors
+    if compare_ops is not None:
+        for pareto_idx, ops in enumerate(compare_ops):
+            ops = ops.copy()
+            ops.sort_values(by=objective_keys[0], inplace=True)
+            # muted gray with low opacity
+            muted_color = 'rgba(150,150,150,0.85)'
+            fig.add_trace(go.Scatter(
+                x=ops[objective_keys[0]].values, y=ops[objective_keys[1]],
+                name=(f'Grid {pareto_idx}' if pareto_idx == 0 else None) if compare_legend_label is None else compare_legend_label,
+                mode='lines+markers',
+                line=dict(width=0.7, color=muted_color, dash='dot'),
+                marker=dict(size=6, color=muted_color, opacity=0.6, symbol=symbols[pareto_idx % len(symbols)]),
+                showlegend=(pareto_idx == 0),
+            ))
     x_offset = 100 if mode == "side_by_side" else 0  # Adjust for side-by-side spacing
     x0_values_list = [ops_list[0].iloc[0][objective_keys[0]]]
     for pareto_idx, ops in enumerate(ops_list):

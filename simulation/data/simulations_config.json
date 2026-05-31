@@ -985,5 +985,101 @@
         "load_factor": 1.0,
         "power_threshold": 30.0,
         "env_id": "environment_data_andasol_pilot_plant_20220101_20231231"
+    },
+    "pilot_plant_jjaa": {
+        "id": "pilot_plant_jjaa",
+        "description": "Combined cooler in pilot plant at PSA using same models as reinforcement learning agents",
+        "model_inputs_range": {
+            "qc": [
+                6.0,
+                24.0
+            ],
+            "Rp": [
+                0.0,
+                1.0
+            ],
+            "Rs": [
+                0.0,
+                1.0
+            ],
+            "wdc": [
+                11.0,
+                99.18
+            ],
+            "wwct": [
+                21.0,
+                93.4161
+            ],
+            "Tamb": [
+                0.1,
+                50.0
+            ],
+            "HR": [
+                0.1,
+                99.9
+            ],
+            "Tdc_in": [
+                25.0,
+                65.0
+            ],
+            "Twct_in": [
+                25.0,
+                65.0
+            ]
+        },
+        "matlab_options": {
+            "model_type": "data",
+            "dc_lb": [
+                0.1,
+                25.0,
+                6.0,
+                11.0
+            ],
+            "dc_ub": [
+                50.0,
+                65.0,
+                24.0,
+                99.18
+            ],
+            "dc_model_data_path": "/workspaces/SOLhycool/modeling/matlab/component_models/model_data_dc_fp_gaussian.mat",
+            "dc_n_dc": 1,
+            "wct_lb": [
+                0.1,
+                0.1,
+                25.0,
+                6.0,
+                21.0
+            ],
+            "wct_ub": [
+                50.0,
+                99.9,
+                65.0,
+                24.0,
+                93.4161
+            ],
+            "wct_model_data_path": "/workspaces/SOLhycool/modeling/matlab/component_models/model_data_wct_fp_gaussian.mat",
+            "wct_n_wct": 1,
+            "silence_warnings": true,
+            "resolution_mode": "inverse"
+        },
+        "algo_params": {
+            "algo_id": "sga",
+            "max_n_obj_fun_evals": 20000,
+            "max_n_logs": 300,
+            "pop_size": 80,
+            "params_dict": {
+                "gen": 250
+            },
+            "log_verbosity": 1,
+            "gen": 250
+        },
+        "vals_dec_vars": {
+            "qc": 6,
+            "Rp": 6,
+            "Rs": 6,
+            "wdc": 10
+        },
+        "load_factor": 1.0,
+        "power_threshold": 30.0
     }
 }

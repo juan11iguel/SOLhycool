@@ -516,6 +516,14 @@ class OperationPoint:
                 if k in cls.__dataclass_fields__.keys()
             })
         return cls(**op_dict)
+    
+    def to_dict(self) -> dict:
+        """Convert the OperationPoint instance to a dictionary.
+        
+        Returns:
+            dict: Dictionary representation of the OperationPoint instance.
+        """
+        return asdict(self)
         
 
 class MatlabOptions(BaseModel):

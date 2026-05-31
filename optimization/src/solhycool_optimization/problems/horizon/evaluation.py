@@ -196,6 +196,7 @@ def generate_set_of_paretos(
     df_paretos = []
     consumption_arrays = []
     pareto_idxs_list = []
+    pareto_compute_times_s = []
     with ProcessPoolExecutor(max_workers=n_parallel_evals) as executor:
         futures = {
             executor.submit(
@@ -211,7 +212,9 @@ def generate_set_of_paretos(
             if dv_list is not None:
                 # 2. Generate pareto front
                 consumption_array = np.array(consumption_list).transpose()
+                pareto_start_time = time.perf_counter()
                 pareto_idxs, df_pareto = get_pareto_front(dv_list, consumption_array, df_env, step_idx, matlab_options=eval_config.matlab_options)
+                pareto_compute_times_s.append(time.perf_counter() - pareto_start_time)
                 df_paretos.append(df_pareto) 
                 consumption_arrays.append(consumption_array)
                 pareto_idxs_list.append(pareto_idxs)
@@ -225,6 +228,7 @@ def generate_set_of_paretos(
     df_paretos = [df_paretos[i] for i in sorted_indices]
     consumption_arrays = [consumption_arrays[i] for i in sorted_indices]
     pareto_idxs_list = [pareto_idxs_list[i] for i in sorted_indices]
+    pareto_compute_times_s = [pareto_compute_times_s[i] for i in sorted_indices]
     
     logger.info(f"{date_str} | Completed evaluation in {time.time() - start_time:.1f} seconds")
 
@@ -233,6 +237,7 @@ def generate_set_of_paretos(
         df_paretos=df_paretos,
         consumption_arrays=consumption_arrays,
         pareto_idxs=pareto_idxs_list,
+        pareto_compute_times_s=pareto_compute_times_s,
     )
 
 def path_selector(

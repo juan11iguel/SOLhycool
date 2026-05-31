@@ -1,0 +1,1 @@
+The name of the files represents the weigth of the electricity in the multi-objective cost function.

@@ -117,6 +117,7 @@ class StaticResults:
     df_paretos: list[pd.DataFrame] # List of dataframes with the pareto fronts for each step
     consumption_arrays: list[np.ndarray[float]] # Array with the consumption values for the candidate operation points
     pareto_idxs: list[int] # Path of indices of the pareto fronts from the dataset of candidate operation points
+    pareto_compute_times_s: Optional[list[float]] = None # Time (s) spent computing each pareto front
     
     @classmethod
     def initialize(cls, input_path: Path):
@@ -135,40 +136,87 @@ class StaticResults:
             # Try new flattened structure first, fallback to old structure
             df_paretos = []
             consumption_arrays = []
+            pareto_compute_times_s = None
             
-            if "/pareto" in store:
-                # New flattened structure
+            # Attempt to load new flattened structure first. Use safe access
+            # since HDFStore.__getitem__ can raise unexpected TypeError for
+            # malformed or missing nodes in some pandas versions / files.
+            pareto_df = None
+            try:
                 pareto_df = store["/pareto"]
+            except (KeyError, TypeError):
+                pareto_df = None
+
+            if pareto_df is not None and not pareto_df.empty:
                 pareto_by_timestamp = {dt: group.drop(columns=['timestamp']) 
                                      for dt, group in pareto_df.groupby('timestamp')}
                 index = pd.DatetimeIndex(sorted(pareto_by_timestamp.keys()))
                 df_paretos = [pareto_by_timestamp[dt] for dt in index]
             else:
-                # Old structure - fallback
-                for key in store.keys():
-                    if key.startswith("/pareto/"):
+                # Old structure - fallback: look for groups under /pareto/ and parse timestamps
+                pareto_keys = [k for k in store.keys() if k.startswith("/pareto/")]
+                for key in pareto_keys:
+                    try:
                         df_paretos.append(store[key])
-                index = pd.DatetimeIndex([pd.to_datetime(key.split("/")[-1], format="%Y%m%dT%H%M") 
-                                        for key in store.keys() if key.startswith("/pareto/")])
-            
-            if "/consumption" in store:
-                # New flattened structure
-                consumption_df = store["/consumption"]
-                consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
-                                          for dt, group in consumption_df.groupby('timestamp')}
-                consumption_arrays = [consumption_by_timestamp.get(dt) for dt in index]
-            else:
-                # Old structure - fallback
-                for key in store.keys():
-                    if key.startswith("/consumption/"):
-                        consumption_arrays.append(store[key].to_numpy())
+                    except (KeyError, TypeError):
+                        # skip keys that cannot be read
+                        continue
 
-            pareto_idxs = [list(range(len(df))) for df in df_paretos]
+                if pareto_keys:
+                    index = pd.DatetimeIndex([pd.to_datetime(key.split("/")[-1], format="%Y%m%dT%H%M") 
+                                            for key in pareto_keys])
+                else:
+                    index = pd.DatetimeIndex([])
+            
+            # Attempt to read flattened consumption table safely
+            consumption_df = None
+            try:
+                consumption_df = store.get("/consumption")
+            except (KeyError, TypeError):
+                consumption_df = None
+
+            if consumption_df is not None and not consumption_df.empty:
+                try:
+                    consumption_by_timestamp = {dt: group.drop(columns=['timestamp'])[['Cw', 'Ce']].to_numpy() 
+                                              for dt, group in consumption_df.groupby('timestamp')}
+                    consumption_arrays = [consumption_by_timestamp.get(dt) for dt in index]
+                except Exception:
+                    consumption_arrays = [None] * len(index)
+            else:
+                # Old structure - fallback: collect keys and read arrays safely
+                consumption_keys = [k for k in store.keys() if k.startswith("/consumption/")]
+                for key in consumption_keys:
+                    try:
+                        consumption_arrays.append(store[key].to_numpy())
+                    except (KeyError, TypeError):
+                        consumption_arrays.append(None)
+
+            # Build pareto_idxs robustly: ensure each entry is a DataFrame-like
+            pareto_idxs = [list(range(len(df))) if isinstance(df, (pd.DataFrame,)) and df is not None else [] for df in df_paretos]
+
+            # Optional metadata - per-step pareto computation times
+            if "/metadata/pareto_compute_times" in store:
+                try:
+                    df_times = store["/metadata/pareto_compute_times"]
+                    if not df_times.empty and {'timestamp', 'pareto_compute_time_s'}.issubset(df_times.columns):
+                        times_by_timestamp = {
+                            dt: group['pareto_compute_time_s'].iloc[0]
+                            for dt, group in df_times.groupby('timestamp')
+                        }
+                        pareto_compute_times_s = [times_by_timestamp.get(dt, np.nan) for dt in index]
+                except (KeyError, TypeError):
+                    pareto_compute_times_s = None
 
         if input_path.suffix == ".gz":
             temp_path.unlink()
 
-        return cls(index=index, df_paretos=df_paretos, consumption_arrays=consumption_arrays, pareto_idxs=pareto_idxs)
+        return cls(
+            index=index,
+            df_paretos=df_paretos,
+            consumption_arrays=consumption_arrays,
+            pareto_idxs=pareto_idxs,
+            pareto_compute_times_s=pareto_compute_times_s,
+        )
     
     def export(self, output_path: Path, ) -> None:
         """ Export results to a file. """
@@ -210,6 +258,14 @@ class StaticResults:
             if pareto_idx_data:
                 df_pareto_idxs = pd.DataFrame(pareto_idx_data)
                 store.put("/paths/pareto_idxs", df_pareto_idxs, format="table", data_columns=True)
+
+            # Optional metadata - store per-step pareto computation times
+            if self.pareto_compute_times_s is not None:
+                df_pareto_times = pd.DataFrame({
+                    'timestamp': self.index,
+                    'pareto_compute_time_s': self.pareto_compute_times_s,
+                })
+                store.put("/metadata/pareto_compute_times", df_pareto_times, format="table", data_columns=True)
 
         logger.info(f"StaticResults saved to {output_path}")
         
